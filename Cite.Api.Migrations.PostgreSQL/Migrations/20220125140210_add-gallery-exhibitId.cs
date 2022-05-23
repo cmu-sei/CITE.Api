@@ -1,0 +1,26 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Cite.Api.Migrations.PostgreSQL.Migrations
+{
+    public partial class addgalleryexhibitId : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<Guid>(
+                name: "gallery_exhibit_id",
+                table: "evaluations",
+                type: "uuid",
+                nullable: true);
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "gallery_exhibit_id",
+                table: "evaluations");
+        }
+    }
+}
