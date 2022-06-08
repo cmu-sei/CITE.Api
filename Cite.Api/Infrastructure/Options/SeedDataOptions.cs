@@ -18,6 +18,11 @@ namespace Cite.Api.Infrastructure.Options
         public List<ScoringCategoryEntity> ScoringCategories { get; set; }
         public List<ScoringOptionEntity> ScoringOptions { get; set; }
         public List<EvaluationEntity> Evaluations { get; set; }
+        public List<EvaluationTeamEntity> EvaluationTeams { get; set; }
+        public List<MoveEntity> Moves { get; set; }
+        public List<ActionEntity> Actions { get; set; }
+        public List<RoleEntity> Roles { get; set; }
+        public List<RoleUserEntity> RoleUsers { get; set; }
     }
 }
 

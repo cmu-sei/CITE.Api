@@ -206,6 +206,71 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            if (options.EvaluationTeams != null && options.EvaluationTeams.Any())
+            {
+                var dbEvaluationTeams = context.EvaluationTeams.ToList();
+
+                foreach (EvaluationTeamEntity evaluationTeam in options.EvaluationTeams)
+                {
+                    if (!dbEvaluationTeams.Where(x => x.Id == evaluationTeam.Id).Any())
+                    {
+                        context.EvaluationTeams.Add(evaluationTeam);
+                    }
+                }
+                context.SaveChanges();
+            }
+            if (options.Moves != null && options.Moves.Any())
+            {
+                var dbMoves = context.Moves.ToList();
+
+                foreach (MoveEntity move in options.Moves)
+                {
+                    if (!dbMoves.Where(x => x.Id == move.Id).Any())
+                    {
+                        context.Moves.Add(move);
+                    }
+                }
+                context.SaveChanges();
+            }
+            if (options.Actions != null && options.Actions.Any())
+            {
+                var dbActions = context.Actions.ToList();
+
+                foreach (ActionEntity action in options.Actions)
+                {
+                    if (!dbActions.Where(x => x.Id == action.Id).Any())
+                    {
+                        context.Actions.Add(action);
+                    }
+                }
+                context.SaveChanges();
+            }
+            if (options.Roles != null && options.Roles.Any())
+            {
+                var dbRoles = context.Roles.ToList();
+
+                foreach (RoleEntity role in options.Roles)
+                {
+                    if (!dbRoles.Where(x => x.Id == role.Id).Any())
+                    {
+                        context.Roles.Add(role);
+                    }
+                }
+                context.SaveChanges();
+            }
+            if (options.RoleUsers != null && options.RoleUsers.Any())
+            {
+                var dbRoleUsers = context.RoleUsers.ToList();
+
+                foreach (RoleUserEntity roleUser in options.RoleUsers)
+                {
+                    if (!dbRoleUsers.Where(x => x.Id == roleUser.Id).Any())
+                    {
+                        context.RoleUsers.Add(roleUser);
+                    }
+                }
+                context.SaveChanges();
+            }
         }
 
         private static string DbProvider(IConfiguration config)
