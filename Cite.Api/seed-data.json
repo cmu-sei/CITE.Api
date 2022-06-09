@@ -96,7 +96,7 @@
       "DisplayOrder": 3,
       "Description": "Location of Observed Activity",
       "AllowMultipleChoices": false,
-      "alculationEquation": "{max}",
+      "CalculationEquation": "{max}",
       "IsModifierRequired": false,
       "ScoringWeight": 4,
       "ScoringModelId": "121c225d-796a-448c-a5cd-95c7a9436d51"
@@ -146,6 +146,7 @@
       "DisplayOrder": 8,
       "Description": "Potential Impact",
       "AllowMultipleChoices": false,
+      "CalculationEquation": "{max}",
       "IsModifierRequired": false,
       "ScoringWeight": 6,
       "ScoringModelId": "121c225d-796a-448c-a5cd-95c7a9436d51"
