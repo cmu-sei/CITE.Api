@@ -445,6 +445,8 @@ namespace Cite.Api.Services
                 }
             }
             submissionOptionToUpdate.IsSelected = value;
+            submissionOptionToUpdate.ModifiedBy = _user.GetId();
+            submissionOptionToUpdate.DateModified = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
@@ -491,6 +493,7 @@ namespace Cite.Api.Services
             submission.CreatedBy = _user.GetId();
             submission.DateModified = null;
             submission.ModifiedBy = null;
+            submission.Status = Data.Enumerations.ItemStatus.Active;
             var submissionEntity = _mapper.Map<SubmissionEntity>(submission);
             citeContext.Submissions.Add(submissionEntity);
             // catch race condition if we try to add the same submission twice
