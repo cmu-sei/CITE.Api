@@ -76,14 +76,6 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
 
             var scoringOptionList = await _context.ScoringOptions.Where(sc => sc.ScoringCategoryId == scoringCategoryId).ToListAsync();
-            // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-            {
-                foreach (var scoringOption in scoringOptionList)
-                {
-                    scoringOption.Value = 0.0;
-                }
-            }
 
             return _mapper.Map<IEnumerable<ScoringOption>>(scoringOptionList);
         }
@@ -94,11 +86,6 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
 
             var item = await _context.ScoringOptions.SingleOrDefaultAsync(sc => sc.Id == id, ct);
-            // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-            {
-                item.Value = 0.0;
-            }
 
             return _mapper.Map<ScoringOption>(item);
         }

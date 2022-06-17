@@ -73,14 +73,6 @@ namespace Cite.Api.Services
                 (includeArchived || sm.Status != ItemStatus.Archived) &&
                 (!hasDescription || sm.Description.Contains(description))
             ).ToListAsync();
-            // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-            {
-                foreach (var scoringModel in scoringModelList)
-                {
-                    scoringModel.CalculationEquation = "********";
-                }
-            }
 
             return _mapper.Map<IEnumerable<ScoringModel>>(scoringModelList);
         }
@@ -94,21 +86,6 @@ namespace Cite.Api.Services
                 .Include(sm => sm.ScoringCategories)
                 .ThenInclude(sc => sc.ScoringOptions)
                 .SingleOrDefaultAsync(sm => sm.Id == id, ct);
-            // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-            {
-                item.CalculationEquation = "********";
-                foreach (var scoringCategory in item.ScoringCategories)
-                {
-                    scoringCategory.CalculationEquation = "********";
-                    scoringCategory.ScoringWeight = 0.0;
-                    foreach (var scoringOption in scoringCategory.ScoringOptions)
-                    {
-                        scoringOption.Value = 0.0;
-                    }
-                }
-            }
-
 
             return _mapper.Map<ScoringModel>(item);
         }
