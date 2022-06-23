@@ -441,6 +441,8 @@ namespace Cite.Api.Services
                     foreach (var submissionOption in submissionOptionsToClear)
                     {
                         submissionOption.IsSelected = false;
+                        submissionOption.ModifiedBy = _user.GetId();
+                        submissionOption.DateModified = DateTime.UtcNow;
                     }
                 }
             }
