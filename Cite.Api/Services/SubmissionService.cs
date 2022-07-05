@@ -424,6 +424,8 @@ namespace Cite.Api.Services
                 foreach (var submissionOption in submissionOptionsToClear)
                 {
                     submissionOption.IsSelected = false;
+                    submissionOption.ModifiedBy = _user.GetId();
+                    submissionOption.DateModified = DateTime.UtcNow;
                 }
             }
             else
@@ -441,10 +443,14 @@ namespace Cite.Api.Services
                     foreach (var submissionOption in submissionOptionsToClear)
                     {
                         submissionOption.IsSelected = false;
+                        submissionOption.ModifiedBy = _user.GetId();
+                        submissionOption.DateModified = DateTime.UtcNow;
                     }
                 }
             }
             submissionOptionToUpdate.IsSelected = value;
+            submissionOptionToUpdate.ModifiedBy = _user.GetId();
+            submissionOptionToUpdate.DateModified = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
@@ -491,6 +497,7 @@ namespace Cite.Api.Services
             submission.CreatedBy = _user.GetId();
             submission.DateModified = null;
             submission.ModifiedBy = null;
+            submission.Status = Data.Enumerations.ItemStatus.Active;
             var submissionEntity = _mapper.Map<SubmissionEntity>(submission);
             citeContext.Submissions.Add(submissionEntity);
             // catch race condition if we try to add the same submission twice
@@ -569,7 +576,11 @@ namespace Cite.Api.Services
             {
                 foreach (var submissionOption in submissionCategory.SubmissionOptions)
                 {
-                    submissionOption.IsSelected = false;
+                    if (submissionOption.IsSelected) {
+                        submissionOption.IsSelected = false;
+                        submissionOption.ModifiedBy = _user.GetId();
+                        submissionOption.DateModified = DateTime.UtcNow;
+                    }
                 }
                 submissionCategory.Score = 0.0;
             };
@@ -625,7 +636,11 @@ namespace Cite.Api.Services
                     foreach (var submissionOption in targetSubmissionCategory.SubmissionOptions)
                     {
                         var baseSubmissionOption = baseSubmissionCategory.SubmissionOptions.First(so => so.ScoringOptionId == submissionOption.ScoringOptionId);
-                        submissionOption.IsSelected = baseSubmissionOption.IsSelected;
+                        if (submissionOption.IsSelected != baseSubmissionOption.IsSelected) {
+                            submissionOption.IsSelected = baseSubmissionOption.IsSelected;
+                            submissionOption.ModifiedBy = _user.GetId();
+                            submissionOption.DateModified = DateTime.UtcNow;
+                        }
                     }
                     CalculateCategoryScore(targetSubmissionCategory);
                     if (!String.IsNullOrWhiteSpace(targetSubmissionCategory.ScoringCategory.CalculationEquation))
