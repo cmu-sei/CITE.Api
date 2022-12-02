@@ -628,8 +628,7 @@ namespace Cite.Api.Services
                     && b.MoveNumber == targetSubmission.MoveNumber - 1);
             if (baseSubmission != null)
             {
-                var submissionScore = 0.0;
-                var submissionCount = 0;
+                targetSubmission.Score = baseSubmission.Score;
                 foreach (var targetSubmissionCategory in targetSubmission.SubmissionCategories)
                 {
                     var baseSubmissionCategory = baseSubmission.SubmissionCategories.First(sc => sc.ScoringCategoryId == targetSubmissionCategory.ScoringCategoryId);
@@ -642,14 +641,8 @@ namespace Cite.Api.Services
                             submissionOption.DateModified = DateTime.UtcNow;
                         }
                     }
-                    CalculateCategoryScore(targetSubmissionCategory);
-                    if (!String.IsNullOrWhiteSpace(targetSubmissionCategory.ScoringCategory.CalculationEquation))
-                    {
-                        submissionScore += targetSubmissionCategory.Score;
-                        submissionCount ++;
-                    }
+                    targetSubmissionCategory.Score = baseSubmissionCategory.Score;
                 };
-                targetSubmission.Score = submissionScore / submissionCount;
                 _context.Submissions.Update(targetSubmission);
                 await _context.SaveChangesAsync(ct);
             }
