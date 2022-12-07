@@ -17,6 +17,8 @@ namespace Cite.Api.Data.Models
         public string Description { get; set; }
         public ItemStatus Status { get; set; }
         public int CurrentMoveNumber { get; set;}
+        public DateTime SituationTime { get; set;}
+        public string SituationDescription { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModelEntity ScoringModel { get; set; }
         public Guid? GalleryExhibitId { get; set; }
