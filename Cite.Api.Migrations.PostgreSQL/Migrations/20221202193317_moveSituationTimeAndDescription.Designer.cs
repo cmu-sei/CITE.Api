@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Carnegie Mellon University. All Rights Reserved. 
+ Copyright 2022 Carnegie Mellon University. All Rights Reserved. 
  Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 */
 
@@ -8,6 +8,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -16,9 +17,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20221202193317_moveSituationTimeAndDescription")]
+    partial class moveSituationTimeAndDescription
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -132,14 +134,6 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Property<Guid>("ScoringModelId")
                         .HasColumnType("uuid")
                         .HasColumnName("scoring_model_id");
-
-                    b.Property<string>("SituationDescription")
-                        .HasColumnType("text")
-                        .HasColumnName("situation_description");
-
-                    b.Property<DateTime>("SituationTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("situation_time");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -291,6 +285,14 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Property<int>("MoveNumber")
                         .HasColumnType("integer")
                         .HasColumnName("move_number");
+
+                    b.Property<string>("SituationDescription")
+                        .HasColumnType("text")
+                        .HasColumnName("situation_description");
+
+                    b.Property<DateTime>("SituationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("situation_time");
 
                     b.HasKey("Id");
 

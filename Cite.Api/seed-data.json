@@ -656,8 +656,6 @@
       "Description": "NCISS Demonstration",
       "Status": 20,
       "CurrentMoveNumber": 0,
-      "SituationTime": "2021-12-03T14:38:00Z",
-      "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
       "ScoringModelId": "121c225d-796a-448c-a5cd-95c7a9436d51",
       "GalleryExhibitId": "c72ab146-ad44-44cd-877e-d03872516c30"
     }
@@ -705,6 +703,8 @@
       "Id": "b07d52c9-4d8d-4bca-a6c7-a5c02709f872",
       "Description": "The exercise will begin at 0900 EST",
       "MoveNumber": 0,
+      "SituationTime": "2021-12-03T14:38:00Z",
+      "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
       "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],

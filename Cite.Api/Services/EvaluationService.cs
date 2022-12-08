@@ -30,6 +30,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct);
+        Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct);
         Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
@@ -227,6 +228,26 @@ namespace Cite.Api.Services
             return evaluation;
         }
 
+        public async Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
+
+            if (evaluationToUpdate == null)
+                throw new EntityNotFoundException<Evaluation>();
+
+            evaluationToUpdate.SituationTime = evaluationSituation.SituationTime;
+            evaluationToUpdate.SituationDescription = evaluationSituation.SituationDescription;
+            _context.Evaluations.Update(evaluationToUpdate);
+            await _context.SaveChangesAsync(ct);
+
+            var evaluation = await GetAsync(evaluationToUpdate.Id, ct);
+
+            return evaluation;
+        }
+
         public async Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct)
         {
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded)
@@ -237,13 +258,16 @@ namespace Cite.Api.Services
                 .SingleOrDefaultAsync(v => v.Id == id, ct);
             if (evaluationToUpdate == null)
                 throw new EntityNotFoundException<Evaluation>();
-            if (!evaluationToUpdate.Moves.Any(m => m.MoveNumber == moveNumber))
+            var move = evaluationToUpdate.Moves.SingleOrDefault(m => m.MoveNumber == moveNumber);
+            if (move == null)
                 throw new EntityNotFoundException<Move>();
 
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
             evaluationToUpdate.ModifiedBy = _user.GetId();
             evaluationToUpdate.DateModified = DateTime.UtcNow;
             evaluationToUpdate.CurrentMoveNumber = moveNumber;
+            evaluationToUpdate.SituationDescription = move.SituationDescription;
+            evaluationToUpdate.SituationTime = move.SituationTime;
+            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
 
             await _context.SaveChangesAsync(ct);
 
@@ -321,6 +345,13 @@ namespace Cite.Api.Services
 
         }
 
+    }
+
+
+    public class EvaluationSituation
+    {
+        public DateTime SituationTime { get; set; }
+        public string SituationDescription { get; set; }
     }
 }
 

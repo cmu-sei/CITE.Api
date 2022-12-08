@@ -16,6 +16,8 @@ namespace Cite.Api.ViewModels
          public Guid Id { get; set; }
         public string Description { get; set; }
         public int MoveNumber { get; set;}
+        public DateTime SituationTime { get; set;}
+        public string SituationDescription { get; set; }
         public Guid EvaluationId { get; set; }
    }
 }

@@ -128,6 +128,25 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Updates an Evaluation situation details
+        /// </summary>
+        /// <remarks>
+        /// Updates an Evaluation with the attributes specified.
+        /// The ID from the route MUST MATCH the ID contained in the evaluation parameter
+        /// </remarks>
+        /// <param name="id">The Id of the Evaluation to update</param>
+        /// <param name="evaluationSituation">The updated Evaluation values</param>
+        /// <param name="ct"></param>
+        [HttpPut("evaluations/{id}/situation")]
+        [ProducesResponseType(typeof(Evaluation), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "updateEvaluationSituation")]
+        public async Task<IActionResult> UpdateSituation([FromRoute] Guid id, [FromBody] EvaluationSituation evaluationSituation, CancellationToken ct)
+        {
+            var updatedEvaluation = await _evaluationService.UpdateSituationAsync(id, evaluationSituation, ct);
+            return Ok(updatedEvaluation);
+        }
+
+        /// <summary>
         /// Sets an Evaluation Current Move Number
         /// </summary>
         /// <remarks>

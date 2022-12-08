@@ -62,7 +62,6 @@ namespace Cite.Api.Services
 
             var actionEntities = await _context.Actions
                 .Where(a => a.EvaluationId == evaluationId &&
-                            a.MoveNumber == a.Evaluation.CurrentMoveNumber &&
                             a.TeamId == teamId)
                 .OrderBy(a => a.ActionNumber)
                 .ToListAsync(ct);
