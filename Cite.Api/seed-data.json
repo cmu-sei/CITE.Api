@@ -23,6 +23,22 @@
     {
       "Id": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
       "Name": "Bean"
+    },
+    {
+      "Id": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "Name": "Bob"
+    },
+    {
+      "Id": "1db2856b-7a3c-4b82-95d4-e41fb18de516",
+      "Name": "Bonzo"
+    },
+    {
+      "Id": "b7977ce5-0a17-45e1-aa2e-55c57bfffeb6",
+      "Name": "Graff"
+    },
+    {
+      "Id": "3269cb19-1d39-40d3-a55e-e3e9779b6e0b",
+      "Name": "Ender"
     }
   ],
   "UserPermissions": [
@@ -33,6 +49,10 @@
     {
       "UserId": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
       "PermissionId": "c881417e-02f1-4232-b06b-723901120e20"
+    },
+    {
+      "UserId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "PermissionId": "e0317506-fc9a-412d-a4bf-ac5ec915490e"
     }
   ],
   "TeamTypes": [
@@ -636,7 +656,9 @@
       "Status": 20,
       "CurrentMoveNumber": 0,
       "ScoringModelId": "121c225d-796a-448c-a5cd-95c7a9436d51",
-      "GalleryExhibitId": "c72ab146-ad44-44cd-877e-d03872516c30"
+      "GalleryExhibitId": "c72ab146-ad44-44cd-877e-d03872516c30",
+      "SituationTime": "2021-12-03T14:00:00Z",
+      "SituationDescription": "Please review the National Cyber Incident Scoring System."
     }
   ],
   "Teams": [
@@ -653,6 +675,22 @@
       "ShortName": "Test",
       "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
       "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3"
+    },
+      "Name": "Administrators",
+      "ShortName": "Admin",
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+    },
+    {
+      "Id": "d208de1e-3792-4a87-ac97-212d1cc5faca",
+      "Name": "Official Score Users",
+      "ShortName": "Users",
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+    },
+    {
+      "Id": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "Name": "Observers",
+      "ShortName": "Observers",
+      "TeamTypeId": "e5a06ded-8895-47e7-84d7-52c4cc0487a8"
     }
   ],
   "TeamUsers": [
@@ -662,9 +700,36 @@
       "TeamId": "54644c9c-8cf7-40e6-b645-9b2f83cb8314"
     },
     {
-      "Id":"f4ca1eb7-dce0-45ef-9660-d7b75946220a",
+      "Id": "f4ca1eb7-dce0-45ef-9660-d7b75946220a",
       "UserId": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
-      "TeamId":"54644c9c-8cf7-40e6-b645-9b2f83cb8314"
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca"
+    },
+    {
+      "Id": "2db0b140-5762-4899-8a1f-ef51b650c80b",
+      "UserId": "1db2856b-7a3c-4b82-95d4-e41fb18de516",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9"
+    },
+    {
+      "Id": "07b86f26-c5dc-4649-82cd-4c1b2c6b5875",
+      "UserId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca"
+    }
+  ],
+  "EvaluationTeams": [
+    {
+      "Id": "c59de84c-9ce4-4d87-a6b3-6a7cdd9c555e",
+      "TeamId": "54644c9c-8cf7-40e6-b645-9b2f83cb8314",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
+    },
+    {
+      "Id": "e1a1ed1f-9aea-4a14-b5fc-d3f3ba139e98",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
+    },
+    {
+      "Id": "cc780307-aa98-4f56-afc8-bc4ef9b6cee3",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],
   "Moves": [
@@ -672,7 +737,15 @@
       "Id": "b07d52c9-4d8d-4bca-a6c7-a5c02709f872",
       "Description": "The exercise will begin at 0900 EST",
       "MoveNumber": 0,
-      "SituationTime": "2021-12-03T14:38:00Z",
+      "SituationTime": "2021-12-03T14:00:00Z",
+      "SituationDescription": "Please review the National Cyber Incident Scoring System.",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
+    },
+    {
+      "Id": "9d784ac4-7afd-11ed-a1eb-0242ac120002",
+      "Description": "Initial Reporting",
+      "MoveNumber": 1,
+      "SituationTime": "2021-12-03T15:00:00Z",
       "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
       "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
@@ -685,6 +758,46 @@
       "TeamId":"54644c9c-8cf7-40e6-b645-9b2f83cb8314",
       "MoveNumber": 0,
       "InjectNumber": 0
+    },
+    {
+      "Id": "3b2dc44d-2869-454d-be66-824dcf5b1543",
+      "Description": "Check the Gallery",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId":"54644c9c-8cf7-40e6-b645-9b2f83cb8314",
+      "MoveNumber": 1,
+      "InjectNumber": 0
+    },
+    {
+      "Id": "13065405-ab50-461d-9780-4924de78286b",
+      "Description": "Check the Gallery",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca",
+      "MoveNumber": 0,
+      "InjectNumber": 0
+    },
+    {
+      "Id": "f820408b-ef27-4d3c-97a3-cb409928862a",
+      "Description": "Check the Gallery",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca",
+      "MoveNumber": 1,
+      "InjectNumber": 0
+    },
+    {
+      "Id": "559575ef-5edf-4c4b-84b7-75e106759303",
+      "Description": "Check the Gallery",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "MoveNumber": 0,
+      "InjectNumber": 0
+    },
+    {
+      "Id": "dd6e8abe-b7aa-4334-94ca-5e33e7b031db",
+      "Description": "Check the Gallery",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
+      "MoveNumber": 1,
+      "InjectNumber": 0
     }
   ],
   "Roles": [
@@ -693,6 +806,36 @@
       "Name": "Team Lead",
       "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
       "TeamId": "54644c9c-8cf7-40e6-b645-9b2f83cb8314"
+    },
+    {
+      "Id": "94f2d914-ea6a-40f5-a47c-2e5668f7d2e4",
+      "Name": "Participant",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "54644c9c-8cf7-40e6-b645-9b2f83cb8314"
+    },
+    {
+      "Id": "a082c4fb-37a7-48f7-84d2-cdca1f9f2fca",
+      "Name": "Team Lead",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca"
+    },
+    {
+      "Id": "2cfc057e-dfb8-49bd-bd85-8091cadd5441",
+      "Name": "Participant",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "d208de1e-3792-4a87-ac97-212d1cc5faca"
+    },
+    {
+      "Id": "4afca770-738d-45d1-8b94-91f9197c422d",
+      "Name": "Team Lead",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9"
+    },
+    {
+      "Id": "df6eee6c-559e-404a-82ca-f67098ddd576",
+      "Name": "Participant",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3",
+      "TeamId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9"
     }
   ],
   "RoleUsers": [
