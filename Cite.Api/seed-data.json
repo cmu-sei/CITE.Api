@@ -843,6 +843,11 @@
       "Id": "fb1e1e65-23c5-4c9a-8cea-b0b54fb29d4f",
       "UserId":"9fd3c38e-58b0-4af1-80d1-1895af91f1f9",
       "RoleId": "59266893-644e-4159-bb85-8bd01f64d8c8"
+    },
+    {
+      "Id": "3a11f745-9efc-4141-8d0e-5d2f690c44ad",
+      "UserId": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
+      "RoleId": "2cfc057e-dfb8-49bd-bd85-8091cadd5441"
     }
   ]
 }
