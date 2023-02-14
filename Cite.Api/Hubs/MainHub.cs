@@ -20,7 +20,6 @@ namespace Cite.Api.Hubs
     public class MainHub : Hub
     {
         private readonly ITeamService _teamService;
-        private readonly IGroupService _groupService;
         private readonly IEvaluationService _evaluationService;
         private readonly IScoringModelService _scoringModelService;
         private readonly CiteContext _context;
@@ -31,7 +30,6 @@ namespace Cite.Api.Hubs
 
         public MainHub(
             ITeamService teamService,
-            IGroupService groupService,
             IEvaluationService evaluationService,
             IScoringModelService scoringModelService,
             CiteContext context,
@@ -40,7 +38,6 @@ namespace Cite.Api.Hubs
         )
         {
             _teamService = teamService;
-            _groupService = groupService;
             _evaluationService = evaluationService;
             _scoringModelService = scoringModelService;
             _context = context;
