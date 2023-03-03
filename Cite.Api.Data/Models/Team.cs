@@ -15,10 +15,11 @@ namespace Cite.Api.Data.Models
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string ShortName { get; set; }
+        public Guid? EvaluationId { get; set; }
+        public virtual EvaluationEntity Evaluation { get; set; }
         public Guid TeamTypeId { get; set; }
         public virtual TeamTypeEntity TeamType { get; set; }
         public ICollection<TeamUserEntity> TeamUsers { get; set; } = new List<TeamUserEntity>();
-        public ICollection<GroupTeamEntity> GroupTeams { get; set; } = new List<GroupTeamEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
     }
 

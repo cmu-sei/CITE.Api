@@ -8,6 +8,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -16,9 +17,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20230213192914_tean-evaluationid")]
+    partial class teanevaluationid
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -192,6 +194,68 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .IsUnique();
 
                     b.ToTable("evaluation_teams");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created");
+
+                    b.Property<DateTime?>("DateModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_modified");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id")
+                        .IsUnique();
+
+                    b.ToTable("group_entity");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupTeamEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("GroupId", "TeamId")
+                        .IsUnique();
+
+                    b.ToTable("group_team_entity");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
@@ -933,6 +997,25 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Team");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupTeamEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.GroupEntity", "Group")
+                        .WithMany("GroupTeams")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")
+                        .WithMany("GroupTeams")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Team");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
                 {
                     b.HasOne("Cite.Api.Data.Models.EvaluationEntity", "Evaluation")
@@ -1149,6 +1232,11 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Teams");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupEntity", b =>
+                {
+                    b.Navigation("GroupTeams");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.PermissionEntity", b =>
                 {
                     b.Navigation("UserPermissions");
@@ -1186,6 +1274,8 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamEntity", b =>
                 {
+                    b.Navigation("GroupTeams");
+
                     b.Navigation("Submissions");
 
                     b.Navigation("TeamUsers");

@@ -11,6 +11,7 @@ namespace Cite.Api.ViewModels
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string ShortName { get; set; }
+        public Guid? EvaluationId { get; set; }
         public Guid TeamTypeId { get; set; }
         public TeamType TeamType { get; set; }
         public ICollection<User> Users { get; set; } = new List<User>();

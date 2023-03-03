@@ -57,6 +57,7 @@ namespace Cite.Api.Infrastructure.Extensions
                         if (File.Exists(seedFile)) {
                             SeedDataOptions seedDataOptions = JsonSerializer.Deserialize<SeedDataOptions>(File.ReadAllText(seedFile));
                             ProcessSeedDataOptions(seedDataOptions, ctx);
+                            MoveEvaluationTeamsToIndividualTeams(ctx);
                         }
                     }
 
@@ -76,6 +77,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
         private static void ProcessSeedDataOptions(SeedDataOptions options, CiteContext context)
         {
+            // permissions
             if (options.Permissions != null && options.Permissions.Any())
             {
                 var dbPermissions = context.Permissions.ToList();
@@ -89,6 +91,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // users
             if (options.Users != null && options.Users.Any())
             {
                 var dbUsers = context.Users.ToList();
@@ -102,6 +105,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // user permissions
             if (options.UserPermissions != null && options.UserPermissions.Any())
             {
                 var dbUserPermissions = context.UserPermissions.ToList();
@@ -115,6 +119,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // scoring models
             if (options.ScoringModels != null && options.ScoringModels.Any())
             {
                 var dbScoringModels = context.ScoringModels.ToList();
@@ -128,6 +133,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // scoring categories
             if (options.ScoringCategories != null && options.ScoringCategories.Any())
             {
                 var dbScoringCategories = context.ScoringCategories.ToList();
@@ -141,6 +147,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // scoring options
             if (options.ScoringOptions != null && options.ScoringOptions.Any())
             {
                 var dbScoringOptions = context.ScoringOptions.ToList();
@@ -154,45 +161,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            if (options.TeamTypes != null && options.TeamTypes.Any())
-            {
-                var dbTeamTypes = context.TeamTypes.ToList();
-
-                foreach (TeamTypeEntity teamType in options.TeamTypes)
-                {
-                    if (!dbTeamTypes.Where(x => x.Id == teamType.Id).Any())
-                    {
-                        context.TeamTypes.Add(teamType);
-                    }
-                }
-                context.SaveChanges();
-            }
-            if (options.Teams != null && options.Teams.Any())
-            {
-                var dbTeams = context.Teams.ToList();
-
-                foreach (TeamEntity team in options.Teams)
-                {
-                    if (!dbTeams.Where(x => x.Id == team.Id).Any())
-                    {
-                        context.Teams.Add(team);
-                    }
-                }
-                context.SaveChanges();
-            }
-            if (options.TeamUsers != null && options.TeamUsers.Any())
-            {
-                var dbTeamUsers = context.TeamUsers.ToList();
-
-                foreach (TeamUserEntity teamUser in options.TeamUsers)
-                {
-                    if (!dbTeamUsers.Where(x => x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId).Any())
-                    {
-                        context.TeamUsers.Add(teamUser);
-                    }
-                }
-                context.SaveChanges();
-            }
+            // evaluations
             if (options.Evaluations != null && options.Evaluations.Any())
             {
                 var dbEvaluations = context.Evaluations.ToList();
@@ -206,6 +175,49 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // team types
+            if (options.TeamTypes != null && options.TeamTypes.Any())
+            {
+                var dbTeamTypes = context.TeamTypes.ToList();
+
+                foreach (TeamTypeEntity teamType in options.TeamTypes)
+                {
+                    if (!dbTeamTypes.Where(x => x.Id == teamType.Id).Any())
+                    {
+                        context.TeamTypes.Add(teamType);
+                    }
+                }
+                context.SaveChanges();
+            }
+            // teams
+            if (options.Teams != null && options.Teams.Any())
+            {
+                var dbTeams = context.Teams.ToList();
+
+                foreach (TeamEntity team in options.Teams)
+                {
+                    if (!dbTeams.Where(x => x.Id == team.Id).Any())
+                    {
+                        context.Teams.Add(team);
+                    }
+                }
+                context.SaveChanges();
+            }
+            // team users
+            if (options.TeamUsers != null && options.TeamUsers.Any())
+            {
+                var dbTeamUsers = context.TeamUsers.ToList();
+
+                foreach (TeamUserEntity teamUser in options.TeamUsers)
+                {
+                    if (!dbTeamUsers.Where(x => x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId).Any())
+                    {
+                        context.TeamUsers.Add(teamUser);
+                    }
+                }
+                context.SaveChanges();
+            }
+            // evaluation teams
             if (options.EvaluationTeams != null && options.EvaluationTeams.Any())
             {
                 var dbEvaluationTeams = context.EvaluationTeams.ToList();
@@ -219,6 +231,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // moves
             if (options.Moves != null && options.Moves.Any())
             {
                 var dbMoves = context.Moves.ToList();
@@ -232,6 +245,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // actions
             if (options.Actions != null && options.Actions.Any())
             {
                 var dbActions = context.Actions.ToList();
@@ -245,6 +259,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // roles
             if (options.Roles != null && options.Roles.Any())
             {
                 var dbRoles = context.Roles.ToList();
@@ -258,6 +273,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+            // role users
             if (options.RoleUsers != null && options.RoleUsers.Any())
             {
                 var dbRoleUsers = context.RoleUsers.ToList();
@@ -268,6 +284,66 @@ namespace Cite.Api.Infrastructure.Extensions
                     {
                         context.RoleUsers.Add(roleUser);
                     }
+                }
+                context.SaveChanges();
+            }
+        }
+
+        private static void MoveEvaluationTeamsToIndividualTeams(CiteContext context)
+        {
+            // this ONLY gets run ONCE!
+            // check to see if this has already been done
+            var isAlreadyDone = context.Teams.Any(t => t.EvaluationId != null);
+            if (isAlreadyDone) return;
+
+            var evaluationTeams = context.EvaluationTeams.ToList();
+            // create unique teams for each evaluation team record
+            foreach (var et in evaluationTeams)
+            {
+                var newTeamId = Guid.NewGuid();
+                var newTeam = new TeamEntity()
+                {
+                    Id = newTeamId,
+                    Name = et.Team.Name,
+                    ShortName = et.Team.ShortName,
+                    TeamTypeId = et.Team.TeamTypeId,
+                    EvaluationId = et.EvaluationId,
+                    DateCreated = et.DateCreated,
+                    DateModified = et.DateModified,
+                    CreatedBy = et.CreatedBy,
+                    ModifiedBy = et.ModifiedBy
+                };
+                context.Teams.Add(newTeam);
+                context.SaveChanges();
+                // create team users for the new team
+                foreach (var tu in et.Team.TeamUsers)
+                {
+                    var newTeamUser = new TeamUserEntity()
+                    {
+                        Id = Guid.NewGuid(),
+                        TeamId = newTeamId,
+                        UserId = tu.UserId
+                    };
+                    context.TeamUsers.Add(newTeamUser);
+                }
+                // substitute the new team ID in place of the old team ID
+                // replace in actions
+                var actions = context.Actions.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
+                foreach (var action in actions)
+                {
+                    action.TeamId = newTeamId;
+                }
+                // replace in roles
+                var roles = context.Roles.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
+                foreach (var role in roles)
+                {
+                    role.TeamId = newTeamId;
+                }
+                // replace in submissions
+                var submissions = context.Submissions.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
+                foreach (var submission in submissions)
+                {
+                    submission.TeamId = newTeamId;
                 }
                 context.SaveChanges();
             }

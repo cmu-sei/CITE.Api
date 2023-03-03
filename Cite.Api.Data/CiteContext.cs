@@ -32,8 +32,6 @@ namespace Cite.Api.Data
         public DbSet<TeamUserEntity> TeamUsers { get; set; }
         public DbSet<EvaluationEntity> Evaluations { get; set; }
         public DbSet<EvaluationTeamEntity> EvaluationTeams { get; set; }
-        public DbSet<GroupEntity> Groups { get; set; }
-        public DbSet<GroupTeamEntity> GroupTeams { get; set; }
         public DbSet<MoveEntity> Moves { get; set; }
         public DbSet<ActionEntity> Actions { get; set; }
         public DbSet<RoleEntity> Roles { get; set; }

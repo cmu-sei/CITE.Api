@@ -93,7 +93,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getGroupTeams")]
         public async Task<IActionResult> GetByGroup([FromRoute] Guid groupId, CancellationToken ct)
         {
-            var list = await _teamService.GetByGroupAsync(groupId, ct);
+            var list = await _teamService.GetByTypeAsync(groupId, ct);
             return Ok(list);
         }
 

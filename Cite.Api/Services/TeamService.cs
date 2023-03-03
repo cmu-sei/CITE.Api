@@ -27,7 +27,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Team> GetAsync(Guid id, CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetMineAsync(CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetByUserAsync(Guid userId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetByGroupAsync(Guid groupId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Team>> GetByTypeAsync(Guid groupId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<ViewModels.Team> CreateAsync(ViewModels.Team team, CancellationToken ct);
         Task<ViewModels.Team> UpdateAsync(Guid id, ViewModels.Team team, CancellationToken ct);
@@ -99,14 +99,13 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetByGroupAsync(Guid groupId, CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.Team>> GetByTypeAsync(Guid teamTypeId, CancellationToken ct)
         {
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
                 throw new ForbiddenException();
 
-            var items = await _context.GroupTeams
-                .Where(w => w.GroupId == groupId)
-                .Select(x => x.Team)
+            var items = await _context.Teams
+                .Where(w => w.TeamTypeId == teamTypeId)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Team>>(items);
@@ -117,12 +116,10 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
                 throw new ForbiddenException();
 
-            var items = await _context.EvaluationTeams
-                .Where(et => et.EvaluationId == evaluationId)
-                .Include(et => et.Team)
-                .ThenInclude(t => t.TeamUsers)
+            var items = await _context.Teams
+                .Where(t => t.EvaluationId == evaluationId)
+                .Include(t => t.TeamUsers)
                 .ThenInclude(tu => tu.User)
-                .Select(x => x.Team)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Team>>(items);

@@ -62,7 +62,8 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
+            // only content developers can get all of the evaluations
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
 
             IQueryable<EvaluationEntity> evaluations = null;
@@ -113,13 +114,12 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
                 throw new ForbiddenException();
 
-            var teamIdList =  await _context.TeamUsers
+            var evaluationIdList =  await _context.TeamUsers
                 .Where(tu => tu.UserId == _user.GetId())
-                .Select(tu => tu.TeamId)
+                .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
-            var evaluationList = await _context.EvaluationTeams
-                .Where(et => teamIdList.Contains(et.TeamId) && et.Evaluation.Status == ItemStatus.Active)
-                .Select(et => et.Evaluation)
+            var evaluationList = await _context.Evaluations
+                .Where(e => evaluationIdList.Contains(e.Id) && e.Status == ItemStatus.Active)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Evaluation>>(evaluationList);
@@ -130,7 +130,10 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
                 throw new ForbiddenException();
 
-            var item = await _context.Evaluations.SingleOrDefaultAsync(sm => sm.Id == id, ct);
+            var item = await _context.Evaluations
+                .Include(e => e.Teams)
+                .Include(e => e.Moves)
+                .SingleOrDefaultAsync(sm => sm.Id == id, ct);
 
             return _mapper.Map<Evaluation>(item);
         }

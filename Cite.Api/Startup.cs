@@ -168,8 +168,6 @@ namespace Cite.Api
             services.AddScoped<ITeamService, TeamService>();
             services.AddScoped<ITeamTypeService, TeamTypeService>();
             services.AddScoped<ITeamUserService, TeamUserService>();
-            services.AddScoped<IGroupService, GroupService>();
-            services.AddScoped<IGroupTeamService, GroupTeamService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUserPermissionService, UserPermissionService>();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

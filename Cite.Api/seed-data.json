@@ -665,13 +665,15 @@
       "Id": "54644c9c-8cf7-40e6-b645-9b2f83cb8314",
       "Name": "CMU - Carnegie Mellon University",
       "ShortName": "CMU",
-      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     },
     {
       "Id": "d208de1e-3792-4a87-ac97-212d1cc5faca",
       "Name": "Test",
       "ShortName": "Test",
-      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
+      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],
   "TeamUsers": [
@@ -684,18 +686,6 @@
       "Id":"f4ca1eb7-dce0-45ef-9660-d7b75946220a",
       "UserId": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
       "TeamId":"54644c9c-8cf7-40e6-b645-9b2f83cb8314"
-    }
-  ],
-  "EvaluationTeams": [
-    {
-      "Id": "c59de84c-9ce4-4d87-a6b3-6a7cdd9c555e",
-      "TeamId": "54644c9c-8cf7-40e6-b645-9b2f83cb8314",
-      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
-    },
-    {
-      "Id":"e1a1ed1f-9aea-4a14-b5fc-d3f3ba139e98",
-      "TeamId":"d208de1e-3792-4a87-ac97-212d1cc5faca",
-      "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],
   "Moves": [
