@@ -116,12 +116,10 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
                 throw new ForbiddenException();
 
-            var items = await _context.EvaluationTeams
-                .Where(et => et.EvaluationId == evaluationId)
-                .Include(et => et.Team)
-                .ThenInclude(t => t.TeamUsers)
+            var items = await _context.Teams
+                .Where(t => t.EvaluationId == evaluationId)
+                .Include(t => t.TeamUsers)
                 .ThenInclude(tu => tu.User)
-                .Select(x => x.Team)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Team>>(items);
