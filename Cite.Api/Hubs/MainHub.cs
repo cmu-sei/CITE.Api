@@ -98,25 +98,25 @@ namespace Cite.Api.Hubs
             var teamIdList = teamList.Select(t => t.Id.ToString()).ToList();
             idList.AddRange(teamIdList);
             // user's evaluations
-            var evaluationTeamList = await _context.EvaluationTeams
-                .Where(et => teamIdList.Contains(et.TeamId.ToString()) && et.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
-                .Include(et => et.Evaluation)
+            var evaluationTeamList = await _context.Teams
+                .Where(t => teamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
+                .Include(t => t.Evaluation)
                 .ToListAsync();
             var evaluationIdList = evaluationTeamList
-                .Where(et => teamIdList.Contains(et.TeamId.ToString()) && et.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
+                .Where(t => teamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
                 .Select(et => et.Evaluation.Id.ToString())
                 .ToList();
             idList.AddRange(evaluationIdList);
             // user's official contributor evaluations
             var officialContributorTeamIdList = teamList.Where(t => t.TeamType.Name == _options.OfficialScoreTeamTypeName).Select(t => t.Id.ToString()).ToList();
             evaluationIdList = evaluationTeamList
-                .Where(et => officialContributorTeamIdList.Contains(et.TeamId.ToString()) && et.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
-                .Select(et => et.Evaluation.Id.ToString() + _options.OfficialScoreTeamTypeName.Replace(" ", ""))
+                .Where(t => officialContributorTeamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
+                .Select(t => t.Evaluation.Id.ToString() + _options.OfficialScoreTeamTypeName.Replace(" ", ""))
                 .ToList();
             idList.AddRange(evaluationIdList);
             // user's scoring models
-            var scoringModelIdList = evaluationTeamList.Select(e => e.Evaluation.ScoringModelId).Distinct().ToList();
-            idList.AddRange(evaluationIdList);
+            var scoringModelIdList = evaluationTeamList.Select(t => t.Evaluation.ScoringModelId.ToString()).Distinct().ToList();
+            idList.AddRange(scoringModelIdList);
 
             return idList;
         }

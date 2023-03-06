@@ -75,17 +75,16 @@ namespace Cite.Api.Services
             // make sure this would not add a duplicate user on any pending or active evaluations
             var requestedUser = await _context.Users.FindAsync(teamUser.UserId);
             var requestedTeam = await _context.Teams.FindAsync(teamUser.TeamId);
-            var existingevaluations = await _context.EvaluationTeams
-                .Where(et => (et.Evaluation.Status == Data.Enumerations.ItemStatus.Active || et.Evaluation.Status == Data.Enumerations.ItemStatus.Pending) &&
-                    et.TeamId == teamUser.TeamId)
+            var existingevaluations = await _context.Teams
+                .Where(t => (t.Evaluation.Status == Data.Enumerations.ItemStatus.Active || t.Evaluation.Status == Data.Enumerations.ItemStatus.Pending) &&
+                    t.Id == teamUser.TeamId)
                 .Select(et => et.Evaluation)
                 .ToListAsync();
                 var message = "";
             foreach (var evaluation in existingevaluations)
             {
-                var teams = await _context.EvaluationTeams
-                    .Where(et => et.EvaluationId == evaluation.Id)
-                    .Select(et => et.Team)
+                var teams = await _context.Teams
+                    .Where(t => t.EvaluationId == evaluation.Id)
                     .ToListAsync();
                 foreach (var team in teams)
                 {

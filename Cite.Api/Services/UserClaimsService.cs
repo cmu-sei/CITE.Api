@@ -170,8 +170,8 @@ namespace Cite.Api.Services
             foreach (var team in teamList)
             {
                 teamIdList.Add(team.Id.ToString());
-                var teamEvaluationIdList = await _context.EvaluationTeams
-                    .Where(x => x.TeamId == team.Id)
+                var teamEvaluationIdList = await _context.Teams
+                    .Where(x => x.Id == team.Id)
                     .Select(x => x.EvaluationId)
                     .ToListAsync();
                 foreach (var id in teamEvaluationIdList)
