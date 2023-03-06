@@ -76,7 +76,7 @@ namespace Cite.Api.Services
             var requestedUser = await _context.Users.FindAsync(teamUser.UserId);
             var requestedTeam = await _context.Teams.FindAsync(teamUser.TeamId);
             var existingevaluations = await _context.Teams
-                .Where(t => (t.Evaluation.Status == Data.Enumerations.ItemStatus.Active || et.Evaluation.Status == Data.Enumerations.ItemStatus.Pending) &&
+                .Where(t => (t.Evaluation.Status == Data.Enumerations.ItemStatus.Active || t.Evaluation.Status == Data.Enumerations.ItemStatus.Pending) &&
                     t.Id == teamUser.TeamId)
                 .Select(et => et.Evaluation)
                 .ToListAsync();
