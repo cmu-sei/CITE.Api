@@ -217,20 +217,6 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            // evaluation teams
-            if (options.EvaluationTeams != null && options.EvaluationTeams.Any())
-            {
-                var dbEvaluationTeams = context.EvaluationTeams.ToList();
-
-                foreach (EvaluationTeamEntity evaluationTeam in options.EvaluationTeams)
-                {
-                    if (!dbEvaluationTeams.Where(x => x.Id == evaluationTeam.Id).Any())
-                    {
-                        context.EvaluationTeams.Add(evaluationTeam);
-                    }
-                }
-                context.SaveChanges();
-            }
             // moves
             if (options.Moves != null && options.Moves.Any())
             {

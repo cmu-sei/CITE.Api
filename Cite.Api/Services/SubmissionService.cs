@@ -217,7 +217,7 @@ namespace Cite.Api.Services
                 throw new ArgumentException("The submission must be a teamType average submission.");
 
             var userId = _user.GetId();
-            var teamIdList = await _context.EvaluationTeams.Where(et => et.EvaluationId == submission.EvaluationId).Select(et => et.TeamId).ToListAsync(ct);
+            var teamIdList = await _context.Teams.Where(t => t.EvaluationId == submission.EvaluationId).Select(t => t.Id).ToListAsync(ct);
             var isOnOfficialScoreContributorTeam = await _context.TeamUsers.Where(tu => teamIdList.Contains(tu.TeamId) && tu.Team.TeamType.Name == _options.OfficialScoreTeamTypeName && tu.UserId == userId).AnyAsync(ct);
             if (!isOnOfficialScoreContributorTeam)
                 throw new ForbiddenException("Must be on an official score contributor team.");
@@ -256,9 +256,9 @@ namespace Cite.Api.Services
         {
             var teamType = await _context.TeamTypes.FirstAsync(tt => tt.Name == _options.OfficialScoreTeamTypeName);
             // calculate the average of teams in the team type
-            var teamIds = await _context.EvaluationTeams
-                .Where(et => et.EvaluationId == submission.EvaluationId && et.Team.TeamTypeId == teamType.Id)
-                .Select(et => et.TeamId)
+            var teamIds = await _context.Teams
+                .Where(t => t.EvaluationId == submission.EvaluationId && t.TeamTypeId == teamType.Id)
+                .Select(t => t.Id)
                 .ToListAsync(ct);
             var teamTypeSubmissions = await _context.Submissions
                 .Where(sm => sm.UserId == null && sm.TeamId != null && teamIds.Contains((Guid)sm.TeamId) && sm.EvaluationId == submission.EvaluationId && sm.MoveNumber == submission.MoveNumber)
@@ -294,9 +294,9 @@ namespace Cite.Api.Services
                 if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 {
                     var userId = _user.GetId();
-                    var evaluationTeamIdList = await _context.EvaluationTeams
-                        .Where(et => et.EvaluationId == item.EvaluationId)
-                        .Select(et => et.TeamId)
+                    var evaluationTeamIdList = await _context.Teams
+                        .Where(t => t.EvaluationId == item.EvaluationId)
+                        .Select(t => t.Id)
                         .ToListAsync();
                     var team = await _context.TeamUsers
                         .Where(tu => tu.UserId == userId && evaluationTeamIdList.Contains(tu.TeamId))
@@ -332,9 +332,9 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
-            var evaluationTeamIdList = await _context.EvaluationTeams
-                .Where(et => et.EvaluationId == submission.EvaluationId)
-                .Select(et => et.TeamId)
+            var evaluationTeamIdList = await _context.Teams
+                .Where(t => t.EvaluationId == submission.EvaluationId)
+                .Select(t => t.Id)
                 .ToListAsync();
             var teamUserEntity = await _context.TeamUsers
                 .Where(tu => evaluationTeamIdList.Contains(tu.TeamId) && tu.UserId == userId && (submission.TeamId == null || submission.TeamId == tu.TeamId))

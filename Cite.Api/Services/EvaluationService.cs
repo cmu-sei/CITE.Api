@@ -171,12 +171,10 @@ namespace Cite.Api.Services
             if (evaluation.Status == ItemStatus.Active && evaluationToUpdate.Status != ItemStatus.Active)
             {
                 // get the teams for this evaluation
-                var evaluationTeamList = await _context.EvaluationTeams
-                    .Include(et => et.Team)
-                    .ThenInclude(t => t.TeamUsers)
+                var evaluationTeamList = await _context.Teams
+                    .Include(t => t.TeamUsers)
                     .ThenInclude(tu => tu.User)
-                    .Where(et => et.EvaluationId == evaluation.Id)
-                    .Select(et => et.Team)
+                    .Where(t => t.EvaluationId == evaluation.Id)
                     .AsNoTracking()
                     .ToListAsync();
                 if (evaluationTeamList.Any())
@@ -303,12 +301,10 @@ namespace Cite.Api.Services
                 .AsNoTracking()
                 .ToListAsync();
             // get the teams for this evaluation
-            var evaluationTeamList = await _context.EvaluationTeams
-                .Include(et => et.Team)
-                .ThenInclude(t => t.TeamUsers)
+            var evaluationTeamList = await _context.Teams
+                .Include(t => t.TeamUsers)
                 .ThenInclude(tu => tu.User)
-                .Where(et => et.EvaluationId == evaluation.Id)
-                .Select(et => et.Team)
+                .Where(t => t.EvaluationId == evaluation.Id)
                 .AsNoTracking()
                 .ToListAsync();
             for (var moveNumber=0; moveNumber <= evaluation.CurrentMoveNumber; moveNumber++)
