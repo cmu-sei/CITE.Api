@@ -43,6 +43,7 @@ namespace Cite.Api.Services
         private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
         private readonly ILogger<EvaluationService> _logger;
+        private readonly IMoveService _moveService;
 
         public EvaluationService(
             CiteContext context,
@@ -50,6 +51,7 @@ namespace Cite.Api.Services
             IPrincipal user,
             IMapper mapper,
             ISubmissionService submissionService,
+            IMoveService moveService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
@@ -57,6 +59,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _submissionService = submissionService;
+            _moveService = moveService;
             _logger = logger;
         }
 
@@ -148,11 +151,21 @@ namespace Cite.Api.Services
             evaluation.CreatedBy = _user.GetId();
             evaluation.DateModified = null;
             evaluation.ModifiedBy = null;
+
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
 
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+
+            if (evaluation.Moves.Count() == 0) {
+              ViewModels.Move move = new Move();
+              move.Description = "Default Move";
+              move.MoveNumber = 0;
+              move.SituationTime = evaluation.SituationTime;
+              move.EvaluationId = evaluation.Id;
+              await _moveService.CreateAsync(move, ct);
+            }
 
             return evaluation;
         }
