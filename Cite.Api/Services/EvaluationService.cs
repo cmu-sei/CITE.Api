@@ -320,10 +320,13 @@ namespace Cite.Api.Services
                 .Where(t => t.EvaluationId == evaluation.Id)
                 .AsNoTracking()
                 .ToListAsync();
-            for (var moveNumber=0; moveNumber <= evaluation.CurrentMoveNumber; moveNumber++)
+            // get a list of moves for the evaluation
+            var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
+            // verify submissions exist for all moves
+            foreach (var move in moves)
             {
                 // make sure all official and team submissions exist
-                if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == moveNumber))
+                if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == move.MoveNumber))
                 {
                     var submission = new Submission() {
                         Id = Guid.NewGuid(),
@@ -331,15 +334,15 @@ namespace Cite.Api.Services
                         TeamId = null,
                         UserId = null,
                         ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = moveNumber
+                        MoveNumber = move.MoveNumber
                     };
-                    _logger.LogDebug("Make Official submission for move " + moveNumber.ToString());
+                    _logger.LogDebug("Make Official submission for move " + move.MoveNumber.ToString());
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
                 }
                 // team submissions
                 foreach (var team in evaluationTeamList)
                 {
-                    if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == moveNumber))
+                    if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == move.MoveNumber))
                     {
                         var submission = new Submission() {
                             Id = Guid.NewGuid(),
@@ -347,9 +350,9 @@ namespace Cite.Api.Services
                             TeamId = team.Id,
                             UserId = null,
                             ScoringModelId = evaluation.ScoringModelId,
-                            MoveNumber = moveNumber
+                            MoveNumber = move.MoveNumber
                         };
-                        _logger.LogDebug("Make submission for move " + moveNumber + "  team=" + submission.TeamId.ToString());
+                        _logger.LogDebug("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
                         await _submissionService.CreateNewSubmission(_context, submission, ct);
                     }
                 }

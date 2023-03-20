@@ -479,12 +479,14 @@ namespace Cite.Api.Services
             ).ToListAsync(ct);
             // get a list of moves for the evaluation
             var moves = await _moveService.GetByEvaluationAsync(submission.EvaluationId, ct);
-            // verify submissions for previous moves exist for this user
+            // verify submissions for previous moves
             foreach (var move in moves)
             {
                 if (move.MoveNumber <= maxMoveNumber)
                 {
-                    if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber && s.UserId == submission.UserId))
+                  if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
+                      (s.UserId == submission.UserId || s.UserId == null) &&
+                      (s.TeamId == submission.TeamId || s.TeamId == null)))
                     {
                         submission.MoveNumber = move.MoveNumber;
                         await CreateNewSubmission(_context, submission, ct);
