@@ -520,13 +520,14 @@ namespace Cite.Api.Services
                     .ThenInclude(sc => sc.ScoringOptions)
                     .FirstAsync(sm => sm.Id == submissionEntity.ScoringModelId);
                 await CreateSubmissionCategories(submissionEntity, scoringModelEntity, ct);
-                _logger.LogDebug("*** Created a submission");
+                //_logger.LogDebug("*** Created a submission");
+                _logger.LogInformation("Created submission for move " + submission.MoveNumber.ToString());
 
                 return submissionEntity;
             }
             catch (System.Exception)
             {
-                _logger.LogDebug("!!! Tried to create a duplicate submission");
+                _logger.LogWarning("!!! Tried to create a duplicate submission");
                 return null;
             }
         }

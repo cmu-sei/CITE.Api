@@ -336,7 +336,7 @@ namespace Cite.Api.Services
                         ScoringModelId = evaluation.ScoringModelId,
                         MoveNumber = move.MoveNumber
                     };
-                    _logger.LogDebug("Make Official submission for move " + move.MoveNumber.ToString());
+                    _logger.LogInformation("Make Official submission for move " + move.MoveNumber.ToString());
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
                 }
                 // team submissions
@@ -352,7 +352,7 @@ namespace Cite.Api.Services
                             ScoringModelId = evaluation.ScoringModelId,
                             MoveNumber = move.MoveNumber
                         };
-                        _logger.LogDebug("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
+                        _logger.LogInformation("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
                         await _submissionService.CreateNewSubmission(_context, submission, ct);
                     }
                 }
