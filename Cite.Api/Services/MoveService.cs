@@ -81,6 +81,7 @@ namespace Cite.Api.Services
             move.DateModified = null;
             move.ModifiedBy = null;
             var moveEntity = _mapper.Map<MoveEntity>(move);
+            moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
 
             _context.Moves.Add(moveEntity);
             await _context.SaveChangesAsync(ct);
@@ -104,6 +105,7 @@ namespace Cite.Api.Services
             move.ModifiedBy = _user.GetId();
             move.DateModified = DateTime.UtcNow;
             _mapper.Map(move, moveToUpdate);
+            moveToUpdate.SituationTime = moveToUpdate.SituationTime.ToUniversalTime();
 
             _context.Moves.Update(moveToUpdate);
             await _context.SaveChangesAsync(ct);
