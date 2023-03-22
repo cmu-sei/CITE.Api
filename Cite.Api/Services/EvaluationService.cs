@@ -76,7 +76,9 @@ namespace Cite.Api.Services
             {
                 Guid userId;
                 Guid.TryParse(queryParameters.UserId, out userId);
-                evaluations = _context.Evaluations.Where(sm => sm.CreatedBy == userId);
+                evaluations = _context.Evaluations
+                    .Include(e => e.Moves)
+                    .Where(sm => sm.CreatedBy == userId);
             }
             // filter based on Scoring Model
             if (!String.IsNullOrEmpty(queryParameters.ScoringModelId))
@@ -85,7 +87,9 @@ namespace Cite.Api.Services
                 Guid.TryParse(queryParameters.ScoringModelId, out scoringModelId);
                 if (evaluations == null)
                 {
-                    evaluations = _context.Evaluations.Where(sm => sm.CreatedBy == scoringModelId);
+                    evaluations = _context.Evaluations
+                        .Include(e => e.Moves)
+                        .Where(sm => sm.CreatedBy == scoringModelId);
                 }
                 else
                 {
@@ -97,7 +101,9 @@ namespace Cite.Api.Services
             {
                 if (evaluations == null)
                 {
-                    evaluations = _context.Evaluations.Where(sm => sm.Description.Contains(queryParameters.Description));
+                    evaluations = _context.Evaluations
+                        .Include(e => e.Moves)
+                        .Where(sm => sm.Description.Contains(queryParameters.Description));
                 }
                 else
                 {
@@ -106,7 +112,7 @@ namespace Cite.Api.Services
             }
             else if (evaluations == null)
             {
-                evaluations = _context.Evaluations;
+                evaluations = _context.Evaluations.Include(e => e.Moves);
             }
 
             return _mapper.Map<IEnumerable<Evaluation>>(await evaluations.ToListAsync());

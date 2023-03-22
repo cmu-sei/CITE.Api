@@ -135,7 +135,7 @@ namespace Cite.Api.Services
 
             var userId = _user.GetId();
             var team = await _context.TeamUsers
-                .Where(tu => tu.UserId == userId)
+                .Where(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId)
                 .Include(tu => tu.Team.TeamType)
                 .Select(tu => tu.Team).FirstAsync();
             var teamId = team.Id;
@@ -485,8 +485,7 @@ namespace Cite.Api.Services
                 if (move.MoveNumber <= maxMoveNumber)
                 {
                   if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
-                      (s.UserId == submission.UserId || s.UserId == null) &&
-                      (s.TeamId == submission.TeamId || s.TeamId == null)))
+                      (s.UserId == submission.UserId)))
                     {
                         submission.MoveNumber = move.MoveNumber;
                         await CreateNewSubmission(_context, submission, ct);
