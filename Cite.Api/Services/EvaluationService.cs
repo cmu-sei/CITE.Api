@@ -43,6 +43,7 @@ namespace Cite.Api.Services
         private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
         private readonly ILogger<EvaluationService> _logger;
+        private readonly IMoveService _moveService;
 
         public EvaluationService(
             CiteContext context,
@@ -50,6 +51,7 @@ namespace Cite.Api.Services
             IPrincipal user,
             IMapper mapper,
             ISubmissionService submissionService,
+            IMoveService moveService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
@@ -57,6 +59,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _submissionService = submissionService;
+            _moveService = moveService;
             _logger = logger;
         }
 
@@ -73,7 +76,9 @@ namespace Cite.Api.Services
             {
                 Guid userId;
                 Guid.TryParse(queryParameters.UserId, out userId);
-                evaluations = _context.Evaluations.Where(sm => sm.CreatedBy == userId);
+                evaluations = _context.Evaluations
+                    .Include(e => e.Moves)
+                    .Where(sm => sm.CreatedBy == userId);
             }
             // filter based on Scoring Model
             if (!String.IsNullOrEmpty(queryParameters.ScoringModelId))
@@ -82,7 +87,9 @@ namespace Cite.Api.Services
                 Guid.TryParse(queryParameters.ScoringModelId, out scoringModelId);
                 if (evaluations == null)
                 {
-                    evaluations = _context.Evaluations.Where(sm => sm.CreatedBy == scoringModelId);
+                    evaluations = _context.Evaluations
+                        .Include(e => e.Moves)
+                        .Where(sm => sm.CreatedBy == scoringModelId);
                 }
                 else
                 {
@@ -94,7 +101,9 @@ namespace Cite.Api.Services
             {
                 if (evaluations == null)
                 {
-                    evaluations = _context.Evaluations.Where(sm => sm.Description.Contains(queryParameters.Description));
+                    evaluations = _context.Evaluations
+                        .Include(e => e.Moves)
+                        .Where(sm => sm.Description.Contains(queryParameters.Description));
                 }
                 else
                 {
@@ -103,7 +112,7 @@ namespace Cite.Api.Services
             }
             else if (evaluations == null)
             {
-                evaluations = _context.Evaluations;
+                evaluations = _context.Evaluations.Include(e => e.Moves);
             }
 
             return _mapper.Map<IEnumerable<Evaluation>>(await evaluations.ToListAsync());
@@ -148,11 +157,21 @@ namespace Cite.Api.Services
             evaluation.CreatedBy = _user.GetId();
             evaluation.DateModified = null;
             evaluation.ModifiedBy = null;
+
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
 
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+
+            if (evaluation.Moves.Count() == 0) {
+              ViewModels.Move move = new Move();
+              move.Description = "Default Move";
+              move.MoveNumber = 0;
+              move.SituationTime = evaluation.SituationTime;
+              move.EvaluationId = evaluation.Id;
+              await _moveService.CreateAsync(move, ct);
+            }
 
             return evaluation;
         }
@@ -307,10 +326,13 @@ namespace Cite.Api.Services
                 .Where(t => t.EvaluationId == evaluation.Id)
                 .AsNoTracking()
                 .ToListAsync();
-            for (var moveNumber=0; moveNumber <= evaluation.CurrentMoveNumber; moveNumber++)
+            // get a list of moves for the evaluation
+            var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
+            // verify submissions exist for all moves
+            foreach (var move in moves)
             {
                 // make sure all official and team submissions exist
-                if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == moveNumber))
+                if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == move.MoveNumber))
                 {
                     var submission = new Submission() {
                         Id = Guid.NewGuid(),
@@ -318,15 +340,15 @@ namespace Cite.Api.Services
                         TeamId = null,
                         UserId = null,
                         ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = moveNumber
+                        MoveNumber = move.MoveNumber
                     };
-                    _logger.LogDebug("Make Official submission for move " + moveNumber.ToString());
+                    _logger.LogInformation("Make Official submission for move " + move.MoveNumber.ToString());
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
                 }
                 // team submissions
                 foreach (var team in evaluationTeamList)
                 {
-                    if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == moveNumber))
+                    if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == move.MoveNumber))
                     {
                         var submission = new Submission() {
                             Id = Guid.NewGuid(),
@@ -334,9 +356,9 @@ namespace Cite.Api.Services
                             TeamId = team.Id,
                             UserId = null,
                             ScoringModelId = evaluation.ScoringModelId,
-                            MoveNumber = moveNumber
+                            MoveNumber = move.MoveNumber
                         };
-                        _logger.LogDebug("Make submission for move " + moveNumber + "  team=" + submission.TeamId.ToString());
+                        _logger.LogInformation("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
                         await _submissionService.CreateNewSubmission(_context, submission, ct);
                     }
                 }

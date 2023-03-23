@@ -49,6 +49,7 @@ namespace Cite.Api.Services
         private readonly IMapper _mapper;
         private readonly DatabaseOptions _options;
         private readonly ILogger<SubmissionService> _logger;
+        private readonly IMoveService _moveService;
 
         public SubmissionService(
             CiteContext context,
@@ -56,6 +57,7 @@ namespace Cite.Api.Services
             IPrincipal user,
             IMapper mapper,
             DatabaseOptions options,
+            IMoveService moveService,
             ILogger<SubmissionService> logger)
         {
             _context = context;
@@ -63,6 +65,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _options = options;
+            _moveService = moveService;
             _logger = logger;
         }
 
@@ -132,7 +135,7 @@ namespace Cite.Api.Services
 
             var userId = _user.GetId();
             var team = await _context.TeamUsers
-                .Where(tu => tu.UserId == userId)
+                .Where(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId)
                 .Include(tu => tu.Team.TeamType)
                 .Select(tu => tu.Team).FirstAsync();
             var teamId = team.Id;
@@ -463,6 +466,7 @@ namespace Cite.Api.Services
             var requestedTeamId = submission.TeamId;
             // get the requested and maximum move numbers
             var requestedMoveNumber = submission.MoveNumber;
+            // maxMoveNumber is the current move
             var maxMoveNumber = await _context.Evaluations
                 .Where(e => e.Id == submission.EvaluationId)
                 .Select(e => e.CurrentMoveNumber)
@@ -473,13 +477,19 @@ namespace Cite.Api.Services
                 (s.UserId == submission.UserId || s.UserId == null) &&
                 (s.TeamId == submission.TeamId || s.TeamId == null)
             ).ToListAsync(ct);
-            // verify all submissions exist for this user
-            for (var move = maxMoveNumber; move >= 0; move--)
+            // get a list of moves for the evaluation
+            var moves = await _moveService.GetByEvaluationAsync(submission.EvaluationId, ct);
+            // verify submissions for previous moves
+            foreach (var move in moves)
             {
-                if (!submissionEntityList.Any(s => s.MoveNumber == move && s.UserId == submission.UserId))
+                if (move.MoveNumber <= maxMoveNumber)
                 {
-                    submission.MoveNumber = move;
-                    await CreateNewSubmission(_context, submission, ct);
+                  if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
+                      (s.UserId == submission.UserId)))
+                    {
+                        submission.MoveNumber = move.MoveNumber;
+                        await CreateNewSubmission(_context, submission, ct);
+                    }
                 }
             }
             // return the requested submission
@@ -509,13 +519,14 @@ namespace Cite.Api.Services
                     .ThenInclude(sc => sc.ScoringOptions)
                     .FirstAsync(sm => sm.Id == submissionEntity.ScoringModelId);
                 await CreateSubmissionCategories(submissionEntity, scoringModelEntity, ct);
-                _logger.LogDebug("*** Created a submission");
+                //_logger.LogDebug("*** Created a submission");
+                _logger.LogInformation("Created submission for move " + submission.MoveNumber.ToString());
 
                 return submissionEntity;
             }
             catch (System.Exception)
             {
-                _logger.LogDebug("!!! Tried to create a duplicate submission");
+                _logger.LogWarning("!!! Tried to create a duplicate submission");
                 return null;
             }
         }
