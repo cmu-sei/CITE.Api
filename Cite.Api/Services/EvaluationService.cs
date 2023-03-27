@@ -173,7 +173,7 @@ namespace Cite.Api.Services
               await _moveService.CreateAsync(move, ct);
             }
 
-            return evaluation;
+            return await GetAsync(evaluation.Id, ct);
         }
 
         public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
