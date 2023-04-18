@@ -51,6 +51,7 @@ namespace Cite.Api.Services
         private readonly DatabaseOptions _options;
         private readonly ILogger<SubmissionService> _logger;
         private readonly IMoveService _moveService;
+        private readonly IXApiService _xApiService;
 
         public SubmissionService(
             CiteContext context,
@@ -59,6 +60,7 @@ namespace Cite.Api.Services
             IMapper mapper,
             DatabaseOptions options,
             IMoveService moveService,
+            IXApiService xApiService,
             ILogger<SubmissionService> logger)
         {
             _context = context;
@@ -67,6 +69,7 @@ namespace Cite.Api.Services
             _mapper = mapper;
             _options = options;
             _moveService = moveService;
+            _xApiService = xApiService;
             _logger = logger;
         }
 
@@ -449,6 +452,10 @@ namespace Cite.Api.Services
                 );
             }
 
+            // create and send xapi statement
+            var verb = "initialized";
+            await _xApiService.CreateAsync(verb, requestedSubmissionEntity.ScoringModel.Description, requestedSubmissionEntity.EvaluationId.Value, requestedSubmissionEntity.TeamId.Value, ct);
+
             return _mapper.Map<ViewModels.Submission>(requestedSubmissionEntity);
         }
 
@@ -479,6 +486,13 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             submission = await GetAsync(submissionToUpdate.Id, ct);
+
+            // create and send xapi statement
+            var verb = "updated";
+            if (submission.Status == Data.Enumerations.ItemStatus.Complete) {
+                verb = "submitted";
+            }
+            await _xApiService.CreateAsync(verb, submission.Score.ToString(), submission.EvaluationId, submission.TeamId.Value, ct);
 
             return submission;
         }
@@ -645,6 +659,10 @@ namespace Cite.Api.Services
             submissionEntity.Score = CalculateSubmissionScore(submissionEntity.ScoringModel.CalculationEquation, categoryScores);
             await _context.SaveChangesAsync(ct);
 
+            // create and send xapi statement
+            var verb = "scored"; // could be interacted
+            await _xApiService.CreateAsync(verb, submissionEntity.ScoringModel.Description, submissionEntity.EvaluationId.Value, submissionEntity.TeamId.Value, ct);
+
             return submissionEntity;
         }
 
@@ -688,6 +706,10 @@ namespace Cite.Api.Services
             _context.Submissions.Update(submissionToClear);
             await _context.SaveChangesAsync(ct);
             var submission = await GetAsync(id, ct);
+
+            // create and send xapi statement
+            var verb = "cleared"; // could be interacted or initialized
+            await _xApiService.CreateAsync(verb, submissionToClear.Score.ToString(), submissionToClear.EvaluationId.Value, submissionToClear.TeamId.Value, ct);
 
             return submission;
         }
@@ -747,6 +769,10 @@ namespace Cite.Api.Services
                 await _context.SaveChangesAsync(ct);
             }
             var submission = await GetAsync(id, ct);
+
+            // create and send xapi statement
+            var verb = "preset"; // could be interacted
+            await _xApiService.CreateAsync(verb, targetSubmission.Score.ToString(), targetSubmission.EvaluationId.Value, targetSubmission.TeamId.Value, ct);
 
             return submission;
         }
