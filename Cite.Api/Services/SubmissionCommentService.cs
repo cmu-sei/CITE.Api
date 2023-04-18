@@ -38,12 +38,14 @@ namespace Cite.Api.Services
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
+        private readonly IXApiService _xApiService;
 
         public SubmissionCommentService(
             CiteContext context,
             ISubmissionService submissionService,
             IAuthorizationService authorizationService,
             IPrincipal user,
+            IXApiService xApiService,
             IMapper mapper)
         {
             _context = context;
@@ -51,6 +53,7 @@ namespace Cite.Api.Services
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
+            _xApiService = xApiService;
         }
 
         public async Task<IEnumerable<ViewModels.SubmissionComment>> GetAsync(CancellationToken ct)
@@ -99,6 +102,10 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             submissionComment = await GetAsync(submissionCommentEntity.Id, ct);
 
+            // create and send xapi statement
+            var verb = "commented";
+            await _xApiService.CreateAsync(verb, submissionCommentEntity.Comment, submissionCommentEntity.SubmissionOption.SubmissionCategory.Submission.EvaluationId.Value, submissionCommentEntity.SubmissionOption.SubmissionCategory.Submission.TeamId.Value, ct);
+
             return submissionComment;
         }
 
@@ -123,6 +130,10 @@ namespace Cite.Api.Services
 
             submissionComment = await GetAsync(submissionCommentToUpdate.Id, ct);
 
+            // create and send xapi statement
+            var verb = "";
+            await _xApiService.CreateAsync(verb, submissionCommentToUpdate.Comment, submissionCommentToUpdate.SubmissionOption.SubmissionCategory.Submission.EvaluationId.Value, submissionCommentToUpdate.SubmissionOption.SubmissionCategory.Submission.TeamId.Value, ct);
+
             return submissionComment;
         }
 
@@ -138,6 +149,10 @@ namespace Cite.Api.Services
 
             _context.SubmissionComments.Remove(submissionCommentToDelete);
             await _context.SaveChangesAsync(ct);
+
+            // create and send xapi statement
+            var verb = "deleted";
+            await _xApiService.CreateAsync(verb, submissionCommentToDelete.Comment, submissionCommentToDelete.SubmissionOption.SubmissionCategory.Submission.EvaluationId.Value, submissionCommentToDelete.SubmissionOption.SubmissionCategory.Submission.TeamId.Value, ct);
 
             return true;
         }

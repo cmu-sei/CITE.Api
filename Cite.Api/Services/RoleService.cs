@@ -40,12 +40,14 @@ namespace Cite.Api.Services
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
          private readonly DatabaseOptions _options;
+        private readonly IXApiService _xApiService;
 
         public RoleService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
+            IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
@@ -53,6 +55,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _options = options;
+            _xApiService = xApiService;
         }
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
@@ -185,6 +188,11 @@ namespace Cite.Api.Services
             _context.RoleUsers.Add(roleUserEntity);
             await _context.SaveChangesAsync(ct);
 
+            // create and send xapi statement
+            var verb = "assigned";
+            // object could be the user being added
+            await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
+
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
 
@@ -208,6 +216,11 @@ namespace Cite.Api.Services
 
             _context.RoleUsers.Remove(roleUserToRemove);
             await _context.SaveChangesAsync(ct);
+
+            // create and send xapi statement
+            var verb = "removed";
+            // object could be the user being removed
+            await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
