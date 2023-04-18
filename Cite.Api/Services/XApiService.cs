@@ -36,16 +36,14 @@ namespace Cite.Api.Services
         private readonly IUserClaimsService _userClaimsService;
         private readonly IMapper _mapper;
         private readonly XApiOptions _xApiOptions;
-        private readonly IUserService _userService;
-        private readonly ITeamService _teamService;
         private readonly RemoteLRS _lrs;
         private readonly Verb _verb;
         private readonly AgentAccount _account;
         private readonly Activity _activity;
         private readonly Agent _agent;
         private readonly Statement _statement;
-
-        public XApiService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, IUserClaimsService userClaimsService, IMapper mapper, XApiOptions xApiOptions, IUserService userService, ITeamService teamService)
+        private readonly Context _xApiContext;
+        public XApiService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, IUserClaimsService userClaimsService, IMapper mapper, XApiOptions xApiOptions)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
@@ -53,8 +51,6 @@ namespace Cite.Api.Services
             _userClaimsService = userClaimsService;
             _mapper = mapper;
             _xApiOptions = xApiOptions;
-            _userService = userService;
-            _teamService = teamService;
 
             // configure LRS
             _lrs = new TinCan.RemoteLRS(_xApiOptions.Endpoint, _xApiOptions.Username, _xApiOptions.Password);
@@ -69,6 +65,11 @@ namespace Cite.Api.Services
             _verb.display = new LanguageMap();
             _activity = new TinCan.Activity();
 
+            // Initialize the Context
+            _xApiContext = new Context();
+            _xApiContext.platform = "CITE";
+            _xApiContext.language = "en-US";
+
             // Initalize Statement
             _statement = new TinCan.Statement();
 
@@ -80,42 +81,56 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
                 throw new ForbiddenException();
 
-            //var guid = _user.GetId();
-            var user = await _userService.GetAsync(_user.GetId(), ct);
-
+            var user = _context.Users.Find(_user.GetId());
             _account.name = user.Name;
             _account.homePage = new Uri(_xApiOptions.HomePage);
-
             _agent.account = _account;
-
-
-            var group = new TinCan.Group();
-            //group.member.Add();
-            //group.mbox = "mailto:" + team.shortName + "@example.com";
-
 
             _verb.id = new Uri ("http://adlnet.gov/expapi/verbs/" + verb);
             _verb.display.Add("en-US", verb);
 
-            _activity.id = "http://localhost:4721/?evaluation" + evaluationId;
+            _activity.id = "http://localhost:4721/?evaluation=" + evaluationId;
             _activity.definition = new TinCan.ActivityDefinition();
             _activity.definition.type = new Uri("http://adlnet.gov/expapi/activities/simulation");
             _activity.definition.moreInfo = new Uri("http://cite.local");
-            _activity.definition.description = new LanguageMap();
-            _activity.definition.description.Add("en-US", description);
             _activity.definition.name = new LanguageMap();
             _activity.definition.name.Add("en-US", description);
+            _activity.definition.description = new LanguageMap();
+            _activity.definition.description.Add("en-US", description);
+
+
+            if (teamId.ToString() !=  "") {
+                var team = _context.Teams.Find(teamId);
+                var group = new TinCan.Group();
+                group.mbox = "mailto:" + team.ShortName + "@example.com";
+                group.name = team.ShortName;
+
+                group.account = new AgentAccount();
+                group.account.homePage = new Uri(_xApiOptions.HomePage);
+                group.account.name = team.ShortName;
+                //group.account.name = teamId.ToString();
+                group.member = new List<Agent> {_agent};
+                //group.member.Add(_agent);
+
+                _xApiContext.team = group;
+            }
+            //context.extensions = new TinCan.Extensions();
+            //var ext = new TinCan.Extensions();
+            //context.extensions.
+
 
             _statement.actor = _agent;
             _statement.verb = _verb;
             _statement.target = _activity;
+            _statement.context = _xApiContext;
+
             TinCan.LRSResponses.StatementLRSResponse lrsStatementResponse = _lrs.SaveStatement(_statement);
             if (lrsStatementResponse.success)
             {
                 // List of statements available
-                Console.WriteLine("LRS saved statment");
+                Console.WriteLine("LRS saved statment from xAPI Service");
             } else {
-                Console.WriteLine("ERROR FROM LRS: " + lrsStatementResponse.errMsg);
+                Console.WriteLine("ERROR FROM LRS VIA XAPI SERVICE: " + lrsStatementResponse.errMsg);
                 return false;
             }
 
