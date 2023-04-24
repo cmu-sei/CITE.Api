@@ -37,12 +37,14 @@ namespace Cite.Api
         public Infrastructure.Options.AuthorizationOptions _authOptions = new Infrastructure.Options.AuthorizationOptions();
         public Infrastructure.Options.VmTaskProcessingOptions _vmTaskProcessingOptions = new Infrastructure.Options.VmTaskProcessingOptions();
         public IConfiguration Configuration { get; }
+        private string _pathbase;
 
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
             Configuration.GetSection("Authorization").Bind(_authOptions);
             Configuration.GetSection("VmTaskProcessing").Bind(_vmTaskProcessingOptions);
+            _pathbase = Configuration["PathBase"];
         }
 
         // This method gets called by the runtime. Use this method to add services to the container.
@@ -198,6 +200,7 @@ namespace Cite.Api
             {
                 app.UseDeveloperExceptionPage();
             }
+            app.UsePathBase(_pathbase);
             app.UseRouting();
             app.UseCors("default");
 
@@ -224,7 +227,7 @@ namespace Cite.Api
             app.UseSwaggerUI(c =>
             {
                 c.RoutePrefix = "api";
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Cite v1");
+                c.SwaggerEndpoint($"{_pathbase}/swagger/v1/swagger.json", "Cite v1");
                 c.OAuthClientId(_authOptions.ClientId);
                 c.OAuthClientSecret(_authOptions.ClientSecret);
                 c.OAuthAppName(_authOptions.ClientName);
