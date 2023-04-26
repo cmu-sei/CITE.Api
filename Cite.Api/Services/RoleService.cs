@@ -31,6 +31,8 @@ namespace Cite.Api.Services
         Task<ViewModels.Role> AddUserAsync(Guid roleId, Guid userId, CancellationToken ct);
         Task<ViewModels.Role> RemoveUserAsync(Guid roleId, Guid userId, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct);
+
     }
 
     public class RoleService : IRoleService
@@ -191,7 +193,7 @@ namespace Cite.Api.Services
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/assigned");
             // object could be the user being added
-            //await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
+            await LogXApiAsync(verb, roleToUpdate, userToAdd, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
@@ -221,6 +223,11 @@ namespace Cite.Api.Services
             var verb = new Uri ("https://w3id.org/xapi/dod-isd/verbs/removed");
             // object could be the user being removed
             //await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
+            var userToRemove = await _context.Users.SingleOrDefaultAsync(v => v.Id == userId, ct);
+            if (userToRemove == null)
+                throw new EntityNotFoundException<UserEntity>();
+
+            await LogXApiAsync(verb, roleToUpdate, userToRemove, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
@@ -243,6 +250,67 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return true;
+        }
+        public async Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct)
+        {
+
+            if (_xApiService.IsConfigured())
+            {
+                //var submissionCategory = _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).First();
+                //var submission = _context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First();
+                var evaluation = _context.Evaluations.Where(e => e.Id == role.EvaluationId).First();
+                //var scoringCategory = _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).First();
+                //var scoringOption = _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).First();
+
+                var teamId = (await _context.TeamUsers
+                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == role.EvaluationId)).TeamId;
+
+                // create and send xapi statement
+
+                var activity = new Dictionary<String,String>();
+
+                activity.Add("id", role.Id.ToString());
+                activity.Add("name", role.Name);
+                activity.Add("description", "Team-defined role.");
+                activity.Add("type", "role");
+                activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+                activity.Add("moreInfo", "/role/" + role.Id.ToString());
+
+                var parent = new Dictionary<String,String>();
+                parent.Add("id", evaluation.Id.ToString());
+                parent.Add("name", "Evaluation");
+                parent.Add("description", evaluation.Description);
+                parent.Add("type", "Evaluation");
+                parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
+                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
+
+                var category = new Dictionary<String,String>();
+                /*
+                category.Add("id", scoringCategory.Id.ToString());
+                category.Add("name", scoringCategory.Description);
+                category.Add("description", "The scoring category type for the option.");
+                category.Add("type", "scoringCategory");
+                category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
+                category.Add("moreInfo", "");
+*/
+                // TODO maybe add all scoring categories
+                var grouping = new Dictionary<String,String>();
+/*
+                grouping.Add("id", card.Id.ToString());
+                grouping.Add("name", card.Name);
+                grouping.Add("description", card.Description);
+                grouping.Add("type", "card");
+                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                grouping.Add("moreInfo", "/?section=archive&exhibit=" + article.ExhibitId.ToString() + "&card=" + card.Id.ToString());
+*/
+                var other = new Dictionary<String,String>();
+
+                // TODO determine if we should log exhibit as registration
+                return await _xApiService.CreateAsync(
+                    verb, activity, parent, category, grouping, other, teamId, ct);
+
+            }
+            return false;
         }
 
     }
