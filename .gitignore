@@ -7,3 +7,4 @@ appsettings.Development.json
 Cite.Api.Client/node_modules
 Cite.Api.Client/.config
 cite_api.db
+cite_api.db*
