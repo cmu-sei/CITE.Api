@@ -226,7 +226,7 @@ namespace Cite.Api.Services
             {
                 //var submissionCategory = _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).First();
                 //var submission = _context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First();
-                var evaluation = _context.Evaluations.Where(e => e.Id == action.EvaluationId).First();
+                var evaluation = await _context.Evaluations.Where(e => e.Id == action.EvaluationId).FirstAsync();
                 //var scoringCategory = _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).First();
                 //var scoringOption = _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).First();
 

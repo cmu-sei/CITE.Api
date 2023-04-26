@@ -44,7 +44,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct);
         Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct);
         Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
-        Task<bool> LogXApiAsync(Uri verb, SubmissionOption option, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct);
    }
 
     public class SubmissionService : ISubmissionService
@@ -479,6 +479,7 @@ namespace Cite.Api.Services
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
             //await _xApiService.CreateAsync(verb, requestedSubmissionEntity.ScoringModel.Description, requestedSubmissionEntity.EvaluationId.Value, requestedSubmissionEntity.TeamId.Value, ct);
+            await LogXApiAsync(verb, submission, null, ct);
 
             return _mapper.Map<ViewModels.Submission>(requestedSubmissionEntity);
         }
@@ -512,11 +513,12 @@ namespace Cite.Api.Services
             submission = await GetAsync(submissionToUpdate.Id, ct);
 
             // create and send xapi statement
-            var verb = "updated";
+            var verb = new Uri("edited");
             if (submission.Status == Data.Enumerations.ItemStatus.Complete) {
-                verb = "submitted";
+                verb = new Uri("submitted");
             }
             //await _xApiService.CreateAsync(verb, submission.Score.ToString(), submission.EvaluationId, submission.TeamId.Value, ct);
+            await LogXApiAsync(verb, submission, null, ct);
 
             return submission;
         }
@@ -580,6 +582,12 @@ namespace Cite.Api.Services
             submissionEntity.DateModified = modifiedDateTime;
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
+
+            var verb = new Uri("selected");
+            if (value == false) {
+                verb = new Uri("reset");
+            }
+            await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
 
             return _mapper.Map<Submission>(submissionEntity);
         }
@@ -687,6 +695,7 @@ namespace Cite.Api.Services
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/evaluated"); // could be interacted
             //await _xApiService.CreateAsync(verb, submissionEntity.ScoringModel.Description, submissionEntity.EvaluationId.Value, submissionEntity.TeamId.Value, ct);
+            await LogXApiAsync(verb, _mapper.Map<Submission>(submissionEntity), null, ct);
 
             return submissionEntity;
         }
@@ -734,6 +743,7 @@ namespace Cite.Api.Services
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset"); // could be interacted or initialized
             //await _xApiService.CreateAsync(verb, submissionToClear.Score.ToString(), submissionToClear.EvaluationId.Value, submissionToClear.TeamId.Value, ct);
+            await LogXApiAsync(verb, submission, null, ct);
 
             return submission;
         }
@@ -791,6 +801,7 @@ namespace Cite.Api.Services
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initialized"); // could be interacted
             //await _xApiService.CreateAsync(verb, targetSubmission.Score.ToString(), targetSubmission.EvaluationId.Value, targetSubmission.TeamId.Value, ct);
+            await LogXApiAsync(verb, submission, null, ct);
 
             return submission;
         }
@@ -1080,61 +1091,74 @@ namespace Cite.Api.Services
 
             return result;
         }
-        public async Task<bool> LogXApiAsync(Uri verb, SubmissionOption option, CancellationToken ct)
+        public async Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct)
         {
 
             if (_xApiService.IsConfigured())
-            {/*
-                var collection = _context.Collections.Where(c => c.Id == article.CollectionId).First();
-                var card = _context.Cards.Where(c => c.Id == article.CardId).First();
+            {
+                if (submissionOption == null) {
+                    Console.WriteLine("no option set yet, exiting");
+                }
+                var submissionCategory = await _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).FirstAsync();
+                if (submission == null) {
+                    // TODO make this async
+                    submission = _mapper.Map<Submission>(_context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First());
+                }
+                var evaluation = await _context.Evaluations.Where(e => e.Id == submission.EvaluationId).FirstAsync();
+                var scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
+                var scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
 
                 var teamId = (await _context.TeamUsers
-                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.ExhibitId == article.ExhibitId)).TeamId;
+                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
 
                 // create and send xapi statement
 
                 var activity = new Dictionary<String,String>();
-                activity.Add("id", article.Id.ToString());
-                activity.Add("name", article.Name);
-                activity.Add("description", article.Summary);
-                activity.Add("type", "article");
+
+                activity.Add("id", scoringOption.Id.ToString());
+                activity.Add("name", scoringOption.Description);
+                activity.Add("description", "Line item within a scoring category.");
+                activity.Add("type", "scoringOption");
                 activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
-                activity.Add("moreInfo", "/article/" + article.Id.ToString());
+                activity.Add("moreInfo", "/scoringOption/" + scoringOption.Id.ToString());
 
                 var parent = new Dictionary<String,String>();
-                parent.Add("id", article.ExhibitId.ToString());
-                parent.Add("name", "Exhibit");
-                parent.Add("description", collection.Name);
-                parent.Add("type", "exhibit");
+                parent.Add("id", evaluation.Id.ToString());
+                parent.Add("name", "Evaluation");
+                parent.Add("description", evaluation.Description);
+                parent.Add("type", "Evaluation");
                 parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
-                parent.Add("moreInfo", "/?exhibit=" + article.ExhibitId.ToString());
+                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
                 var category = new Dictionary<String,String>();
-                category.Add("id", article.SourceType.ToString());
-                category.Add("name", article.SourceType.ToString());
-                category.Add("description", "The source type for the article.");
-                category.Add("type", "sourceType");
+                category.Add("id", scoringCategory.Id.ToString());
+                category.Add("name", scoringCategory.Description);
+                category.Add("description", "The scoring category type for the option.");
+                category.Add("type", "scoringCategory");
                 category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
                 category.Add("moreInfo", "");
 
+                // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String,String>();
+/*
                 grouping.Add("id", card.Id.ToString());
                 grouping.Add("name", card.Name);
                 grouping.Add("description", card.Description);
                 grouping.Add("type", "card");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
                 grouping.Add("moreInfo", "/?section=archive&exhibit=" + article.ExhibitId.ToString() + "&card=" + card.Id.ToString());
-
+*/
                 var other = new Dictionary<String,String>();
 
                 // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
                     verb, activity, parent, category, grouping, other, teamId, ct);
-*/
+
             }
             return false;
         }
 
+<<<<<<< HEAD
         private async Task<bool> HasOptionAccess(SubmissionEntity submissionEntity, CancellationToken ct)
         {
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
@@ -1154,6 +1178,8 @@ namespace Cite.Api.Services
             
         }
 
+=======
+>>>>>>> 4d22938 (uses sync methods)
 
     }
 
