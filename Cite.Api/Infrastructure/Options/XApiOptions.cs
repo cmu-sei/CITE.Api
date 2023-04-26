@@ -11,6 +11,10 @@ namespace Cite.Api.Infrastructure.Options
         public string Endpoint { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
-        public string HomePage { get; set; }
+        public string IssuerUrl { get; set; }
+        public string ApiUrl { get; set; }
+        public string UiUrl { get; set; }
+        public string EmailDomain { get; set; }
+        public string Platform { get; set; }
     }
 }
