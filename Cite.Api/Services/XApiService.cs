@@ -80,7 +80,7 @@ namespace Cite.Api.Services
 
         public Boolean IsConfigured()
         {
-            return _xApiOptions.Username != null;
+            return _xApiOptions.Username.Length > 0;
         }
 
         public async Task<Boolean> CreateAsync(
