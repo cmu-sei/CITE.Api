@@ -189,9 +189,9 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             // create and send xapi statement
-            var verb = "assigned";
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/assigned");
             // object could be the user being added
-            await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
+            //await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
@@ -218,9 +218,9 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             // create and send xapi statement
-            var verb = "removed";
+            var verb = new Uri ("https://w3id.org/xapi/dod-isd/verbs/removed");
             // object could be the user being removed
-            await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
+            //await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }

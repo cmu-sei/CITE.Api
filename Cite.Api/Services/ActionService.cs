@@ -190,7 +190,7 @@ namespace Cite.Api.Services
             if (!value) {
                 verb = "unselected";
             }
-            await _xApiService.CreateAsync(verb, actionToUpdate.Description, actionToUpdate.EvaluationId, actionToUpdate.TeamId, ct);
+            //await _xApiService.CreateAsync(verb, actionToUpdate.Description, actionToUpdate.EvaluationId, actionToUpdate.TeamId, ct);
 
             return _mapper.Map<ViewModels.Action>(actionToUpdate);
         }
