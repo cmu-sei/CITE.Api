@@ -241,7 +241,7 @@ namespace Cite.Api.Services
                 activity.Add("name", action.Description);
                 activity.Add("description", "Team-defined action or task.");
                 activity.Add("type", "action");
-                activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+                activity.Add("activityType", "http://id.tincanapi.com/activitytype/checklist-item");
                 activity.Add("moreInfo", "/action/" + action.Id.ToString());
 
                 var parent = new Dictionary<String,String>();
