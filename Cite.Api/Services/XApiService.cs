@@ -9,6 +9,7 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Authorization;
@@ -42,12 +43,20 @@ namespace Cite.Api.Services
         private readonly Agent _agent;
         private readonly AgentAccount _account;
         private readonly Context _xApiContext;
-        public XApiService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, XApiOptions xApiOptions)
+        private readonly ILogger<XApiService> _logger;
+
+        public XApiService(
+            CiteContext context,
+            IPrincipal user,
+            IAuthorizationService authorizationService,
+            XApiOptions xApiOptions,
+            ILogger<XApiService> logger)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _authorizationService = authorizationService;
             _xApiOptions = xApiOptions;
+            _logger = logger;
 
             if (IsConfigured()) {
                 // configure LRS
