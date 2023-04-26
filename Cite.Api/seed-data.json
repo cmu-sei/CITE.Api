@@ -752,6 +752,14 @@
       "SituationTime": "2021-12-03T15:00:00Z",
       "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
       "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
+    },
+    {
+      "Id": "2e9a8669-844e-4d13-a0b6-5ca22e35f5a7",
+      "Description": "The exercise has begun",
+      "MoveNumber": 1,
+      "SituationTime": "2021-12-03T20:38:00Z",
+      "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],
   "Actions": [
