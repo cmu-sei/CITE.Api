@@ -4,4 +4,4 @@ obj/
 .vs/
 appsettings.Development.json
 .vscode/
-cite_api.db
+cite_api.db*
