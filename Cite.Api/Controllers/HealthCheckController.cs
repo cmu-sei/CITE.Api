@@ -1,6 +1,7 @@
 // Copyright 2022 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
+using System.Reflection;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -43,6 +44,8 @@ namespace Cite.Api.Controllers
             try
             {
                 var dbCheck = await _context.Users.Select(g => g.Id).FirstAsync();
+                var version = (AssemblyInformationalVersionAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false).FirstOrDefault();
+                healthMessage = "CITE API Version: " + version.InformationalVersion;
             }
             catch (System.Exception ex)
             {
