@@ -233,9 +233,9 @@ namespace Cite.Api.Services
             if (lrsStatementResponse.success)
             {
                 // List of statements available
-                Console.WriteLine("LRS saved statement from xAPI Service");
+                _logger.LogInformation("LRS saved statement from xAPI Service");
             } else {
-                Console.WriteLine("ERROR FROM LRS VIA XAPI SERVICE: " + lrsStatementResponse.errMsg);
+                _logger.LogError("ERROR FROM LRS VIA XAPI SERVICE: " + lrsStatementResponse.errMsg);
                 return false;
             }
 
