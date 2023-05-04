@@ -269,11 +269,11 @@ namespace Cite.Api.Services
                 grouping.Add("description", move.SituationDescription);
                 grouping.Add("type", "move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
-                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
+                grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
 
                 var other = new Dictionary<String,String>();
 
-                // TODO determine if we should log exhibit as registration
+                // TODO determine if we should log evaluation as registration
                 return await _xApiService.CreateAsync(
                     verb, activity, parent, category, grouping, other, teamId, ct);
 
