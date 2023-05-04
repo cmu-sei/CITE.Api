@@ -221,12 +221,10 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri ("https://w3id.org/xapi/dod-isd/verbs/removed");
-            // object could be the user being removed
-            //await _xApiService.CreateAsync(verb, roleToUpdate.Name, roleToUpdate.EvaluationId, roleToUpdate.TeamId, ct);
             var userToRemove = await _context.Users.SingleOrDefaultAsync(v => v.Id == userId, ct);
             if (userToRemove == null)
                 throw new EntityNotFoundException<UserEntity>();
-
+            // object could be the user being removed
             await LogXApiAsync(verb, roleToUpdate, userToRemove, ct);
 
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
@@ -256,17 +254,11 @@ namespace Cite.Api.Services
 
             if (_xApiService.IsConfigured())
             {
-                //var submissionCategory = _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).First();
-                //var submission = _context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First();
                 var evaluation = await _context.Evaluations.Where(e => e.Id == role.EvaluationId).FirstAsync();
-                //var scoringCategory = _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).First();
-                //var scoringOption = _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).First();
                 var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
 
                 var teamId = (await _context.TeamUsers
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == role.EvaluationId)).TeamId;
-
-                // create and send xapi statement
 
                 var activity = new Dictionary<String,String>();
                 activity.Add("id", role.Id.ToString());
@@ -280,7 +272,7 @@ namespace Cite.Api.Services
                 parent.Add("id", evaluation.Id.ToString());
                 parent.Add("name", "Evaluation");
                 parent.Add("description", evaluation.Description);
-                parent.Add("type", "Evaluation");
+                parent.Add("type", "evaluation");
                 parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
@@ -292,12 +284,12 @@ namespace Cite.Api.Services
                 category.Add("type", "scoringCategory");
                 category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
                 category.Add("moreInfo", "");
-*/
+                */
 
                 var grouping = new Dictionary<String,String>();
-                grouping.Add("id", evaluation.CurrentMoveNumber.ToString());
-                grouping.Add("name", move.Description);
-                grouping.Add("description", move.SituationDescription);
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.MoveNumber.ToString());
+                grouping.Add("description", move.Description);
                 grouping.Add("type", "move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
                 grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);

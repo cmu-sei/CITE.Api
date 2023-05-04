@@ -224,20 +224,13 @@ namespace Cite.Api.Services
 
             if (_xApiService.IsConfigured())
             {
-                //var submissionCategory = _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).First();
-                //var submission = _context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First();
                 var evaluation = await _context.Evaluations.Where(e => e.Id == action.EvaluationId).FirstAsync();
-                //var scoringCategory = _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).First();
-                //var scoringOption = _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).First();
                 var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
 
                 var teamId = (await _context.TeamUsers
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == action.EvaluationId)).TeamId;
 
-                // create and send xapi statement
-
                 var activity = new Dictionary<String,String>();
-
                 activity.Add("id", action.Id.ToString());
                 activity.Add("name", action.Description);
                 activity.Add("description", "Team-defined action or task.");
@@ -261,12 +254,12 @@ namespace Cite.Api.Services
                 category.Add("type", "scoringCategory");
                 category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
                 category.Add("moreInfo", "");
-*/
+                */
 
                 var grouping = new Dictionary<String,String>();
-                grouping.Add("id", evaluation.CurrentMoveNumber.ToString());
-                grouping.Add("name", move.Description);
-                grouping.Add("description", move.SituationDescription);
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.MoveNumber.ToString());
+                grouping.Add("description", move.Description);
                 grouping.Add("type", "move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
                 grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
