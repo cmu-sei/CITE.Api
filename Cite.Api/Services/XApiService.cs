@@ -143,6 +143,22 @@ namespace Cite.Api.Services
                 group.account.name = team.Id.ToString();;
                 group.member = new List<Agent> {};
                 group.member.Add(_agent);
+                if (otherData["type"] == "users") {
+                    var targetUser = new Agent();
+                    targetUser.name = otherData["name"];
+                    targetUser.account = new AgentAccount();
+                    targetUser.account.name = otherData["id"];
+                    // set homepage based on current user issuer or default to config file value
+                    var iss = _user.Identities.First().Claims.First(c => c.Type == "iss")?.Value;
+                    if (_xApiOptions.IssuerUrl != "") {
+                        targetUser.account.homePage = new Uri(_xApiOptions.IssuerUrl);
+                    } else if (iss.Contains("http")) {
+                        targetUser.account.homePage = new Uri(iss);
+                    } else if (_xApiOptions.IssuerUrl == "") {
+                        targetUser.account.homePage = new Uri("http://" + iss);
+                    }
+                    group.member.Add(targetUser);
+                }
                 context.team = group;
             }
 

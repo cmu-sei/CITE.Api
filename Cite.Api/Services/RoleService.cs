@@ -264,15 +264,14 @@ namespace Cite.Api.Services
                 activity.Add("id", role.Id.ToString());
                 activity.Add("name", role.Name);
                 activity.Add("description", "Team-defined role.");
-                activity.Add("type", "role");
+                activity.Add("type", "roles");
                 activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
-                activity.Add("moreInfo", "/role/" + role.Id.ToString());
 
                 var parent = new Dictionary<String,String>();
                 parent.Add("id", evaluation.Id.ToString());
                 parent.Add("name", "Evaluation");
                 parent.Add("description", evaluation.Description);
-                parent.Add("type", "evaluation");
+                parent.Add("type", "evaluations");
                 parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
@@ -290,11 +289,16 @@ namespace Cite.Api.Services
                 grouping.Add("id", move.Id.ToString());
                 grouping.Add("name", move.MoveNumber.ToString());
                 grouping.Add("description", move.Description);
-                grouping.Add("type", "move");
+                grouping.Add("type", "moves");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
-                grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
+                //grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
 
                 var other = new Dictionary<String,String>();
+                other.Add("id", user.Id.ToString());
+                other.Add("name", user.Name);
+                other.Add("description", "The user assigned or removed from the role.");
+                other.Add("type", "users");
+                other.Add("activityType", "http://id.tincanapi.com/activitytype/user-profile");
 
                 // TODO determine if we should log evaluation as registration
                 return await _xApiService.CreateAsync(

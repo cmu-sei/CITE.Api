@@ -31,7 +31,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct);
         Task<ViewModels.Action> SetIsCheckedAsync(Guid id, bool value, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
-        Task<bool> LogXApiAsync(Uri verb, ActionEntity action, UserEntity user, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, ActionEntity action, CancellationToken ct);
     }
 
     public class ActionService : IActionService
@@ -191,11 +191,8 @@ namespace Cite.Api.Services
             if (!value) {
                 verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset");
             }
-            //await _xApiService.CreateAsync(verb, actionToUpdate.Description, actionToUpdate.EvaluationId, actionToUpdate.TeamId, ct);
-            var user = await _context.Users.SingleOrDefaultAsync(v => v.Id == actionToUpdate.ChangedBy, ct);
-            if (user == null)
-                throw new EntityNotFoundException<UserEntity>();
-            await LogXApiAsync(verb, actionToUpdate, user, ct);
+
+            await LogXApiAsync(verb, actionToUpdate, ct);
 
             return _mapper.Map<ViewModels.Action>(actionToUpdate);
         }
@@ -219,7 +216,7 @@ namespace Cite.Api.Services
 
             return true;
         }
-        public async Task<bool> LogXApiAsync(Uri verb, ActionEntity action, UserEntity user, CancellationToken ct)
+        public async Task<bool> LogXApiAsync(Uri verb, ActionEntity action, CancellationToken ct)
         {
 
             if (_xApiService.IsConfigured())
@@ -234,15 +231,14 @@ namespace Cite.Api.Services
                 activity.Add("id", action.Id.ToString());
                 activity.Add("name", action.Description);
                 activity.Add("description", "Team-defined action or task.");
-                activity.Add("type", "action");
+                activity.Add("type", "actions");
                 activity.Add("activityType", "http://id.tincanapi.com/activitytype/checklist-item");
-                activity.Add("moreInfo", "/action/" + action.Id.ToString());
 
                 var parent = new Dictionary<String,String>();
                 parent.Add("id", evaluation.Id.ToString());
                 parent.Add("name", "Evaluation");
                 parent.Add("description", evaluation.Description);
-                parent.Add("type", "evaluation");
+                parent.Add("type", "evaluations");
                 parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
@@ -260,9 +256,9 @@ namespace Cite.Api.Services
                 grouping.Add("id", move.Id.ToString());
                 grouping.Add("name", move.MoveNumber.ToString());
                 grouping.Add("description", move.Description);
-                grouping.Add("type", "move");
+                grouping.Add("type", "moves");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
-                grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
+                //grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
 
                 var other = new Dictionary<String,String>();
 
