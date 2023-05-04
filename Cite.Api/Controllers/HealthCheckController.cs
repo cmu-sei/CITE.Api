@@ -27,12 +27,10 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
-        /// Responds when this api is functional
+        /// Responds when this API is functional
         /// </summary>
         /// <remarks>
-        /// Returns a health message.
-        /// <para />
-        /// No user authentication is required
+        /// Returns a health message, "It is well".
         /// </remarks>
         /// <returns></returns>
         [HttpGet("healthcheck")]
@@ -44,14 +42,32 @@ namespace Cite.Api.Controllers
             try
             {
                 var dbCheck = await _context.Users.Select(g => g.Id).FirstAsync();
-                var version = (AssemblyInformationalVersionAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false).FirstOrDefault();
-                healthMessage = "CITE API Version: " + version.InformationalVersion;
             }
             catch (System.Exception ex)
             {
                 healthMessage = "I'm sorry, but I currently can't access the database.  " + ex.Message;
             }
             return Ok(healthMessage);
+        }
+
+        /// <summary>
+        /// Returns the current version of the API
+        /// </summary>
+        /// <remarks>
+        /// Returns the version.
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("version")]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getVersion")]
+        public async Task<IActionResult> GetVersion(CancellationToken ct)
+        {
+            var version = (AssemblyInformationalVersionAttribute)Assembly
+                .GetExecutingAssembly()
+                .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
+                .FirstOrDefault();
+
+            return Ok(version.InformationalVersion);
         }
 
     }
