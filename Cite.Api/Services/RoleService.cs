@@ -261,6 +261,7 @@ namespace Cite.Api.Services
                 var evaluation = await _context.Evaluations.Where(e => e.Id == role.EvaluationId).FirstAsync();
                 //var scoringCategory = _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).First();
                 //var scoringOption = _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).First();
+                var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
 
                 var teamId = (await _context.TeamUsers
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == role.EvaluationId)).TeamId;
@@ -268,7 +269,6 @@ namespace Cite.Api.Services
                 // create and send xapi statement
 
                 var activity = new Dictionary<String,String>();
-
                 activity.Add("id", role.Id.ToString());
                 activity.Add("name", role.Name);
                 activity.Add("description", "Team-defined role.");
@@ -295,14 +295,13 @@ namespace Cite.Api.Services
 */
                 // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String,String>();
-/*
-                grouping.Add("id", card.Id.ToString());
-                grouping.Add("name", card.Name);
-                grouping.Add("description", card.Description);
-                grouping.Add("type", "card");
-                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
-                grouping.Add("moreInfo", "/?section=archive&exhibit=" + article.ExhibitId.ToString() + "&card=" + card.Id.ToString());
-*/
+                grouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                grouping.Add("name", move.Description);
+                grouping.Add("description", move.SituationDescription);
+                grouping.Add("type", "move");
+                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
+                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
+
                 var other = new Dictionary<String,String>();
 
                 // TODO determine if we should log exhibit as registration
