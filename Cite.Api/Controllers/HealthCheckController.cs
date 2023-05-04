@@ -1,53 +1,66 @@
 // Copyright 2022 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
-using System.Reflection;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Cite.Api.Data;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Swashbuckle.AspNetCore.Annotations;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Cite.Api.Controllers
 {
-    [Route("api/")]
-    [ApiController]
-    public class HealthCheckController : ControllerBase
+    [AllowAnonymous]
+    public class HealthCheckController : BaseController
     {
-        private readonly CiteContext _context;
+        private readonly HealthCheckService healthCheckService;
 
-        public HealthCheckController(
-            CiteContext context
-        )
+        public HealthCheckController(HealthCheckService healthCheckService)
         {
-            _context = context;
+            this.healthCheckService = healthCheckService;
         }
 
         /// <summary>
-        /// Responds when this API is functional
+        /// Checks the liveliness health endpoint
         /// </summary>
         /// <remarks>
-        /// Returns a health message, "It is well".
+        /// Returns a HealthReport of the liveliness health check
         /// </remarks>
         /// <returns></returns>
-        [HttpGet("healthcheck")]
-        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "healthCheck")]
-        public async Task<IActionResult> HealthCheck(CancellationToken ct)
+        [HttpGet("health/live")]
+        [ProducesResponseType(typeof(HealthReport), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getLiveliness")]
+        public async Task<IActionResult> GetLiveliness(CancellationToken ct)
         {
-            var healthMessage = "It is well";
-            try
+            HealthReport report = await this.healthCheckService.CheckHealthAsync((check) => check.Tags.Contains("live"));
+            var result = new
             {
-                var dbCheck = await _context.Users.Select(g => g.Id).FirstAsync();
-            }
-            catch (System.Exception ex)
+                status = report.Status.ToString()
+            };
+            return report.Status == HealthStatus.Healthy ? this.Ok(result) : this.StatusCode((int)HttpStatusCode.ServiceUnavailable, result);
+        }
+
+        /// <summary>
+        /// Checks the readiness health endpoint
+        /// </summary>
+        /// <remarks>
+        /// Returns a HealthReport of the readiness health check
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("health/ready")]
+        [ProducesResponseType(typeof(HealthReport), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getReadiness")]
+        public async Task<IActionResult> GetReadiness(CancellationToken ct)
+        {
+            HealthReport report = await this.healthCheckService.CheckHealthAsync((check) => check.Tags.Contains("ready"));
+            var result = new
             {
-                healthMessage = "I'm sorry, but I currently can't access the database.  " + ex.Message;
-            }
-            return Ok(healthMessage);
+                status = report.Status.ToString()
+            };
+            return report.Status == HealthStatus.Healthy ? this.Ok(result) : this.StatusCode((int)HttpStatusCode.ServiceUnavailable, result);
         }
 
         /// <summary>
