@@ -10,9 +10,11 @@ namespace Cite.Api.Infrastructure.Mappings
     {
         public ActionProfile()
         {
-            CreateMap<ActionEntity, Action>();
+            CreateMap<ActionEntity, Action>()
+                .ForMember(a => a.Team, opt => opt.ExplicitExpansion());
 
-            CreateMap<Action, ActionEntity>();
+            CreateMap<Action, ActionEntity>()
+                .ForMember(e => e.Team, opt => opt.Ignore());
 
             CreateMap<ActionEntity, ActionEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore());
