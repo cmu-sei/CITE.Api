@@ -156,22 +156,18 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
 
             var actionToUpdate = await _context.Actions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (actionToUpdate == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
             action.CreatedBy = actionToUpdate.CreatedBy;
             action.DateCreated = actionToUpdate.DateCreated;
-            action.ModifiedBy = _user.GetId();
-            action.DateModified = DateTime.UtcNow;
             _mapper.Map(action, actionToUpdate);
-
+            actionToUpdate.ModifiedBy = _user.GetId();
+            actionToUpdate.DateModified = DateTime.UtcNow;
             _context.Actions.Update(actionToUpdate);
             await _context.SaveChangesAsync(ct);
 
-            action = await GetAsync(actionToUpdate.Id, ct);
-
-            return action;
+            return _mapper.Map<ViewModels.Action>(actionToUpdate);
         }
 
         public async Task<ViewModels.Action> SetIsCheckedAsync(Guid id, bool value, CancellationToken ct)
