@@ -16,6 +16,8 @@ using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Services;
+using TinCan;
+using System;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
@@ -25,6 +27,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
         protected readonly IMapper _mapper;
         protected readonly ISubmissionService _submissionService;
         protected readonly IHubContext<MainHub> _mainHub;
+        private readonly XApiOptions _xApiOptions;
         private readonly DatabaseOptions _options;
 
         public BaseSubmissionHandler(
@@ -32,6 +35,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
+            XApiOptions xApiOptions,
             DatabaseOptions options)
         {
             _db = db;
@@ -39,6 +43,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             _submissionService = submissionService;
             _mainHub = mainHub;
             _options = options;
+            _xApiOptions = xApiOptions;
         }
 
         protected async Task<string[]> GetSignalrGroupsForSubmissionAsync(SubmissionEntity submissionEntity, CancellationToken cancellationToken)
@@ -98,6 +103,63 @@ namespace Cite.Api.Infrastructure.EventHandlers
             tasks.AddRange(averageTasks);
 
             await Task.WhenAll(tasks);
+
+
+            var host = _xApiOptions.Endpoint;
+            var username = _xApiOptions.Username;
+            var password = _xApiOptions.Password;
+            var lrs = new TinCan.RemoteLRS(host, username, password);
+            //var guid = submissionEntity.UserId;
+
+            var account = new TinCan.AgentAccount();
+            account.name = (await _db.Users.SingleAsync(s => s.Id == submissionEntity.UserId)).Name;
+            account.homePage = new Uri(_xApiOptions.HomePage);
+            var agent = new TinCan.Agent();
+            agent.account = account;
+
+            var verb = new TinCan.Verb();
+            verb.display = new LanguageMap();
+            if (method == "SubmissionCreated") {
+                // initialized or opened or launched
+                verb.id = new Uri ("http://adlnet.gov/expapi/verbs/initialized");
+                verb.display.Add("en-US", "initialized");
+            } else if (method == "SubmissionUpdated") {
+                // it is also possible to check modifiedProperties
+                // comments do not show up in this handler
+                // interacted, answered, attempted, progressed, commented, selected
+                verb.id = new Uri ("http://adlnet.gov/expapi/verbs/interacted");
+                verb.display.Add("en-US", "interacted");
+            } else {
+                verb.id = new Uri ("http://adlnet.gov/expapi/verbs/experienced");
+                verb.display.Add("en-US", "experienced");
+            }
+            var activity = new TinCan.Activity();
+            activity.id = "http://localhost:4721/?evaluation" + submissionEntity.EvaluationId.ToString();
+            var  definition = new TinCan.ActivityDefinition();
+            definition.type = new Uri("http://adlnet.gov/expapi/activities/simulation");
+            definition.moreInfo = new Uri("http://cite.local");
+            definition.description = new LanguageMap();
+            definition.description.Add("en-US", method);
+            definition.name = new LanguageMap();
+            definition.name.Add("en-US", method);
+            activity.definition = definition;
+
+            var statement = new TinCan.Statement();
+            statement.actor = agent;
+            statement.verb = verb;
+            statement.target = activity;
+            TinCan.LRSResponses.StatementLRSResponse lrsStatementResponse = lrs.SaveStatement(statement);
+            if (lrsStatementResponse.success)
+            {
+                // List of statements available
+                Console.WriteLine("LRS saved statment");
+            } else {
+                Console.WriteLine("ERROR FROM LRS: " + lrsStatementResponse.errMsg);
+
+            }
+
+
+
         }
 
         private async Task<IEnumerable<Task>> GetAverageSubmissionTasks(
@@ -141,7 +203,10 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options) { }
+            XApiOptions xApiOptions,
+            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, xApiOptions, options)
+            {
+            }
 
         public async Task Handle(EntityCreated<SubmissionEntity> notification, CancellationToken cancellationToken)
         {
@@ -156,7 +221,10 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options) { }
+            XApiOptions xApiOptions,
+            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, xApiOptions, options)
+            {
+            }
 
         public async Task Handle(EntityUpdated<SubmissionEntity> notification, CancellationToken cancellationToken)
         {
@@ -175,7 +243,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            XApiOptions xApiOptions,
+            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, xApiOptions, options)
         {
         }
 
