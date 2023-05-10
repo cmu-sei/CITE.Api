@@ -282,7 +282,9 @@ namespace Cite.Api.Infrastructure.Extensions
             var isAlreadyDone = context.Teams.Any(t => t.EvaluationId != null);
             if (isAlreadyDone) return;
 
-            var evaluationTeams = context.EvaluationTeams.ToList();
+            var evaluationTeams = context.EvaluationTeams
+                .Include(et => et.Team)
+                .ToList();
             // create unique teams for each evaluation team record
             foreach (var et in evaluationTeams)
             {
