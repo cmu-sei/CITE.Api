@@ -160,18 +160,19 @@ namespace Cite.Api.Services
                 }
             }
             // Object Permissions
-            var teamList = await _context.TeamUsers
+            var teamUserList = await _context.TeamUsers
+                .Include(tu => tu.Team)
                 .Where(x => x.UserId == userId)
-                .Select(x => x.Team)
                 .ToListAsync();
             var teamIdList = new List<string>();
             var evaluationIdList = new List<string>();
+            var observerEvaluationIdList = new List<string>();
             // add IDs of allowed teams
-            foreach (var team in teamList)
+            foreach (var teamUser in teamUserList)
             {
-                teamIdList.Add(team.Id.ToString());
+                teamIdList.Add(teamUser.TeamId.ToString());
                 var teamEvaluationIdList = await _context.Teams
-                    .Where(x => x.Id == team.Id)
+                    .Where(x => x.Id == teamUser.TeamId)
                     .Select(x => x.EvaluationId)
                     .ToListAsync();
                 foreach (var id in teamEvaluationIdList)
@@ -181,12 +182,17 @@ namespace Cite.Api.Services
                         evaluationIdList.Add(id.ToString());
                     }
                 }
+                if (teamUser.IsObserver)
+                {
+                    observerEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
+                }
             }
             // add IDs of allowed teams
             claims.Add(new Claim(CiteClaimTypes.TeamUser.ToString(), String.Join(",", teamIdList.ToArray())));
             // add IDs of allowed evaluations
             claims.Add(new Claim(CiteClaimTypes.EvaluationUser.ToString(), String.Join(",", evaluationIdList.ToArray())));
-
+            // add IDs of observer evaluations
+            claims.Add(new Claim(CiteClaimTypes.EvaluationObserver.ToString(), String.Join(",", observerEvaluationIdList.ToArray())));
 
             return claims;
         }

@@ -51,7 +51,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
                 throw new ForbiddenException();
 
             var moveEntities = await _context.Moves

@@ -57,7 +57,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
                 throw new ForbiddenException();
 
             var roleEntities = await _context.Roles

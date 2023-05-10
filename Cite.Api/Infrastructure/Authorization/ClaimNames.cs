@@ -13,7 +13,8 @@ namespace Cite.Api.Infrastructure.Authorization
         CanModify,
         CanSubmit,
         EvaluationUser,
-        TeamUser
+        TeamUser,
+        EvaluationObserver
     }
 }
 
