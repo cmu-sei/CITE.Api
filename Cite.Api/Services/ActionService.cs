@@ -39,13 +39,15 @@ namespace Cite.Api.Services
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
-         private readonly DatabaseOptions _options;
+        private readonly DatabaseOptions _options;
+        private readonly IXApiService _xApiService;
 
         public ActionService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
+            IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
@@ -53,6 +55,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _options = options;
+            _xApiService = xApiService;
         }
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
@@ -181,6 +184,13 @@ namespace Cite.Api.Services
             actionToUpdate.IsChecked = value;
             actionToUpdate.ChangedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
+
+            // create and send xapi statement
+            var verb = "selected";
+            if (!value) {
+                verb = "unselected";
+            }
+            await _xApiService.CreateAsync(verb, actionToUpdate.Description, actionToUpdate.EvaluationId, actionToUpdate.TeamId, ct);
 
             return _mapper.Map<ViewModels.Action>(actionToUpdate);
         }
