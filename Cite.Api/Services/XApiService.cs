@@ -143,7 +143,7 @@ namespace Cite.Api.Services
                 group.account.name = team.Id.ToString();;
                 group.member = new List<Agent> {};
                 group.member.Add(_agent);
-                if (otherData["type"] == "users") {
+                if (otherData.ContainsKey("type") && otherData["type"] == "users") {
                     var targetUser = new Agent();
                     targetUser.name = otherData["name"];
                     targetUser.account = new AgentAccount();
