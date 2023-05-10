@@ -23,6 +23,7 @@ namespace Cite.Api.Services
     public interface ITeamUserService
     {
         Task<IEnumerable<ViewModels.TeamUser>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.TeamUser>> GetByTeamAsync(Guid teamId, CancellationToken ct);
         Task<ViewModels.TeamUser> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.TeamUser> CreateAsync(ViewModels.TeamUser teamUser, CancellationToken ct);
         Task<ViewModels.TeamUser> SetObserverAsync(Guid id, bool value, CancellationToken ct);
@@ -52,6 +53,22 @@ namespace Cite.Api.Services
 
             var items = await _context.TeamUsers
                 .Where(tu => tu.Team.EvaluationId == evaluationId)
+                .ToListAsync(ct);
+
+            return _mapper.Map<IEnumerable<TeamUser>>(items);
+        }
+
+        public async Task<IEnumerable<ViewModels.TeamUser>> GetByTeamAsync(Guid teamId, CancellationToken ct)
+        {
+            var team = await _context.Teams.SingleOrDefaultAsync(t => t.Id == teamId);
+            if (team == null)
+                throw new EntityNotFoundException<Team>();
+
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement((Guid)team.EvaluationId))).Succeeded)
+                throw new ForbiddenException();
+
+            var items = await _context.TeamUsers
+                .Where(tu => tu.TeamId == teamId)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<TeamUser>>(items);

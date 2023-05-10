@@ -46,6 +46,24 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets TeamUsers for the specified team
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of the specified team's TeamUsers.
+        /// <para />
+        /// Only accessible to an evaluation user
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("teams/{teamId}/teamusers")]
+        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getTeamTeamUsers")]
+        public async Task<IActionResult> GetByTeam([FromRoute] Guid teamId, CancellationToken ct)
+        {
+            var list = await _teamUserService.GetByEvaluationAsync(teamId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets a specific TeamUser by id
         /// </summary>
         /// <remarks>
