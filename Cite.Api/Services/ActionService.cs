@@ -57,7 +57,9 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId))).Succeeded
+            )
                 throw new ForbiddenException();
 
             var actionEntities = await _context.Actions
