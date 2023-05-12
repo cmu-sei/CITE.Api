@@ -37,7 +37,7 @@ namespace Cite.Api.Controllers
         /// </remarks>
         /// <returns></returns>
         [HttpGet("evaluations/{evaluationId}/teamusers")]
-        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(IEnumerable<TeamUser>), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "getEvaluationTeamUsers")]
         public async Task<IActionResult> GetByEvaluation([FromRoute] Guid evaluationId, CancellationToken ct)
         {
@@ -55,11 +55,11 @@ namespace Cite.Api.Controllers
         /// </remarks>
         /// <returns></returns>
         [HttpGet("teams/{teamId}/teamusers")]
-        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(IEnumerable<TeamUser>), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "getTeamTeamUsers")]
         public async Task<IActionResult> GetByTeam([FromRoute] Guid teamId, CancellationToken ct)
         {
-            var list = await _teamUserService.GetByEvaluationAsync(teamId, ct);
+            var list = await _teamUserService.GetByTeamAsync(teamId, ct);
             return Ok(list);
         }
 

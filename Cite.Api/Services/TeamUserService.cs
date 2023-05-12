@@ -69,6 +69,7 @@ namespace Cite.Api.Services
 
             var items = await _context.TeamUsers
                 .Where(tu => tu.TeamId == teamId)
+                .Include(tu => tu.User)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<TeamUser>>(items);
@@ -138,7 +139,9 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
                 throw new ForbiddenException();
 
-            var teamUserToUpdate = await _context.TeamUsers.SingleOrDefaultAsync(v => v.Id == id, ct);
+            var teamUserToUpdate = await _context.TeamUsers
+                .Include(tu => tu.User)
+                .SingleOrDefaultAsync(v => v.Id == id, ct);
             if (teamUserToUpdate == null)
                 throw new EntityNotFoundException<TeamUser>();
 
