@@ -74,7 +74,11 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded)
+            // user must be on the requested team or a content developer
+            if (
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
+            )
                 throw new ForbiddenException();
 
             var roleEntities = await _context.Roles
@@ -97,7 +101,11 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<RoleEntity>();
 
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(item.TeamId))).Succeeded)
+            // user must be on the requested team or a content developer
+            if (
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(item.TeamId))).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
+            )
                 throw new ForbiddenException();
 
             return _mapper.Map<ViewModels.Role>(item);
@@ -105,12 +113,9 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Role> CreateAsync(ViewModels.Role role, CancellationToken ct)
         {
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(role.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(role.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
@@ -131,12 +136,9 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Role> UpdateAsync(Guid id, ViewModels.Role role, CancellationToken ct)
         {
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(role.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(role.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
@@ -218,12 +220,9 @@ namespace Cite.Api.Services
             if (roleToDelete == null)
                 throw new EntityNotFoundException<RoleEntity>();
 
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(roleToDelete.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(roleToDelete.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
