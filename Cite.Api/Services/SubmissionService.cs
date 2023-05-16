@@ -27,6 +27,7 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.Submission>> GetAsync(SubmissionGet queryParameters, CancellationToken ct);
         Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<ViewModels.Submission> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct);
         Task<SubmissionEntity> CreateNewSubmission(CiteContext citeContext, ViewModels.Submission submission, CancellationToken ct);
@@ -144,6 +145,39 @@ namespace Cite.Api.Services
             var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
             var submissionEntities = await _context.Submissions.Where(sm =>
                 (sm.UserId == userId && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
+                (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
+                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
+                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer)))
+                .ToListAsync();
+            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
+            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, ct);
+            submissions.AddRange(averageSubmissions);
+
+            return submissions;
+        }
+
+        public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
+        {
+            // if the user is on the specified team, call GetMineByEvaluationAsync for normal processing
+            if ((await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded)
+            {
+                var mySubmissions = await GetMineByEvaluationAsync(evaluationId, ct);
+                return mySubmissions;
+            }
+
+            // Otherwise, the user must be an observer to get the specified team's submissions
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId))).Succeeded
+            )
+                throw new ForbiddenException();
+
+            var userId = _user.GetId();
+            var team = await _context.Teams
+                .Include(t => t.TeamType)
+                .SingleOrDefaultAsync(t => t.Id == teamId);
+            var isCollaborator = team.TeamType.Name == _options.OfficialScoreTeamTypeName;
+            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
+            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
+            var submissionEntities = await _context.Submissions.Where(sm =>
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer)))
@@ -329,22 +363,25 @@ namespace Cite.Api.Services
             // 2. submission.userId (if not null) must match current user AND
             // 3. current user must be on submission.TeamId (if not null) AND
             // 4. current user must be in submission.EvaluationId
-            var userId = _user.GetId();
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded ||
-                !(submission.UserId != null && userId == (Guid)submission.UserId))
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
                 throw new ForbiddenException();
+
+            var userId = _user.GetId();
+            if (!(submission.UserId != null && userId == (Guid)submission.UserId))
+                throw new ForbiddenException("You are not able to create a submission for user " + submission.UserId + ".");
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
+
             var evaluationTeamIdList = await _context.Teams
                 .Where(t => t.EvaluationId == submission.EvaluationId)
                 .Select(t => t.Id)
                 .ToListAsync();
             var teamUserEntity = await _context.TeamUsers
-                .Where(tu => evaluationTeamIdList.Contains(tu.TeamId) && tu.UserId == userId && (submission.TeamId == null || submission.TeamId == tu.TeamId))
-                .FirstAsync();
+                .SingleOrDefaultAsync(tu => evaluationTeamIdList.Contains(tu.TeamId) && tu.UserId == userId && (submission.TeamId == null || submission.TeamId == tu.TeamId));
             // user must be on the requested evaluation/team
             if (teamUserEntity == null)
                 throw new ForbiddenException("The requested user must be on the requested team for the requested evaluation.");
+            // if requesting a user submission without a supplied team ID, add the user's team ID
             if (submission.UserId != null && submission.TeamId == null)
             {
                 _logger.LogDebug("Changed TeamId from " + submission.TeamId + " to " + teamUserEntity.Id);
@@ -471,24 +508,28 @@ namespace Cite.Api.Services
                 .Where(e => e.Id == submission.EvaluationId)
                 .Select(e => e.CurrentMoveNumber)
                 .MaxAsync(ct);
-            // get the current user/team/evaluation submissions
+            // get the current user/team/evaluation submissions.
+            // user submissions are only returned if the submission UserId is equal to the current user's ID
             var submissionEntityList = await _context.Submissions.Where(s =>
                 s.EvaluationId == submission.EvaluationId &&
-                (s.UserId == submission.UserId || s.UserId == null) &&
+                ((s.UserId == submission.UserId && submission.UserId == _user.GetId()) || s.UserId == null) &&
                 (s.TeamId == submission.TeamId || s.TeamId == null)
             ).ToListAsync(ct);
             // get a list of moves for the evaluation
             var moves = await _moveService.GetByEvaluationAsync(submission.EvaluationId, ct);
-            // verify submissions for previous moves
-            foreach (var move in moves)
+            // verify submissions for previous moves, if the requested submission is for the current user
+            if (submission.UserId == _user.GetId())
             {
-                if (move.MoveNumber <= maxMoveNumber)
+                foreach (var move in moves)
                 {
-                  if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
-                      (s.UserId == submission.UserId)))
+                    if (move.MoveNumber <= maxMoveNumber)
                     {
-                        submission.MoveNumber = move.MoveNumber;
-                        await CreateNewSubmission(_context, submission, ct);
+                    if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
+                        (s.UserId == submission.UserId)))
+                        {
+                            submission.MoveNumber = move.MoveNumber;
+                            await CreateNewSubmission(_context, submission, ct);
+                        }
                     }
                 }
             }
