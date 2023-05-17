@@ -367,7 +367,7 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
 
             var userId = _user.GetId();
-            if (!(submission.UserId != null && userId == (Guid)submission.UserId))
+            if (submission.UserId != null && (Guid)submission.UserId != userId)
                 throw new ForbiddenException("You are not able to create a submission for user " + submission.UserId + ".");
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
