@@ -46,18 +46,18 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
-        /// Gets Teams for the current user
+        /// Gets Evaluation Teams for the current user
         /// </summary>
         /// <remarks>
-        /// Returns a list of the current user's Teams.
+        /// Returns a list of the current user's Evaluation Teams.
         /// </remarks>
         /// <returns></returns>
-        [HttpGet("teams/mine")]
+        [HttpGet("evaluations/{evaluationId}/myteams")]
         [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getMyTeams")]
-        public async Task<IActionResult> GetMine(CancellationToken ct)
+        [SwaggerOperation(OperationId = "getMyEvaluationTeams")]
+        public async Task<IActionResult> GetMineByEvaluation(Guid evaluationId, CancellationToken ct)
         {
-            var list = await _teamService.GetMineAsync(ct);
+            var list = await _teamService.GetMineByEvaluationAsync(evaluationId, ct);
             return Ok(list);
         }
 

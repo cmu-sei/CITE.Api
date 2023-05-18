@@ -25,7 +25,7 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.Team>> GetAsync(CancellationToken ct);
         Task<ViewModels.Team> GetAsync(Guid id, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetMineAsync(CancellationToken ct);
+        Task<IEnumerable<ViewModels.Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetByUserAsync(Guid userId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetByTypeAsync(Guid groupId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
@@ -71,17 +71,30 @@ namespace Cite.Api.Services
             return item;
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetMineAsync(CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if(!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var items = await _context.TeamUsers
-                .Where(w => w.UserId == _user.GetId())
-                .Include(tu => tu.Team)
-                .ThenInclude(t => t.TeamType)
-                .Select(x => x.Team)
+            var userId = _user.GetId();
+            var items = await _context.Teams
+                .Where(w => w.EvaluationId == evaluationId)
+                .Include(t => t.TeamUsers)
+                .ThenInclude(tu => tu.User)
                 .ToListAsync(ct);
+
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId))).Succeeded)
+            {
+                var myTeamUser = await _context.TeamUsers
+                    .SingleOrDefaultAsync(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId, ct);
+                if (myTeamUser != null)
+                {
+                    items = items
+                        .Where(team => team.Id == myTeamUser.Team.Id)
+                        .ToList();
+                }
+                else
+                {
+                    throw new ForbiddenException();
+                }
+            }
 
             return _mapper.Map<IEnumerable<Team>>(items);
         }

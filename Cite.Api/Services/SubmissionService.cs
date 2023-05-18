@@ -362,34 +362,38 @@ namespace Cite.Api.Services
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
                 .SingleAsync(sm => sm.Id == id, ct);
-
+            if (item == null) 
+                throw new EntityNotFoundException<Submission>("Submission not found " + id.ToString());
             // verify permission for this object
-            if (item != null)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement((Guid)item.EvaluationId))).Succeeded)
+                throw new ForbiddenException("Access to submission " + item.Id + " was denied.");
+
+            var userId = _user.GetId();
+            var evaluationTeamIdList = await _context.Teams
+                .Where(t => t.EvaluationId == item.EvaluationId)
+                .Select(t => t.Id)
+                .ToListAsync();
+            var team = await _context.TeamUsers
+                .Where(tu => tu.UserId == userId && evaluationTeamIdList.Contains(tu.TeamId))
+                .Include(tu => tu.Team.TeamType)
+                .Select(tu => tu.Team).FirstOrDefaultAsync();
+            var teamId = team.Id;
+            // Observers can view all team scores, others can only view their own team
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement((Guid)item.EvaluationId))).Succeeded)
             {
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                {
-                    var userId = _user.GetId();
-                    var evaluationTeamIdList = await _context.Teams
-                        .Where(t => t.EvaluationId == item.EvaluationId)
-                        .Select(t => t.Id)
-                        .ToListAsync();
-                    var team = await _context.TeamUsers
-                        .Where(tu => tu.UserId == userId && evaluationTeamIdList.Contains(tu.TeamId))
-                        .Include(tu => tu.Team.TeamType)
-                        .Select(tu => tu.Team).FirstOrDefaultAsync();
-                    var teamId = team.Id;
-                    var isCollaborator = team.TeamType.Name == _options.OfficialScoreTeamTypeName;
-                    var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
-                    var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
-                    var hasAccess =
-                        (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
-                        (item.UserId == null && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
-                        (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber < currentMoveNumber) ||
-                        (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer));
-                    if (!hasAccess)
-                        throw new ForbiddenException("The submission's TeamId was " + item.TeamId.ToString() + ".");
-                }
+                evaluationTeamIdList = new List<Guid>{team.Id};
             }
+            var isCollaborator = team.TeamType.Name == _options.OfficialScoreTeamTypeName;
+            var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
+            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
+            var hasAccess =
+                (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
+                (item.UserId == null && (item.TeamId != null && evaluationTeamIdList.Contains((Guid)item.TeamId)) && item.EvaluationId == item.EvaluationId) ||
+                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber < currentMoveNumber) ||
+                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer));
+            if (!hasAccess)
+                throw new ForbiddenException("Access to submission " + item.Id + " was denied.  TeamId was " + item.TeamId.ToString() + ".");
 
             return _mapper.Map<Submission>(item);
         }
@@ -397,33 +401,39 @@ namespace Cite.Api.Services
         public async Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct)
         {
             _logger.LogDebug("Making create request: Move=" + submission.MoveNumber + " user=" + submission.UserId + " team=" + submission.TeamId + " evaluation=" + submission.EvaluationId);
-            // 1. must be a base user. AND
-            // 2. submission.userId (if not null) must match current user AND
-            // 3. current user must be on submission.TeamId (if not null) AND
-            // 4. current user must be in submission.EvaluationId
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var userId = _user.GetId();
-            if (submission.UserId != null && (Guid)submission.UserId != userId)
-                throw new ForbiddenException("You are not able to create a submission for user " + submission.UserId + ".");
+            // 1. An evaluationId must be supplied
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
-
+            // 2. the calling user must be a user on this evaluation.
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(submission.EvaluationId))).Succeeded)
+                throw new ForbiddenException();
             var evaluationTeamIdList = await _context.Teams
                 .Where(t => t.EvaluationId == submission.EvaluationId)
                 .Select(t => t.Id)
                 .ToListAsync();
-            var teamUserEntity = await _context.TeamUsers
-                .SingleOrDefaultAsync(tu => evaluationTeamIdList.Contains(tu.TeamId) && tu.UserId == userId && (submission.TeamId == null || submission.TeamId == tu.TeamId));
-            // user must be on the requested evaluation/team
-            if (teamUserEntity == null)
-                throw new ForbiddenException("The requested user must be on the requested team for the requested evaluation.");
-            // if requesting a user submission without a supplied team ID, add the user's team ID
-            if (submission.UserId != null && submission.TeamId == null)
+            // if submission.userId is supplied
+            if (submission.UserId != null)
             {
-                _logger.LogDebug("Changed TeamId from " + submission.TeamId + " to " + teamUserEntity.Id);
-                submission.TeamId = teamUserEntity.TeamId;
+                // 3. submission.userId must match the current user
+                if ((Guid)submission.UserId != userId)
+                    throw new ForbiddenException("You are not able to create a submission for user " + submission.UserId + ".");
+                // 4. a team ID must also be supplied
+                if (submission.TeamId == null)
+                    throw new ForbiddenException("A Team ID was not supplied for user " + submission.UserId + ".");
+            }
+            // if a teamId is supplied
+            else if (submission.TeamId != null)
+            {
+                // for a team submission, the user must be an evaluation observer or be a member of the team
+                if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(submission.EvaluationId))).Succeeded)
+                {
+                    var teamUserEntity = await _context.TeamUsers
+                        .SingleOrDefaultAsync(tu => tu.TeamId == submission.TeamId && tu.UserId == userId);
+                    // 5. the user is not on a required team
+                    if (teamUserEntity == null)
+                        throw new ForbiddenException("The requested user is not a member of the requested team.");
+                }
             }
             // Create requested submission
             var requestedSubmissionEntity = await createRequestedSubmissionAndOthers(submission, ct);
