@@ -122,12 +122,9 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Action> CreateAsync(ViewModels.Action action, CancellationToken ct)
         {
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
@@ -148,12 +145,9 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct)
         {
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
@@ -198,12 +192,9 @@ namespace Cite.Api.Services
             if (actionToDelete == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
-            // user must be on the requested team and be able to submit
+            // user must be on the requested team or a content developer
             if (
-                !(
-                    (await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(actionToDelete.TeamId))).Succeeded &&
-                    (await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded
-                ) &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(actionToDelete.TeamId))).Succeeded &&
                 !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
             )
                 throw new ForbiddenException();
