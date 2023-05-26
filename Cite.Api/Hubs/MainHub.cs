@@ -65,6 +65,27 @@ namespace Cite.Api.Hubs
             }
         }
 
+        public async Task SwitchTeam(Guid[] args)
+        {
+            if (args.Count() == 2)
+            {
+                var oldTeamId = args[0];
+                var newTeamId = args[1];
+                // leave the old team
+                var idList = await GetTeamIdList(oldTeamId);
+                foreach (var id in idList)
+                {
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, id.ToString());
+                }
+                // join the new team
+                idList = await GetTeamIdList(newTeamId);
+                foreach (var id in idList)
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, id.ToString());
+                }
+            }
+        }
+
         public async Task JoinAdmin()
         {
             var idList = await GetAdminIdList();
@@ -85,38 +106,34 @@ namespace Cite.Api.Hubs
 
         private async Task<List<string>> GetIdList()
         {
+            // only add the user ID
+            // evaluation and team will be added in the setTeam method
             var idList = new List<string>();
             var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
             idList.Add(userId);
-            // user's teams
-            var teamList = await  _context.TeamUsers
-                .Where(tu => tu.UserId == Guid.Parse(userId))
-                .Include(tu => tu.Team)
-                .ThenInclude(t => t.TeamType)
-                .Select(tu => tu.Team)
-                .ToListAsync();
-            var teamIdList = teamList.Select(t => t.Id.ToString()).ToList();
-            idList.AddRange(teamIdList);
-            // user's evaluations
-            var evaluationTeamList = await _context.Teams
-                .Where(t => teamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
-                .Include(t => t.Evaluation)
-                .ToListAsync();
-            var evaluationIdList = evaluationTeamList
-                .Where(t => teamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
-                .Select(et => et.Evaluation.Id.ToString())
-                .ToList();
-            idList.AddRange(evaluationIdList);
-            // user's official contributor evaluations
-            var officialContributorTeamIdList = teamList.Where(t => t.TeamType.Name == _options.OfficialScoreTeamTypeName).Select(t => t.Id.ToString()).ToList();
-            evaluationIdList = evaluationTeamList
-                .Where(t => officialContributorTeamIdList.Contains(t.Id.ToString()) && t.Evaluation.Status == Data.Enumerations.ItemStatus.Active)
-                .Select(t => t.Evaluation.Id.ToString() + _options.OfficialScoreTeamTypeName.Replace(" ", ""))
-                .ToList();
-            idList.AddRange(evaluationIdList);
-            // user's scoring models
-            var scoringModelIdList = evaluationTeamList.Select(t => t.Evaluation.ScoringModelId.ToString()).Distinct().ToList();
-            idList.AddRange(scoringModelIdList);
+
+            return idList;
+        }
+
+        private async Task<List<string>> GetTeamIdList(Guid teamId)
+        {
+            var idList = new List<string>();
+            // add the user's ID
+            var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
+            idList.Add(userId);
+            // make sure that the user has access to the requested team
+            var team = await _context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
+            if (team != null)
+            {
+                var teamUser = await _context.TeamUsers.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
+                if (teamUser != null && (teamUser.TeamId == teamId || teamUser.IsObserver))
+                {
+                    idList.Add(teamId.ToString());
+                    idList.Add(team.EvaluationId.ToString());
+                    var scoringModelId = (await _context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
+                    idList.Add(scoringModelId.ToString());
+                }
+            }
 
             return idList;
         }

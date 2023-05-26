@@ -21,14 +21,9 @@ namespace Cite.Api.Infrastructure.Authorization
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, TeamUserRequirement requirement)
         {
-            if (context.User.HasClaim(c => c.Type == CiteClaimTypes.SystemAdmin.ToString()) ||
-                context.User.HasClaim(c => c.Type == CiteClaimTypes.ContentDeveloper.ToString()) ||
-                (
-                    context.User.HasClaim(c =>
-                        c.Type == CiteClaimTypes.TeamUser.ToString() &&
-                        c.Value.Contains(requirement.TeamId.ToString())
-                    )
-                )
+            if (context.User.HasClaim(c =>
+                c.Type == CiteClaimTypes.TeamUser.ToString() &&
+                c.Value.Contains(requirement.TeamId.ToString()))
             )
             {
                 context.Succeed(requirement);

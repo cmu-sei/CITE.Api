@@ -28,20 +28,38 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
-        /// Gets all TeamUsers in the system
+        /// Gets TeamUsers for the specified evaluation
         /// </summary>
         /// <remarks>
-        /// Returns a list of all of the TeamUsers in the system.
+        /// Returns a list of the specified evaluation's TeamUsers.
         /// <para />
-        /// Only accessible to a SuperUser
+        /// Only accessible to an evaluation user
         /// </remarks>
         /// <returns></returns>
-        [HttpGet("teamusers")]
+        [HttpGet("evaluations/{evaluationId}/teamusers")]
         [ProducesResponseType(typeof(IEnumerable<TeamUser>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getTeamUsers")]
-        public async Task<IActionResult> Get(CancellationToken ct)
+        [SwaggerOperation(OperationId = "getEvaluationTeamUsers")]
+        public async Task<IActionResult> GetByEvaluation([FromRoute] Guid evaluationId, CancellationToken ct)
         {
-            var list = await _teamUserService.GetAsync(ct);
+            var list = await _teamUserService.GetByEvaluationAsync(evaluationId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
+        /// Gets TeamUsers for the specified team
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of the specified team's TeamUsers.
+        /// <para />
+        /// Only accessible to an evaluation user
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("teams/{teamId}/teamusers")]
+        [ProducesResponseType(typeof(IEnumerable<TeamUser>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getTeamTeamUsers")]
+        public async Task<IActionResult> GetByTeam([FromRoute] Guid teamId, CancellationToken ct)
+        {
+            var list = await _teamUserService.GetByTeamAsync(teamId, ct);
             return Ok(list);
         }
 
@@ -87,6 +105,40 @@ namespace Cite.Api.Controllers
             team.CreatedBy = User.GetId();
             var createdTeamUser = await _teamUserService.CreateAsync(team, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdTeamUser.Id }, createdTeamUser);
+        }
+
+        /// <summary>
+        /// Sets the selected TeamUser observer flag
+        /// </summary>
+        /// <remarks>
+        /// Sets the TeamUser to an observer.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/observer/set")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "setObserver")]
+        public async Task<IActionResult> SetObserver([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetObserverAsync(id, true, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Clears the selected TeamUser observer flag
+        /// </summary>
+        /// <remarks>
+        /// Clears the TeamUser from being an observer.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/observer/clear")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearObserver")]
+        public async Task<IActionResult> ClearObserver([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetObserverAsync(id, false, ct);
+            return Ok(result);
         }
 
         /// <summary>

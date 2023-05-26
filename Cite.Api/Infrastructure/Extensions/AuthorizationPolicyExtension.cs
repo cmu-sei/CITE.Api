@@ -28,9 +28,8 @@ namespace Cite.Api.Infrastructure.Extensions
             services.AddSingleton<IAuthorizationHandler, CanModifyHandler>();
             services.AddSingleton<IAuthorizationHandler, BaseUserHandler>();
             services.AddSingleton<IAuthorizationHandler, EvaluationUserHandler>();
+            services.AddSingleton<IAuthorizationHandler, EvaluationObserverHandler>();
             services.AddSingleton<IAuthorizationHandler, TeamUserHandler>();
         }
-
-
     }
 }

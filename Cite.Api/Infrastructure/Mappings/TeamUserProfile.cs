@@ -16,9 +16,13 @@ namespace Cite.Api.Infrastructure.Mappings
     {
         public TeamUserProfile()
         {
-            CreateMap<TeamUserEntity, TeamUser>();
+            CreateMap<TeamUserEntity, TeamUser>()
+                .ForMember(m => m.Team, opt => opt.ExplicitExpansion())
+                .ForMember(m => m.User, opt => opt.ExplicitExpansion());
 
-            CreateMap<TeamUser, TeamUserEntity>();
+            CreateMap<TeamUser, TeamUserEntity>()
+                .ForMember(m => m.Team, opt => opt.Ignore())
+                .ForMember(m => m.User, opt => opt.Ignore());
         }
     }
 }

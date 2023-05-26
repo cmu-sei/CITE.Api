@@ -65,6 +65,25 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets Submissions by evaluation team
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of Submissions for the evaluation team specified.
+        /// </remarks>
+        /// <param name="evaluationId"></param>
+        /// <param name="teamId"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/teams/{teamId}/submissions")]
+        [ProducesResponseType(typeof(IEnumerable<Submission>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getByEvaluationTeam")]
+        public async Task<IActionResult> GetByEvaluationTeam(Guid evaluationId, Guid teamId, CancellationToken ct)
+        {
+            var list = await _submissionService.GetByEvaluationTeamAsync(evaluationId, teamId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets a specific Submission by id
         /// </summary>
         /// <remarks>

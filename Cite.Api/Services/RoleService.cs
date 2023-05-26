@@ -57,7 +57,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
                 throw new ForbiddenException();
 
             var roleEntities = await _context.Roles
@@ -74,10 +74,9 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            // user must be on the requested team or a content developer
-            if (
-                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
+            // must be on the specified Team or an observer for the specified Evaluation
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId))).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId))).Succeeded
             )
                 throw new ForbiddenException();
 

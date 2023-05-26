@@ -28,6 +28,7 @@ namespace Cite.Api.Data.Models
 
         public Guid TeamId { get; set; }
         public TeamEntity Team { get; set; }
+        public Boolean IsObserver { get; set; }
     }
 
     public class TeamUserConfiguration : IEntityTypeConfiguration<TeamUserEntity>
