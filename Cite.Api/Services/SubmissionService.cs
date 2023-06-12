@@ -1096,33 +1096,45 @@ namespace Cite.Api.Services
 
             if (_xApiService.IsConfigured())
             {
-                if (submissionOption == null) {
-                    // Handle clear and preset buttons
-                    Console.WriteLine("no option set yet, exiting");
-                    return false;
+                ScoringOptionEntity scoringOption = null;
+                SubmissionCategoryEntity submissionCategory = null;
+                ScoringCategoryEntity scoringCategory = null;
+
+                if (submissionOption != null) {
+                    scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
+                    submissionCategory = await _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).FirstAsync();
+                    scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
                 }
-                var submissionCategory = await _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).FirstAsync();
-                if (submission == null) {
+                if ((submission == null) && (submissionCategory != null)) {
                     // TODO make this async
                     submission = _mapper.Map<Submission>(_context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First());
                 }
-                var evaluation = await _context.Evaluations.Where(e => e.Id == submission.EvaluationId).FirstAsync();
-                var scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
-                var scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
+                var move = _mapper.Map<Move>(_context.Moves.Where(m => m.MoveNumber == submission.MoveNumber).First());
 
                 var teamId = (await _context.TeamUsers
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
 
+                var evaluation = await _context.Evaluations.Where(e => e.Id == submission.EvaluationId).FirstAsync();
+
                 // create and send xapi statement
 
                 var activity = new Dictionary<String,String>();
-
-                activity.Add("id", scoringOption.Id.ToString());
-                activity.Add("name", scoringOption.Description);
-                activity.Add("description", "Line item within a scoring category.");
-                activity.Add("type", "scoringOption");
-                activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
-                activity.Add("moreInfo", "/scoringOption/" + scoringOption.Id.ToString());
+                if (scoringOption != null) {
+                    activity.Add("id", scoringOption.Id.ToString());
+                    activity.Add("name", scoringOption.Description);
+                    activity.Add("description", "Line item within a scoring category.");
+                    activity.Add("type", "scoringOption");
+                    activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+                    activity.Add("moreInfo", "/scoringOption/" + scoringOption.Id.ToString());
+                } else {
+                    // log the submission
+                    activity.Add("id", submission.Id.ToString());
+                    activity.Add("name", "New Submission");
+                    activity.Add("description", "A score submitted to assess an incident.");
+                    activity.Add("type", "submission");
+                    activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+                    activity.Add("moreInfo", "/submission/" + submission.Id.ToString());
+                }
 
                 var parent = new Dictionary<String,String>();
                 parent.Add("id", evaluation.Id.ToString());
@@ -1133,23 +1145,23 @@ namespace Cite.Api.Services
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
                 var category = new Dictionary<String,String>();
-                category.Add("id", scoringCategory.Id.ToString());
-                category.Add("name", scoringCategory.Description);
-                category.Add("description", "The scoring category type for the option.");
-                category.Add("type", "scoringCategory");
-                category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
-                category.Add("moreInfo", "");
-
+                if (scoringCategory != null) {
+                    category.Add("id", scoringCategory.Id.ToString());
+                    category.Add("name", scoringCategory.Description);
+                    category.Add("description", "The scoring category type for the option.");
+                    category.Add("type", "scoringCategory");
+                    category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
+                    category.Add("moreInfo", "");
+                }
                 // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String,String>();
-/*
-                grouping.Add("id", card.Id.ToString());
-                grouping.Add("name", card.Name);
-                grouping.Add("description", card.Description);
-                grouping.Add("type", "card");
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.Description);
+                grouping.Add("description", "The exercise move associated with the score.");
+                grouping.Add("type", "move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
-                grouping.Add("moreInfo", "/?section=archive&exhibit=" + article.ExhibitId.ToString() + "&card=" + card.Id.ToString());
-*/
+                grouping.Add("moreInfo", "");
+
                 var other = new Dictionary<String,String>();
 
                 // TODO determine if we should log exhibit as registration
@@ -1160,7 +1172,6 @@ namespace Cite.Api.Services
             return false;
         }
 
-<<<<<<< HEAD
         private async Task<bool> HasOptionAccess(SubmissionEntity submissionEntity, CancellationToken ct)
         {
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
@@ -1179,9 +1190,6 @@ namespace Cite.Api.Services
 
             
         }
-
-=======
->>>>>>> 4d22938 (uses sync methods)
 
     }
 
