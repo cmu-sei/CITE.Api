@@ -389,7 +389,7 @@ namespace Cite.Api.Services
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
                 .SingleAsync(sm => sm.Id == id, ct);
-            if (item == null) 
+            if (item == null)
                 throw new EntityNotFoundException<Submission>("Submission not found " + id.ToString());
             // verify permission for this object
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
@@ -513,9 +513,9 @@ namespace Cite.Api.Services
             submission = await GetAsync(submissionToUpdate.Id, ct);
 
             // create and send xapi statement
-            var verb = new Uri("edited");
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");
             if (submission.Status == Data.Enumerations.ItemStatus.Complete) {
-                verb = new Uri("submitted");
+                verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/submitted");
             }
             //await _xApiService.CreateAsync(verb, submission.Score.ToString(), submission.EvaluationId, submission.TeamId.Value, ct);
             await LogXApiAsync(verb, submission, null, ct);
@@ -583,9 +583,9 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
-            var verb = new Uri("selected");
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/selected");
             if (value == false) {
-                verb = new Uri("reset");
+                verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset");
             }
             await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
 
@@ -1097,7 +1097,9 @@ namespace Cite.Api.Services
             if (_xApiService.IsConfigured())
             {
                 if (submissionOption == null) {
+                    // Handle clear and preset buttons
                     Console.WriteLine("no option set yet, exiting");
+                    return false;
                 }
                 var submissionCategory = await _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).FirstAsync();
                 if (submission == null) {
