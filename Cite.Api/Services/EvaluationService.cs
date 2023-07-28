@@ -159,7 +159,7 @@ namespace Cite.Api.Services
             evaluation.ModifiedBy = null;
 
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
-
+            evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
