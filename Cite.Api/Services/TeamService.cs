@@ -155,7 +155,7 @@ namespace Cite.Api.Services
 
             _context.Teams.Add(teamEntity);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {team.Name} created by {_user.GetId()}");
+            _logger.LogWarning($"Team {teamEntity.Id} in Evaluation {team.EvaluationId} created by {_user.GetId()}");
             return await GetAsync(teamEntity.Id, ct);
         }
 
