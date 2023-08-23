@@ -209,7 +209,7 @@ namespace Cite.Api.Services
 
             _context.Teams.Remove(teamToDelete);
             await _context.SaveChangesAsync(ct);
-
+            _logger.LogWarning($"Team {teamToDelete.Id} in Evaluation {teamToDelete.EvaluationId} deleted by {_user.GetId()}");
             return true;
         }
 
