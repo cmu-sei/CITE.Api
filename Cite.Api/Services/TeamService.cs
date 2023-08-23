@@ -190,7 +190,7 @@ namespace Cite.Api.Services
             }
             else
             {
-                 _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} updated by {_user.GetId()}");
+                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} updated by {_user.GetId()}");
             }
             return await GetAsync(id, ct);
         }
