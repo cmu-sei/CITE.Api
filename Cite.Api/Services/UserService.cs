@@ -98,7 +98,7 @@ namespace Cite.Api.Services
 
             _context.Users.Add(userEntity);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"User {user.Name} created by {_user.GetId()}");
+            _logger.LogWarning($"User {user.Name} ({userEntity.Id}) created by {_user.GetId()}");
             return await GetAsync(user.Id, ct);
         }
 
@@ -126,7 +126,7 @@ namespace Cite.Api.Services
 
             _context.Users.Update(userToUpdate);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"User {user.Name} updated by {_user.GetId()}");
+            _logger.LogWarning($"User {user.Name} ({userToUpdate.Id}) updated by {_user.GetId()}");
             return await GetAsync(id, ct);
         }
 
@@ -147,7 +147,7 @@ namespace Cite.Api.Services
 
             _context.Users.Remove(userToDelete);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"User {userToDelete.Name} deleted by {_user.GetId()}");
+            _logger.LogWarning($"User {userToDelete.Name} ({userToDelete.Id}) deleted by {_user.GetId()}");
             return true;
         }
 

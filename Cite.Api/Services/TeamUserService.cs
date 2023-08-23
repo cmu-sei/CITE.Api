@@ -189,7 +189,7 @@ namespace Cite.Api.Services
 
             _context.TeamUsers.Remove(teamUserToDelete);
             await _context.SaveChangesAsync(ct);
-
+            _logger.LogWarning($"User {teamUserToDelete.UserId} removed from team {teamUserToDelete.TeamId} by {_user.GetId()}");
             return true;
         }
 

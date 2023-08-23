@@ -155,7 +155,7 @@ namespace Cite.Api.Services
 
             _context.Teams.Add(teamEntity);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {teamEntity.Id} in Evaluation {team.EvaluationId} created by {_user.GetId()}");
+            _logger.LogWarning($"Team {team.Name} ({teamEntity.Id}) in Evaluation {team.EvaluationId} created by {_user.GetId()}");
             return await GetAsync(teamEntity.Id, ct);
         }
 
@@ -175,11 +175,7 @@ namespace Cite.Api.Services
             if (teamToUpdate == null)
                 throw new EntityNotFoundException<Team>();
 
-            if (team.TeamTypeId != teamToUpdate.TeamTypeId)
-            {
-                _logger.LogWarning($"Team {team.Id} changed to TeamType {team.TeamTypeId} by {_user.GetId()}");
-            }
-
+            var teamTypeChanged = team.TeamTypeId != teamToUpdate.TeamTypeId;
             team.CreatedBy = teamToUpdate.CreatedBy;
             team.DateCreated = teamToUpdate.DateCreated;
             team.ModifiedBy = _user.GetId();
@@ -188,7 +184,14 @@ namespace Cite.Api.Services
             teamToUpdate.TeamType = null;
             _context.Teams.Update(teamToUpdate);
             await _context.SaveChangesAsync(ct);
-
+            if (teamTypeChanged)
+            {
+                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} changed to TeamType {team.TeamTypeId} by {_user.GetId()}");
+            }
+            else
+            {
+                 _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} updated by {_user.GetId()}");
+            }
             return await GetAsync(id, ct);
         }
 
@@ -209,7 +212,7 @@ namespace Cite.Api.Services
 
             _context.Teams.Remove(teamToDelete);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {teamToDelete.Id} in Evaluation {teamToDelete.EvaluationId} deleted by {_user.GetId()}");
+            _logger.LogWarning($"Team {teamToDelete.Name} ({teamToDelete.Id}) in Evaluation {teamToDelete.EvaluationId} deleted by {_user.GetId()}");
             return true;
         }
 
