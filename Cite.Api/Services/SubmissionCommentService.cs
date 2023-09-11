@@ -55,7 +55,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.SubmissionComment>> GetAsync(CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
 
             var submissionComments = _context.SubmissionComments;
