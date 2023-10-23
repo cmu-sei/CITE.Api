@@ -54,7 +54,7 @@ namespace Cite.Api.Controllers
         /// </remarks>
         /// <param name="ct"></param>
         /// <returns></returns>
-        [HttpGet("evaluations/mine")]
+        [HttpGet("my-evaluations")]
         [ProducesResponseType(typeof(IEnumerable<Evaluation>), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "getMyEvaluations")]
         public async Task<IActionResult> GetMine(CancellationToken ct)
