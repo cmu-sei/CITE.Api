@@ -55,7 +55,7 @@ namespace Cite.Api.Controllers
         /// <param name="evaluationId"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        [HttpGet("evaluations/{evaluationId}/submissions/mine")]
+        [HttpGet("evaluations/{evaluationId}/my-submissions")]
         [ProducesResponseType(typeof(IEnumerable<Submission>), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "getMineByEvaluation")]
         public async Task<IActionResult> GetMineByEvaluation(Guid evaluationId, CancellationToken ct)
