@@ -16,5 +16,7 @@ namespace Cite.Api.Data.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
         public string Name { get; set; }
+        public bool ShowTeamTypeAverage { get; set; }
+        public bool IsOfficialScoreContributor { get; set; }
     }
 }

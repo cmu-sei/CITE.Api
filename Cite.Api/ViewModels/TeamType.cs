@@ -11,6 +11,8 @@ namespace Cite.Api.ViewModels
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
+        public bool ShowTeamTypeAverage { get; set; }
+        public bool IsOfficialScoreContributor { get; set; }
     }
 
 }
