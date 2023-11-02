@@ -122,7 +122,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 if (teamType.ShowTeamTypeAverage)
                 {
                     // create the task to send the teamType average
-                    var averageSubmission = await _submissionService.GetTypeAverageAsync(submission, cancellationToken);
+                    var averageSubmission = await _submissionService.GetTypeAverageAsync(_mapper.Map<ViewModels.Submission>(submission), cancellationToken);
                     if (averageSubmission != null)
                     {
                         tasks.Add(_mainHub.Clients.Group(averageSubmission.EvaluationId.ToString() + teamType.Id).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
