@@ -121,7 +121,7 @@ namespace Cite.Api.Services
                 .Include(tu => tu.Team.TeamType)
                 .Select(tu => tu.Team).FirstAsync();
             var teamId = team.Id;
-            var isCollaborator = team.TeamType.Name == _options.OfficialScoreTeamTypeName;
+            var isCollaborator = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
             var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
             var hasAccess =

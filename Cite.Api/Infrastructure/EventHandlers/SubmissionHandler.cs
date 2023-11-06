@@ -66,7 +66,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
                     signalrGroupIds.Add(submissionEntity.EvaluationId.ToString());
                 }
                 // also send to evaluation official score contributors
-                signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + _options.OfficialScoreTeamTypeName.Replace(" ", ""));
+                signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + "OfficialScore");
             }
             // the admin data group gets everything
             signalrGroupIds.Add(MainHub.ADMIN_DATA_GROUP);
@@ -118,14 +118,14 @@ namespace Cite.Api.Infrastructure.EventHandlers
             }
             else if (submission.TeamId != null)
             {
-                var isOnOfficialScoreContributorTeam = await _db.Teams.Where(t => t.TeamType.Name == _options.OfficialScoreTeamTypeName).AnyAsync(cancellationToken);
-                if (isOnOfficialScoreContributorTeam)
+                var teamType = await _db.Teams.Select(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == submission.TeamId);
+                if (teamType.ShowTeamTypeAverage)
                 {
                     // create the task to send the teamType average
-                    var averageSubmission = await _submissionService.GetTypeAverageAsync(submission, cancellationToken);
+                    var averageSubmission = await _submissionService.GetTypeAverageAsync(_mapper.Map<ViewModels.Submission>(submission), cancellationToken);
                     if (averageSubmission != null)
                     {
-                        tasks.Add(_mainHub.Clients.Group(averageSubmission.EvaluationId.ToString() + _options.OfficialScoreTeamTypeName.Replace(" ", "")).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
+                        tasks.Add(_mainHub.Clients.Group(averageSubmission.EvaluationId.ToString() + teamType.Id).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
                     }
                 }
             }

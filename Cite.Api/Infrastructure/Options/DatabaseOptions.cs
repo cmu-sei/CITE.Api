@@ -9,7 +9,6 @@ namespace Cite.Api.Infrastructure.Options
         public bool DevModeRecreate { get; set; }
         public string Provider { get; set; }
         public string SeedFile { get; set; }
-        public string OfficialScoreTeamTypeName { get; set; }
     }
 }
 
