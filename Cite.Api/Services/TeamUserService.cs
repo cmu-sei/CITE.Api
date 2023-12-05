@@ -171,6 +171,11 @@ namespace Cite.Api.Services
             if (teamUserToDelete == null)
                 throw new EntityNotFoundException<TeamUser>();
 
+            // remove the roles this user has been assigned to
+            var teamRoleIds = await _context.Roles.Where(r => r.TeamId == teamUserToDelete.TeamId).Select(r => r.Id).ToListAsync(ct);
+            var roleUsers = await _context.RoleUsers.Where(ru => teamRoleIds.Contains(ru.RoleId) && ru.UserId == teamUserToDelete.UserId).ToListAsync(ct);
+            _context.RoleUsers.RemoveRange(roleUsers);
+            //remove the user from the team
             _context.TeamUsers.Remove(teamUserToDelete);
             await _context.SaveChangesAsync(ct);
             _logger.LogWarning($"User {teamUserToDelete.UserId} removed from team {teamUserToDelete.TeamId} by {_user.GetId()}");
@@ -187,9 +192,14 @@ namespace Cite.Api.Services
             if (teamUserToDelete == null)
                 throw new EntityNotFoundException<TeamUser>();
 
+            // remove the roles this user has been assigned to
+            var teamRoleIds = await _context.Roles.Where(r => r.TeamId == teamId).Select(r => r.Id).ToListAsync(ct);
+            var roleUsers = await _context.RoleUsers.Where(ru => teamRoleIds.Contains(ru.RoleId) && ru.UserId == userId).ToListAsync(ct);
+            _context.RoleUsers.RemoveRange(roleUsers);
+            //remove the user from the team
             _context.TeamUsers.Remove(teamUserToDelete);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"User {teamUserToDelete.UserId} removed from team {teamUserToDelete.TeamId} by {_user.GetId()}");
+            _logger.LogWarning($"User {userId} removed from team {teamId} by {_user.GetId()}");
             return true;
         }
 

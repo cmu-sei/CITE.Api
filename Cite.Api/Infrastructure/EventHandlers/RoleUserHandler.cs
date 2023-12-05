@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
+using System.Linq;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
@@ -33,10 +35,11 @@ namespace Cite.Api.Infrastructure.EventHandlers
             _mainHub = mainHub;
         }
 
-        protected string[] GetGroups(RoleUserEntity roleUserEntity)
+        protected async Task<string[]> GetGroups(RoleUserEntity roleUserEntity)
         {
             var groupIds = new List<string>();
-            groupIds.Add(roleUserEntity.Role.TeamId.ToString());
+            var teamId = (await _db.Roles.SingleOrDefaultAsync(r => r.Id == roleUserEntity.RoleId)).TeamId;
+            groupIds.Add(teamId.ToString());
             // the admin data group gets everything
             groupIds.Add(MainHub.ADMIN_DATA_GROUP);
 
@@ -49,8 +52,13 @@ namespace Cite.Api.Infrastructure.EventHandlers
             string[] modifiedProperties,
             CancellationToken cancellationToken)
         {
-            var groupIds = GetGroups(roleUserEntity);
-            var role = _mapper.Map<ViewModels.Role>(roleUserEntity.Role);
+            var roleEntity = await _db.Roles
+                .Where(r => r.Id == roleUserEntity.RoleId)
+                .Include(r => r.RoleUsers)
+                .ThenInclude(ru => ru.User)
+                .SingleOrDefaultAsync();
+            var groupIds = await GetGroups(roleUserEntity);
+            var role = _mapper.Map<ViewModels.Role>(roleEntity);
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -102,10 +110,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
         public async Task Handle(EntityDeleted<RoleUserEntity> notification, CancellationToken cancellationToken)
         {
-            var groupIds = base.GetGroups(notification.Entity);
+            var groupIds = await base.GetGroups(notification.Entity);
             var tasks = new List<Task>();
-            // for some reason, the deleted RoleUser is still shown in notification.Entity.Role.RoleUsers, so we remove it to send correct info to clients
-            notification.Entity.Role.RoleUsers.Remove(notification.Entity);
 
             foreach (var groupId in groupIds)
             {
