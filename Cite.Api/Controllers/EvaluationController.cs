@@ -64,6 +64,24 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets Evaluations for the requested user
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of the requested user's active Evaluations.
+        /// </remarks>
+        /// <param name="userId"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        [HttpGet("users/{userId}/evaluations")]
+        [ProducesResponseType(typeof(IEnumerable<Evaluation>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getUserEvaluations")]
+        public async Task<IActionResult> GetUserEvaluations(Guid userId, CancellationToken ct)
+        {
+            var list = await _evaluationService.GetUserEvaluationsAsync(userId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets a specific Evaluation by id
         /// </summary>
         /// <remarks>
