@@ -27,6 +27,7 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct);
         Task<IEnumerable<ViewModels.Evaluation>> GetMineAsync(CancellationToken ct);
+        Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct);
         Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct);
@@ -120,11 +121,27 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Evaluation>> GetMineAsync(CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
+            var userId = _user.GetId();
+
+            return await GetUserEvaluationsAsync(userId, ct);
+        }
+
+        public async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
+        {
+            var currentUserId = _user.GetId();
+            if (currentUserId == userId)
+            {
+                if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
+                    throw new ForbiddenException();
+            }
+            else
+            {
+                if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
+                    throw new ForbiddenException();
+            }
 
             var evaluationIdList =  await _context.TeamUsers
-                .Where(tu => tu.UserId == _user.GetId())
+                .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
             var evaluationList = await _context.Evaluations
