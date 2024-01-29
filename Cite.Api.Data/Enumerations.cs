@@ -12,5 +12,12 @@ namespace Cite.Api.Data.Enumerations
         Archived = 50
     }
 
+    public enum RightSideDisplay
+    {
+        ScoreSummary = 0,
+        HtmlBlock = 10,
+        EmbeddedUrl = 20
+    }
+
 }
 
