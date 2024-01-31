@@ -28,6 +28,7 @@ namespace Cite.Api.Data.Models
         public RightSideDisplay RightSideDisplay { get; set; }
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }
+        public bool DisplayScoringModelByMoveNumber { get; set; }
         public virtual ICollection<TeamEntity> Teams { get; set; } = new HashSet<TeamEntity>();
         public virtual ICollection<MoveEntity> Moves { get; set; } = new HashSet<MoveEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
