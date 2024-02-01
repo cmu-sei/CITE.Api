@@ -16,6 +16,7 @@ namespace Cite.Api.ViewModels
         public TeamType TeamType { get; set; }
         public ICollection<User> Users { get; set; } = new List<User>();
         public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+        public bool HideScoresheet { get; set; }
     }
 
 }
