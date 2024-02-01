@@ -21,6 +21,8 @@ namespace Cite.Api.Data.Models
         public string CalculationEquation { get; set; }
         public bool IsModifierRequired { get; set; }
         public double ScoringWeight { get; set; }
+        public int MoveNumberFirstDisplay { get; set; }
+        public int MoveNumberLastDisplay { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModelEntity ScoringModel { get; set; }
         public virtual ICollection<ScoringOptionEntity> ScoringOptions { get; set; } = new HashSet<ScoringOptionEntity>();

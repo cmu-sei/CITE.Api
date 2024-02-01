@@ -19,6 +19,8 @@ namespace Cite.Api.ViewModels
         public string CalculationEquation { get; set; }
         public bool IsModifierRequired { get; set; }
         public double ScoringWeight { get; set; }
+        public int MoveNumberFirstDisplay { get; set; }
+        public int MoveNumberLastDisplay { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ICollection<ScoringOption> ScoringOptions { get; set; } = new HashSet<ScoringOption>();
     }
