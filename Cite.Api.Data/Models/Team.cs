@@ -21,6 +21,7 @@ namespace Cite.Api.Data.Models
         public virtual TeamTypeEntity TeamType { get; set; }
         public ICollection<TeamUserEntity> TeamUsers { get; set; } = new List<TeamUserEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
+        public bool HideScoresheet { get; set; }
     }
 
     public class TeamConfiguration : IEntityTypeConfiguration<TeamEntity>
