@@ -21,5 +21,12 @@ namespace Cite.Api.Data.Enumerations
         None = 40
     }
 
+    public enum ScoringOptionSelection
+    {
+        Single = 0,
+        Multiple = 10,
+        None = 20
+    }
+
 }
 

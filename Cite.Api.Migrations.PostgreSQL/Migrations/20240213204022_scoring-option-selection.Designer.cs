@@ -3,6 +3,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20240213204022_scoring-option-selection")]
+    partial class scoringoptionselection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -395,6 +397,10 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<bool>("AllowMultipleChoices")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_multiple_choices");
 
                     b.Property<string>("CalculationEquation")
                         .HasColumnType("text")

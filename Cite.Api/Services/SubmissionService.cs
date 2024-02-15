@@ -509,12 +509,12 @@ namespace Cite.Api.Services
             else
             {
                 // Only one option can be selected if selectMultiple is not true
-                var needToClear = !(await _context.SubmissionCategories
+                var scoringOptionSelection = (await _context.SubmissionCategories
                     .Include(sc => sc.ScoringCategory)
                     .Where(so => so.Id == submissionCategoryEntity.Id)
-                    .Select(so => so.ScoringCategory.AllowMultipleChoices)
+                    .Select(so => so.ScoringCategory.ScoringOptionSelection)
                     .FirstAsync());
-                if (needToClear)
+                if (scoringOptionSelection != Data.Enumerations.ScoringOptionSelection.Multiple)
                 {
                     var submissionOptionsToClear = _context.SubmissionOptions.Where(so =>
                         so.SubmissionCategoryId == submissionCategoryEntity.Id  && so.IsSelected);

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Cite.Api.Data.Enumerations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +18,6 @@ namespace Cite.Api.Data.Models
         public Guid Id { get; set; }
         public int DisplayOrder { get; set; }
         public string Description { get; set; }
-        public bool AllowMultipleChoices { get; set; }
         public string CalculationEquation { get; set; }
         public bool IsModifierRequired { get; set; }
         public double ScoringWeight { get; set; }
@@ -26,6 +26,7 @@ namespace Cite.Api.Data.Models
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModelEntity ScoringModel { get; set; }
         public virtual ICollection<ScoringOptionEntity> ScoringOptions { get; set; } = new HashSet<ScoringOptionEntity>();
+        public ScoringOptionSelection ScoringOptionSelection { get; set; }
     }
 
     public class ScoringCategoryEntityConfiguration : IEntityTypeConfiguration<ScoringCategoryEntity>
