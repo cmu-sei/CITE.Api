@@ -147,6 +147,9 @@ namespace Cite.Api.Services
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor))
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
             var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, ct);
@@ -179,6 +182,9 @@ namespace Cite.Api.Services
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor))
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
             if (team.TeamType != null && team.TeamType.ShowTeamTypeAverage)
