@@ -16,7 +16,16 @@ namespace Cite.Api.Data.Enumerations
     {
         ScoreSummary = 0,
         HtmlBlock = 10,
-        EmbeddedUrl = 20
+        EmbeddedUrl = 20,
+        Scoresheet = 30,
+        None = 40
+    }
+
+    public enum ScoringOptionSelection
+    {
+        Single = 0,
+        Multiple = 10,
+        None = 20
     }
 
 }

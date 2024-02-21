@@ -18,6 +18,9 @@ namespace Cite.Api.ViewModels
         public string CalculationEquation { get; set; }
         public ItemStatus Status { get; set; }
         public virtual ICollection<ScoringCategory> ScoringCategories { get; set; } = new HashSet<ScoringCategory>();
+        public bool HideScoresOnScoreSheet { get; set; }
+        public bool DisplayCommentTextBoxes { get; set; }
+        public bool DisplayScoringModelByMoveNumber { get; set; }
     }
 }
 

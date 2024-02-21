@@ -147,6 +147,9 @@ namespace Cite.Api.Services
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor))
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
             var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, ct);
@@ -179,6 +182,9 @@ namespace Cite.Api.Services
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor))
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
             if (team.TeamType != null && team.TeamType.ShowTeamTypeAverage)
@@ -509,12 +515,12 @@ namespace Cite.Api.Services
             else
             {
                 // Only one option can be selected if selectMultiple is not true
-                var needToClear = !(await _context.SubmissionCategories
+                var scoringOptionSelection = (await _context.SubmissionCategories
                     .Include(sc => sc.ScoringCategory)
                     .Where(so => so.Id == submissionCategoryEntity.Id)
-                    .Select(so => so.ScoringCategory.AllowMultipleChoices)
+                    .Select(so => so.ScoringCategory.ScoringOptionSelection)
                     .FirstAsync());
-                if (needToClear)
+                if (scoringOptionSelection != Data.Enumerations.ScoringOptionSelection.Multiple)
                 {
                     var submissionOptionsToClear = _context.SubmissionOptions.Where(so =>
                         so.SubmissionCategoryId == submissionCategoryEntity.Id  && so.IsSelected);

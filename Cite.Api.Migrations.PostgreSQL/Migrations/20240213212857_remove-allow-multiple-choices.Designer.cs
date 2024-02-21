@@ -8,6 +8,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -16,9 +17,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20240213212857_remove-allow-multiple-choices")]
+    partial class removeallowmultiplechoices
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -121,9 +123,21 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("DisplayCommentTextBoxes")
+                        .HasColumnType("boolean")
+                        .HasColumnName("display_comment_text_boxes");
+
+                    b.Property<bool>("DisplayScoringModelByMoveNumber")
+                        .HasColumnType("boolean")
+                        .HasColumnName("display_scoring_model_by_move_number");
+
                     b.Property<Guid?>("GalleryExhibitId")
                         .HasColumnType("uuid")
                         .HasColumnName("gallery_exhibit_id");
+
+                    b.Property<bool>("HideScoresOnScoreSheet")
+                        .HasColumnType("boolean")
+                        .HasColumnName("hide_scores_on_score_sheet");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")
@@ -475,18 +489,6 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<bool>("DisplayCommentTextBoxes")
-                        .HasColumnType("boolean")
-                        .HasColumnName("display_comment_text_boxes");
-
-                    b.Property<bool>("DisplayScoringModelByMoveNumber")
-                        .HasColumnType("boolean")
-                        .HasColumnName("display_scoring_model_by_move_number");
-
-                    b.Property<bool>("HideScoresOnScoreSheet")
-                        .HasColumnType("boolean")
-                        .HasColumnName("hide_scores_on_score_sheet");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
@@ -15,7 +16,6 @@ namespace Cite.Api.ViewModels
         public Guid Id { get; set; }
         public int DisplayOrder { get; set; }
         public string Description { get; set; }
-        public bool AllowMultipleChoices { get; set; }
         public string CalculationEquation { get; set; }
         public bool IsModifierRequired { get; set; }
         public double ScoringWeight { get; set; }
@@ -23,6 +23,7 @@ namespace Cite.Api.ViewModels
         public int MoveNumberLastDisplay { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ICollection<ScoringOption> ScoringOptions { get; set; } = new HashSet<ScoringOption>();
+        public ScoringOptionSelection ScoringOptionSelection { get; set; }
     }
 
 }
