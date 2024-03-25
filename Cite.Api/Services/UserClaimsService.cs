@@ -145,7 +145,7 @@ namespace Cite.Api.Services
         private async Task<IEnumerable<Claim>> GetUserClaims(Guid userId)
         {
             List<Claim> claims = new List<Claim>();
-
+            // User level permissions
             var userPermissions = await _context.UserPermissions
                 .Where(u => u.UserId == userId)
                 .Include(x => x.Permission)
@@ -167,6 +167,9 @@ namespace Cite.Api.Services
             var teamIdList = new List<string>();
             var evaluationIdList = new List<string>();
             var observerEvaluationIdList = new List<string>();
+            var incrementerEvaluationIdList = new List<string>();
+            var modifierEvaluationIdList = new List<string>();
+            var submitterEvaluationIdList = new List<string>();
             // add IDs of allowed teams
             foreach (var teamUser in teamUserList)
             {
@@ -186,6 +189,18 @@ namespace Cite.Api.Services
                 {
                     observerEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
                 }
+                if (teamUser.CanIncrementMove)
+                {
+                    incrementerEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
+                }
+                if (teamUser.CanModify)
+                {
+                    modifierEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
+                }
+                if (teamUser.CanSubmit)
+                {
+                    submitterEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
+                }
             }
             // add IDs of allowed teams
             claims.Add(new Claim(CiteClaimTypes.TeamUser.ToString(), String.Join(",", teamIdList.ToArray())));
@@ -193,6 +208,12 @@ namespace Cite.Api.Services
             claims.Add(new Claim(CiteClaimTypes.EvaluationUser.ToString(), String.Join(",", evaluationIdList.ToArray())));
             // add IDs of observer evaluations
             claims.Add(new Claim(CiteClaimTypes.EvaluationObserver.ToString(), String.Join(",", observerEvaluationIdList.ToArray())));
+            // add IDs of incrementer evaluations
+            claims.Add(new Claim(CiteClaimTypes.CanIncrementMove.ToString(), String.Join(",", incrementerEvaluationIdList.ToArray())));
+            // add IDs of modifier evaluations
+            claims.Add(new Claim(CiteClaimTypes.CanModify.ToString(), String.Join(",", modifierEvaluationIdList.ToArray())));
+            // add IDs of submitter evaluations
+            claims.Add(new Claim(CiteClaimTypes.CanSubmit.ToString(), String.Join(",", submitterEvaluationIdList.ToArray())));
 
             return claims;
         }

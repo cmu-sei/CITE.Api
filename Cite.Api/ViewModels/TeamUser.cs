@@ -25,6 +25,9 @@ namespace Cite.Api.ViewModels
         public Guid TeamId { get; set; }
         public Team Team { get; set; }
         public Boolean IsObserver { get; set; }
+        public Boolean CanIncrementMove { get; set; }
+        public Boolean CanModify { get; set; }
+        public Boolean CanSubmit { get; set; }
     }
 
 }

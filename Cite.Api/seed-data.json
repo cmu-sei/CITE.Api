@@ -13,27 +13,6 @@
       "Value": "true",
       "Description": "Can create/edit/delete an Exercise/Directory/Workspace/File/Module",
       "ReadOnly": true
-    },
-    {
-      "Id": "e0317506-fc9a-412d-a4bf-ac5ec915490e",
-      "Key": "CanSubmit",
-      "Value": "true",
-      "Description": "Can submit a score",
-      "ReadOnly": true
-    },
-    {
-      "Id": "d1311f27-816d-4853-a092-5f888fa05742",
-      "Key": "CanModify",
-      "Value": "true",
-      "Description": "Can modify a submission.",
-      "ReadOnly": true
-    },
-    {
-      "Id": "382dfc33-6fc2-4e3a-a03d-ac37aef4cde1",
-      "Key": "CanIncrementMove",
-      "Value": "true",
-      "Description": "Can increment the current evaluation move",
-      "ReadOnly": true
     }
   ],
   "Users": [
