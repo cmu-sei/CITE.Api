@@ -90,7 +90,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.TeamType> UpdateAsync(Guid id, ViewModels.TeamType teamType, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
 
             var teamTypeToUpdate = await _context.TeamTypes.SingleOrDefaultAsync(v => v.Id == id, ct);

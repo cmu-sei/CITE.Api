@@ -382,7 +382,7 @@ namespace Cite.Api.Services
             }
             var isCollaborator = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
-            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded;
+            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)item.EvaluationId))).Succeeded;
             var hasAccess =
                 (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
                 (item.UserId == null && (item.TeamId != null && evaluationTeamIdList.Contains((Guid)item.TeamId)) && item.EvaluationId == item.EvaluationId) ||
@@ -452,10 +452,10 @@ namespace Cite.Api.Services
         {
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submission.TeamId);
             if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(submission.EvaluationId))).Succeeded
                         && submission.UserId == null
                         && (submission.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(submission.EvaluationId))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submission.UserId == _user.GetId())
             ))
                 throw new ForbiddenException();
@@ -490,12 +490,13 @@ namespace Cite.Api.Services
             var submissionCategoryEntity = await _context.SubmissionCategories.FindAsync(submissionOptionToUpdate.SubmissionCategoryId);
             var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
+            var evaluationId = (Guid)submissionEntity.EvaluationId;
             if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId))).Succeeded
                         && submissionEntity.UserId == null
                         && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement())).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
             ))
                 throw new ForbiddenException();
@@ -655,12 +656,13 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<Submission>();
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionToClear.TeamId);
+            var evaluationId = (Guid)submissionToClear.EvaluationId;
             if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId))).Succeeded
                         && submissionToClear.UserId == null
                         && (submissionToClear.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement())).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionToClear.UserId == _user.GetId())
             ))
                 throw new ForbiddenException();
@@ -702,12 +704,13 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<Submission>();
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == targetSubmission.TeamId);
+            var evaluationId = (Guid)targetSubmission.EvaluationId;
             if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId))).Succeeded
                         && targetSubmission.UserId == null
                         && (targetSubmission.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement())).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && targetSubmission.UserId == _user.GetId())
             ))
                 throw new ForbiddenException();

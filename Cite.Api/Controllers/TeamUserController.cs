@@ -142,6 +142,108 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Sets the selected TeamUser incrementer flag
+        /// </summary>
+        /// <remarks>
+        /// Sets the TeamUser to an incrementer.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/incrementer/set")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "setIncrementer")]
+        public async Task<IActionResult> SetIncrementer([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetIncrementerAsync(id, true, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Clears the selected TeamUser incrementer flag
+        /// </summary>
+        /// <remarks>
+        /// Clears the TeamUser from being an incrementer.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/incrementer/clear")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearIncrementer")]
+        public async Task<IActionResult> ClearIncrementer([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetIncrementerAsync(id, false, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Sets the selected TeamUser modifier flag
+        /// </summary>
+        /// <remarks>
+        /// Sets the TeamUser to an modifier.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/modifier/set")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "setModifier")]
+        public async Task<IActionResult> SetModifier([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetModifierAsync(id, true, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Clears the selected TeamUser modifier flag
+        /// </summary>
+        /// <remarks>
+        /// Clears the TeamUser from being an modifier.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/modifier/clear")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearModifier")]
+        public async Task<IActionResult> ClearModifier([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetModifierAsync(id, false, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Sets the selected TeamUser submitter flag
+        /// </summary>
+        /// <remarks>
+        /// Sets the TeamUser to an submitter.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/submitter/set")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "setSubmitter")]
+        public async Task<IActionResult> SetSubmitter([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetSubmitterAsync(id, true, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Clears the selected TeamUser submitter flag
+        /// </summary>
+        /// <remarks>
+        /// Clears the TeamUser from being an submitter.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/submitter/clear")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearSubmitter")]
+        public async Task<IActionResult> ClearSubmitter([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetSubmitterAsync(id, false, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Deletes a TeamUser
         /// </summary>
         /// <remarks>
