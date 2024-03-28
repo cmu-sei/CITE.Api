@@ -148,12 +148,13 @@ namespace Cite.Api.Services
             var submissionCategoryEntity = await _context.SubmissionCategories.FindAsync(submissionOption.SubmissionCategoryId);
             var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
+            var evaluationId = (Guid)submissionEntity.EvaluationId;
             return (
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement())).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId))).Succeeded
                         && submissionEntity.UserId == null
                         && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement())).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement())).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
             );
         }

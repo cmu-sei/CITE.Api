@@ -28,6 +28,9 @@ namespace Cite.Api.Services
         Task<ViewModels.TeamUser> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.TeamUser> CreateAsync(ViewModels.TeamUser teamUser, CancellationToken ct);
         Task<ViewModels.TeamUser> SetObserverAsync(Guid id, bool value, CancellationToken ct);
+        Task<ViewModels.TeamUser> SetIncrementerAsync(Guid id, bool value, CancellationToken ct);
+        Task<ViewModels.TeamUser> SetModifierAsync(Guid id, bool value, CancellationToken ct);
+        Task<ViewModels.TeamUser> SetSubmitterAsync(Guid id, bool value, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
         Task<bool> DeleteByIdsAsync(Guid teamId, Guid userId, CancellationToken ct);
     }
@@ -157,6 +160,78 @@ namespace Cite.Api.Services
             else
             {
                 _logger.LogWarning($"User {teamUserToUpdate.UserId} removed as observer on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            return _mapper.Map<TeamUser>(teamUserToUpdate);
+        }
+
+        public async Task<ViewModels.TeamUser> SetIncrementerAsync(Guid id, bool value, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var teamUserToUpdate = await _context.TeamUsers
+                .Include(tu => tu.User)
+                .SingleOrDefaultAsync(v => v.Id == id, ct);
+            if (teamUserToUpdate == null)
+                throw new EntityNotFoundException<TeamUser>();
+
+            teamUserToUpdate.CanIncrementMove = value;
+            await _context.SaveChangesAsync(ct);
+            if (value)
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} set as incrementer on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            else
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} removed as incrementer on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            return _mapper.Map<TeamUser>(teamUserToUpdate);
+        }
+
+        public async Task<ViewModels.TeamUser> SetModifierAsync(Guid id, bool value, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var teamUserToUpdate = await _context.TeamUsers
+                .Include(tu => tu.User)
+                .SingleOrDefaultAsync(v => v.Id == id, ct);
+            if (teamUserToUpdate == null)
+                throw new EntityNotFoundException<TeamUser>();
+
+            teamUserToUpdate.CanModify = value;
+            await _context.SaveChangesAsync(ct);
+            if (value)
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} set as modifier on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            else
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} removed as modifier on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            return _mapper.Map<TeamUser>(teamUserToUpdate);
+        }
+
+        public async Task<ViewModels.TeamUser> SetSubmitterAsync(Guid id, bool value, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var teamUserToUpdate = await _context.TeamUsers
+                .Include(tu => tu.User)
+                .SingleOrDefaultAsync(v => v.Id == id, ct);
+            if (teamUserToUpdate == null)
+                throw new EntityNotFoundException<TeamUser>();
+
+            teamUserToUpdate.CanSubmit = value;
+            await _context.SaveChangesAsync(ct);
+            if (value)
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} set as submitter on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
+            }
+            else
+            {
+                _logger.LogWarning($"User {teamUserToUpdate.UserId} removed as submitter on team {teamUserToUpdate.TeamId} by {_user.GetId()}");
             }
             return _mapper.Map<TeamUser>(teamUserToUpdate);
         }
