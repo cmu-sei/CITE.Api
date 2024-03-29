@@ -4,3 +4,5 @@ obj/
 .vs/
 appsettings.Development.json
 .vscode/
+Cite.Api.Client/node_modules
+Cite.Api.Client/.config

@@ -22,10 +22,6 @@ namespace Cite.Api.ViewModels
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModel ScoringModel { get; set; }
         public Guid? GalleryExhibitId { get; set; }
-        public bool ShowPastSituationDescriptions { get; set; }
-        public RightSideDisplay RightSideDisplay { get; set; }
-        public string RightSideHtmlBlock { get; set; }
-        public string RightSideEmbeddedUrl { get; set; }
         public virtual ICollection<Team> Teams { get; set; } = new HashSet<Team>();
         public virtual ICollection<Move> Moves { get; set; } = new HashSet<Move>();
         public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
