@@ -21,6 +21,10 @@ namespace Cite.Api.ViewModels
         public bool HideScoresOnScoreSheet { get; set; }
         public bool DisplayCommentTextBoxes { get; set; }
         public bool DisplayScoringModelByMoveNumber { get; set; }
+        public bool ShowPastSituationDescriptions { get; set; }
+        public RightSideDisplay RightSideDisplay { get; set; }
+        public string RightSideHtmlBlock { get; set; }
+        public string RightSideEmbeddedUrl { get; set; }
     }
 }
 

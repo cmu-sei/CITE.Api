@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.Data.Models
 {
@@ -15,11 +16,15 @@ namespace Cite.Api.Data.Models
         public Guid Id { get; set; }
         public string Description { get; set; }
         public string CalculationEquation { get; set; }
-        public Enumerations.ItemStatus Status { get; set; }
+        public ItemStatus Status { get; set; }
         public virtual ICollection<ScoringCategoryEntity> ScoringCategories { get; set; } = new HashSet<ScoringCategoryEntity>();
         public bool HideScoresOnScoreSheet { get; set; }
         public bool DisplayCommentTextBoxes { get; set; }
         public bool DisplayScoringModelByMoveNumber { get; set; }
+        public bool ShowPastSituationDescriptions { get; set; }
+        public RightSideDisplay RightSideDisplay { get; set; }
+        public string RightSideHtmlBlock { get; set; }
+        public string RightSideEmbeddedUrl { get; set; }
     }
 }
 
