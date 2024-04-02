@@ -3,17 +3,21 @@
 
 using Microsoft.AspNetCore.Authorization;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Cite.Api.Data;
 
 namespace Cite.Api.Infrastructure.Authorization
 {
     public class CanIncrementMoveRequirement : IAuthorizationRequirement
     {
         public readonly Guid EvaluationId;
+        public readonly CiteContext DbContext;
         
-        public CanIncrementMoveRequirement(Guid evaluationId)
+        public CanIncrementMoveRequirement(Guid evaluationId, CiteContext dbContext)
         {
             EvaluationId = evaluationId;
+            DbContext = dbContext;
         }
     }
 
@@ -21,10 +25,12 @@ namespace Cite.Api.Infrastructure.Authorization
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, CanIncrementMoveRequirement requirement)
         {
-            if (context.User.HasClaim(c =>
-                c.Type == CiteClaimTypes.CanIncrementMove.ToString() &&
-                c.Value.Contains(requirement.EvaluationId.ToString())
-            ))
+            var userId = context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
+            var canIncrement = requirement.DbContext.TeamUsers
+                .Any(tu => tu.Team.EvaluationId == requirement.EvaluationId &&
+                    tu.UserId.ToString() == userId &&
+                    tu.CanIncrementMove);
+            if (canIncrement)
             {
                 context.Succeed(requirement);
             }

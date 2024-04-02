@@ -195,7 +195,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
@@ -267,7 +267,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
@@ -287,7 +287,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var evaluationToUpdate = await _context.Evaluations

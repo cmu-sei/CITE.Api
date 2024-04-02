@@ -83,7 +83,7 @@ namespace Cite.Api.Services
                 .ThenInclude(tu => tu.User)
                 .ToListAsync(ct);
 
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId, _context))).Succeeded)
             {
                 var myTeamUser = await _context.TeamUsers
                     .SingleOrDefaultAsync(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId, ct);
@@ -129,7 +129,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var items = await _context.Teams

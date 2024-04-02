@@ -3,17 +3,21 @@
 
 using Microsoft.AspNetCore.Authorization;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Cite.Api.Data;
 
 namespace Cite.Api.Infrastructure.Authorization
 {
     public class EvaluationUserRequirement : IAuthorizationRequirement
     {
         public readonly Guid EvaluationId;
+        public readonly CiteContext DbContext;
 
-        public EvaluationUserRequirement(Guid evaluationId)
+        public EvaluationUserRequirement(Guid evaluationId, CiteContext dbContext)
         {
             EvaluationId = evaluationId;
+            DbContext = dbContext;
         }
     }
 
@@ -21,14 +25,12 @@ namespace Cite.Api.Infrastructure.Authorization
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, EvaluationUserRequirement requirement)
         {
+            var userId = context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
+            var isEvaluationUser = requirement.DbContext.TeamUsers
+                .Any(tu => tu.Team.EvaluationId == requirement.EvaluationId && tu.UserId.ToString() == userId);
             if (context.User.HasClaim(c => c.Type == CiteClaimTypes.SystemAdmin.ToString()) ||
                 context.User.HasClaim(c => c.Type == CiteClaimTypes.ContentDeveloper.ToString()) ||
-                (
-                    context.User.HasClaim(c =>
-                        c.Type == CiteClaimTypes.EvaluationUser.ToString() &&
-                        c.Value.Contains(requirement.EvaluationId.ToString())
-                    )
-                )
+                isEvaluationUser
             )
             {
                 context.Succeed(requirement);

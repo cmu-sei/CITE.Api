@@ -3,17 +3,21 @@
 
 using Microsoft.AspNetCore.Authorization;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Cite.Api.Data;
 
 namespace Cite.Api.Infrastructure.Authorization
 {
     public class TeamUserRequirement : IAuthorizationRequirement
     {
         public readonly Guid TeamId;
+        public readonly CiteContext DbContext;
 
-        public TeamUserRequirement(Guid teamId)
+        public TeamUserRequirement(Guid teamId, CiteContext dbContext)
         {
             TeamId = teamId;
+            DbContext = dbContext;
         }
     }
 
@@ -21,10 +25,10 @@ namespace Cite.Api.Infrastructure.Authorization
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, TeamUserRequirement requirement)
         {
-            // if (context.User.HasClaim(c =>
-            //     c.Type == CiteClaimTypes.TeamUser.ToString() &&
-            //     c.Value.Contains(requirement.TeamId.ToString()))
-            // )
+            var userId = context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
+            var isTeamUser = requirement.DbContext.TeamUsers
+                .Any(tu => tu.TeamId == requirement.TeamId && tu.UserId.ToString() == userId);
+            if (isTeamUser)
             {
                 context.Succeed(requirement);
             }

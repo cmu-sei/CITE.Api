@@ -150,11 +150,11 @@ namespace Cite.Api.Services
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
             var evaluationId = (Guid)submissionEntity.EvaluationId;
             return (
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId))).Succeeded
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
                         && submissionEntity.UserId == null
                         && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
             );
         }
