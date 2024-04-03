@@ -54,7 +54,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.TeamUser>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var items = await _context.TeamUsers
@@ -70,7 +70,7 @@ namespace Cite.Api.Services
             if (team == null)
                 throw new EntityNotFoundException<Team>();
 
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement((Guid)team.EvaluationId))).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement((Guid)team.EvaluationId, _context))).Succeeded)
                 throw new ForbiddenException();
 
             var items = await _context.TeamUsers

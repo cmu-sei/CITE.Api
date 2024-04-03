@@ -123,7 +123,7 @@ namespace Cite.Api.Services
             var teamId = team.Id;
             var isCollaborator = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
-            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId))).Succeeded;
+            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded;
             var hasAccess =
                 (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
                 (item.UserId == null && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||

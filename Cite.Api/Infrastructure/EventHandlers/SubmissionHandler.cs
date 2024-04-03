@@ -119,7 +119,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             else if (submission.TeamId != null)
             {
                 var teamType = await _db.Teams.Select(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == submission.TeamId);
-                if (teamType.ShowTeamTypeAverage)
+                if (teamType != null && teamType.ShowTeamTypeAverage)
                 {
                     // create the task to send the teamType average
                     var averageSubmission = await _submissionService.GetTypeAverageAsync(_mapper.Map<ViewModels.Submission>(submission), cancellationToken);
