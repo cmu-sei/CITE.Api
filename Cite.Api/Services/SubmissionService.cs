@@ -20,6 +20,7 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Migrations.PostgreSQL.Migrations;
 
 namespace Cite.Api.Services
 {
@@ -650,6 +651,7 @@ namespace Cite.Api.Services
             var submissionToClear = await _context.Submissions
                 .Include(s => s.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
                 .FirstAsync(v => v.Id == id);
 
             if (submissionToClear == null)
@@ -678,6 +680,10 @@ namespace Cite.Api.Services
                         submissionOption.IsSelected = false;
                         submissionOption.ModifiedBy = _user.GetId();
                         submissionOption.DateModified = DateTime.UtcNow;
+                    }
+                    foreach(var submissionComment in submissionOption.SubmissionComments)
+                    {
+                    _context.SubmissionComments.Remove(submissionComment);
                     }
                 }
                 submissionCategory.Score = 0.0;
