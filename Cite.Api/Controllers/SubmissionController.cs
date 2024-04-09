@@ -122,7 +122,7 @@ namespace Cite.Api.Controllers
         {
             submission.CreatedBy = User.GetId();
             var createdSubmission = await _submissionService.CreateAsync(submission, ct);
-            return Ok(createdSubmission);
+            return CreatedAtAction(nameof(this.Get), new { id = createdSubmission.Id }, createdSubmission);
         }
 
         /// <summary>
