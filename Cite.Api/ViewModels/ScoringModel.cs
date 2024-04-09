@@ -22,6 +22,12 @@ namespace Cite.Api.ViewModels
         public bool DisplayCommentTextBoxes { get; set; }
         public bool DisplayScoringModelByMoveNumber { get; set; }
         public bool ShowPastSituationDescriptions { get; set; }
+        public bool UseSubmit { get; set; }
+        public bool UseUserScore { get; set; }
+        public bool UseTeamScore { get; set; }
+        public bool UseTeamAverageScore { get; set; }
+        public bool UseTypeAverageScore { get; set; }
+        public bool UseOfficialScore { get; set; }
         public RightSideDisplay RightSideDisplay { get; set; }
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }

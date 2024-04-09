@@ -143,18 +143,39 @@ namespace Cite.Api.Services
             var teamId = team.Id;
             var isContributor = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
-            var submissionEntities = await _context.Submissions.Where(sm =>
+            var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
+            var submissionEntities = _context.Submissions.Where(sm =>
                 (sm.UserId == userId && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
                 (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
-                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor))
+                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor));
+            if (!scoringModel.UseUserScore)
+            {
+                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == userId));
+            }
+            if (!scoringModel.UseTeamScore)
+            {
+                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == teamId));
+            }
+            if (!isContributor)
+            {
+                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == null && sm.MoveNumber == currentMoveNumber));
+            }
+            if (!scoringModel.UseOfficialScore)
+            {
+                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == null));
+            }
+            var submissionEntityList = await submissionEntities
                 .Include(sm => sm.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
-            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
-            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, ct);
-            submissions.AddRange(averageSubmissions);
+            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
+            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
+            if (averageSubmissions.Count() > 0)
+            {
+                submissions.AddRange(averageSubmissions);
+            }
 
             return submissions;
         }
@@ -199,9 +220,8 @@ namespace Cite.Api.Services
         }
 
         private async Task<IEnumerable<ViewModels.Submission>> GetTeamAndTypeAveragesAsync(
-            Guid evaluationId, TeamEntity team, CancellationToken ct)
+            Guid evaluationId, TeamEntity team, int currentMoveNumber, bool useTeamAverage, bool useTypeAverage, CancellationToken ct)
         {
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
             var averageSubmissions = new List<Submission>();
             // calculate the average of users on the team
             var submissionEntities = await _context.Submissions.Where(sm =>
@@ -209,18 +229,21 @@ namespace Cite.Api.Services
             for (var move = 0; move <= currentMoveNumber; move ++)
             {
                 var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
-                var teamAverageSubmission = CreateAverageSubmission(moveSubmissions);
-                if (teamAverageSubmission != null)
+                if (useTeamAverage)
                 {
-                    teamAverageSubmission.Id = Guid.NewGuid();
-                    teamAverageSubmission.UserId = null;
-                    teamAverageSubmission.TeamId = team.Id;
-                    teamAverageSubmission.GroupId = team.TeamTypeId;
-                    teamAverageSubmission.MoveNumber = move;
-                    averageSubmissions.Add(teamAverageSubmission);
+                    var teamAverageSubmission = CreateAverageSubmission(moveSubmissions);
+                    if (teamAverageSubmission != null)
+                    {
+                        teamAverageSubmission.Id = Guid.NewGuid();
+                        teamAverageSubmission.UserId = null;
+                        teamAverageSubmission.TeamId = team.Id;
+                        teamAverageSubmission.GroupId = team.TeamTypeId;
+                        teamAverageSubmission.MoveNumber = move;
+                        averageSubmissions.Add(teamAverageSubmission);
+                    }
                 }
             }
-            if (team.TeamType != null && team.TeamType.ShowTeamTypeAverage)
+            if (useTypeAverage && team.TeamType != null && team.TeamType.ShowTeamTypeAverage)
             {
                 averageSubmissions.AddRange(await GetTypeAveragesAsync(evaluationId, team, ct));
             }
@@ -564,7 +587,7 @@ namespace Cite.Api.Services
             // get a list of moves for the evaluation
             var moves = await _moveService.GetByEvaluationAsync(submission.EvaluationId, ct);
             // verify submissions for previous moves, if the requested submission is for the current user
-            if (submission.UserId == _user.GetId())
+            if (submission.UserId == _user.GetId() || submission.UserId == null)
             {
                 foreach (var move in moves)
                 {
