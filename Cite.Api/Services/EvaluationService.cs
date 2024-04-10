@@ -180,7 +180,7 @@ namespace Cite.Api.Services
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
-
+            // create a default move, if necessary
             if (evaluation.Moves.Count() == 0) {
               ViewModels.Move move = new Move();
               move.Description = "Default Move";
@@ -189,6 +189,8 @@ namespace Cite.Api.Services
               move.EvaluationId = evaluation.Id;
               await _moveService.CreateAsync(move, ct);
             }
+            // create the official and team submissions, if necessary
+            await VerifyOfficialAndTeamSubmissions(evaluationEntity, ct);
 
             return await GetAsync(evaluation.Id, ct);
         }
@@ -360,7 +362,8 @@ namespace Cite.Api.Services
                         TeamId = null,
                         UserId = null,
                         ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = move.MoveNumber
+                        MoveNumber = move.MoveNumber,
+                        DateCreated = DateTime.UtcNow
                     };
                     _logger.LogInformation("Make Official submission for move " + move.MoveNumber.ToString());
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
@@ -376,7 +379,8 @@ namespace Cite.Api.Services
                             TeamId = team.Id,
                             UserId = null,
                             ScoringModelId = evaluation.ScoringModelId,
-                            MoveNumber = move.MoveNumber
+                            MoveNumber = move.MoveNumber,
+                        DateCreated = DateTime.UtcNow
                         };
                         _logger.LogInformation("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
                         await _submissionService.CreateNewSubmission(_context, submission, ct);
