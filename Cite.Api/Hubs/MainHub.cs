@@ -162,9 +162,6 @@ namespace Cite.Api.Hubs
         public const string EvaluationCreated = "EvaluationCreated";
         public const string EvaluationUpdated = "EvaluationUpdated";
         public const string EvaluationDeleted = "EvaluationDeleted";
-        public const string EvaluationTeamCreated = "EvaluationTeamCreated";
-        public const string EvaluationTeamUpdated = "EvaluationTeamUpdated";
-        public const string EvaluationTeamDeleted = "EvaluationTeamDeleted";
         public const string MoveCreated = "MoveCreated";
         public const string MoveUpdated = "MoveUpdated";
         public const string MoveDeleted = "MoveDeleted";

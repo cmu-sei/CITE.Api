@@ -169,7 +169,6 @@ namespace Cite.Api
 
             services.AddScoped<IActionService, ActionService>();
             services.AddScoped<IEvaluationService, EvaluationService>();
-            services.AddScoped<IEvaluationTeamService, EvaluationTeamService>();
             services.AddScoped<IGalleryService, GalleryService>();
             services.AddScoped<IMoveService, MoveService>();
             services.AddScoped<IRoleService, RoleService>();

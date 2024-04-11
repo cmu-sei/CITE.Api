@@ -57,7 +57,6 @@ namespace Cite.Api.Infrastructure.Extensions
                         if (File.Exists(seedFile)) {
                             SeedDataOptions seedDataOptions = JsonSerializer.Deserialize<SeedDataOptions>(File.ReadAllText(seedFile));
                             ProcessSeedDataOptions(seedDataOptions, ctx);
-                            MoveEvaluationTeamsToIndividualTeams(ctx);
                         }
                     }
 
@@ -270,68 +269,6 @@ namespace Cite.Api.Infrastructure.Extensions
                     {
                         context.RoleUsers.Add(roleUser);
                     }
-                }
-                context.SaveChanges();
-            }
-        }
-
-        private static void MoveEvaluationTeamsToIndividualTeams(CiteContext context)
-        {
-            // this ONLY gets run ONCE!
-            // check to see if this has already been done
-            var isAlreadyDone = context.Teams.Any(t => t.EvaluationId != null);
-            if (isAlreadyDone) return;
-
-            var evaluationTeams = context.EvaluationTeams
-                .Include(et => et.Team)
-                .ToList();
-            // create unique teams for each evaluation team record
-            foreach (var et in evaluationTeams)
-            {
-                var newTeamId = Guid.NewGuid();
-                var newTeam = new TeamEntity()
-                {
-                    Id = newTeamId,
-                    Name = et.Team.Name,
-                    ShortName = et.Team.ShortName,
-                    TeamTypeId = et.Team.TeamTypeId,
-                    EvaluationId = et.EvaluationId,
-                    DateCreated = et.DateCreated,
-                    DateModified = et.DateModified,
-                    CreatedBy = et.CreatedBy,
-                    ModifiedBy = et.ModifiedBy
-                };
-                context.Teams.Add(newTeam);
-                context.SaveChanges();
-                // create team users for the new team
-                foreach (var tu in et.Team.TeamUsers)
-                {
-                    var newTeamUser = new TeamUserEntity()
-                    {
-                        Id = Guid.NewGuid(),
-                        TeamId = newTeamId,
-                        UserId = tu.UserId
-                    };
-                    context.TeamUsers.Add(newTeamUser);
-                }
-                // substitute the new team ID in place of the old team ID
-                // replace in actions
-                var actions = context.Actions.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
-                foreach (var action in actions)
-                {
-                    action.TeamId = newTeamId;
-                }
-                // replace in roles
-                var roles = context.Roles.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
-                foreach (var role in roles)
-                {
-                    role.TeamId = newTeamId;
-                }
-                // replace in submissions
-                var submissions = context.Submissions.Where(a => a.EvaluationId == et.EvaluationId && a.TeamId == et.TeamId);
-                foreach (var submission in submissions)
-                {
-                    submission.TeamId = newTeamId;
                 }
                 context.SaveChanges();
             }
