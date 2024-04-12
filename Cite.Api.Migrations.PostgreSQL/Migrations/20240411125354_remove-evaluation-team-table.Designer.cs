@@ -8,6 +8,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -16,9 +17,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20240411125354_remove-evaluation-team-table")]
+    partial class removeevaluationteamtable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -150,6 +152,43 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("ScoringModelId");
 
                     b.ToTable("evaluations");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationTeamEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created");
+
+                    b.Property<DateTime?>("DateModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_modified");
+
+                    b.Property<Guid>("EvaluationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluation_id");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("evaluation_teams");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
