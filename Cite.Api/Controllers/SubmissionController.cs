@@ -236,6 +236,63 @@ namespace Cite.Api.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Adds a new SubmissionComment
+        /// </summary>
+        /// <remarks>
+        /// Adds a new SubmissionComment with the attributes specified
+        /// </remarks>
+        /// <param name="submissionId">The ID of the Submission to add the Comment</param>
+        /// <param name="submissionComment">The data used to create the SubmissionComment</param>
+        /// <param name="ct"></param>
+        [HttpPost("submissions/{submissionId}/Comments")]
+        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.Created)]
+        [SwaggerOperation(OperationId = "addSubmissionComment")]
+        public async Task<IActionResult> AddSubmissionComment([FromRoute] Guid submissionId, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
+        {
+            var submission = await _submissionService.AddCommentAsync(submissionId, submissionComment, ct);
+            return Ok(submission);
+        }
+
+        /// <summary>
+        /// Updates a  SubmissionComment
+        /// </summary>
+        /// <remarks>
+        /// Updates a SubmissionComment with the attributes specified.
+        /// The ID from the route MUST MATCH the ID contained in the submissionComment parameter
+        /// </remarks>
+        /// <param name="submissionId">The Id of the SubmissionComment to update</param>
+        /// <param name="submissionCommentId">The Id of the SubmissionComment to update</param>
+        /// <param name="submissionComment">The updated SubmissionComment values</param>
+        /// <param name="ct"></param>
+        [HttpPut("submissions/{submissionId}/comments/{submissionCommentId}")]
+        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "changeSubmissionComment")]
+        public async Task<IActionResult> ChangeSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
+        {
+            submissionComment.ModifiedBy = User.GetId();
+            var submission = await _submissionService.UpdateCommentAsync(submissionId, submissionCommentId, submissionComment, ct);
+            return Ok(submission);
+        }
+
+        /// <summary>
+        /// Deletes a  SubmissionComment
+        /// </summary>
+        /// <remarks>
+        /// Deletes a  SubmissionComment with the specified id
+        /// </remarks>
+        /// <param name="submissionId">The Id of the SubmissionComment to update</param>
+        /// <param name="submissionCommentId">The Id of the SubmissionComment to update</param>
+        /// <param name="ct"></param>
+        [HttpDelete("submissions/{submissionId}/comments/{submissionCommentId}")]
+        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "removeSubmissionComment")]
+        public async Task<IActionResult> RemoveSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, CancellationToken ct)
+        {
+            var submission = await _submissionService.DeleteCommentAsync(submissionId, submissionCommentId, ct);
+            return Ok(submission);
+        }
+
     }
 }
 

@@ -41,6 +41,9 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> FillTeamTypeAverageAsync(ViewModels.Submission submission, CancellationToken ct);
         Task<ViewModels.Submission> GetTeamAverageAsync(SubmissionEntity submission, CancellationToken ct);
         Task<ViewModels.Submission> GetTypeAverageAsync(Submission submission, CancellationToken ct);
+        Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct);
+        Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct);
+        Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
     }
 
     public class SubmissionService : ISubmissionService
@@ -515,16 +518,12 @@ namespace Cite.Api.Services
             var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
             var evaluationId = (Guid)submissionEntity.EvaluationId;
-            if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
-                        && submissionEntity.UserId == null
-                        && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
-            ))
+            if (!(await HasOptionAccess(submissionEntity, ct)))
                 throw new ForbiddenException();
 
+            // get modified date/time
+            var modifiedDateTime = DateTime.UtcNow;
+            var modifiedBy = _user.GetId();
             // Only one Modifier can be selected
             if (submissionOptionToUpdate.ScoringOption.IsModifier && value)
             {
@@ -533,8 +532,8 @@ namespace Cite.Api.Services
                 foreach (var submissionOption in submissionOptionsToClear)
                 {
                     submissionOption.IsSelected = false;
-                    submissionOption.ModifiedBy = _user.GetId();
-                    submissionOption.DateModified = DateTime.UtcNow;
+                    submissionOption.ModifiedBy = modifiedBy;
+                    submissionOption.DateModified = modifiedDateTime;
                 }
             }
             else
@@ -552,14 +551,18 @@ namespace Cite.Api.Services
                     foreach (var submissionOption in submissionOptionsToClear)
                     {
                         submissionOption.IsSelected = false;
-                        submissionOption.ModifiedBy = _user.GetId();
-                        submissionOption.DateModified = DateTime.UtcNow;
+                        submissionOption.ModifiedBy = modifiedBy;
+                        submissionOption.DateModified = modifiedDateTime;
                     }
                 }
             }
+            // update submission option
             submissionOptionToUpdate.IsSelected = value;
-            submissionOptionToUpdate.ModifiedBy = _user.GetId();
-            submissionOptionToUpdate.DateModified = DateTime.UtcNow;
+            submissionOptionToUpdate.ModifiedBy = modifiedBy;
+            submissionOptionToUpdate.DateModified = modifiedDateTime;
+            // update submission
+            submissionEntity.ModifiedBy = modifiedBy;
+            submissionEntity.DateModified = modifiedDateTime;
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
@@ -682,14 +685,7 @@ namespace Cite.Api.Services
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionToClear.TeamId);
             var evaluationId = (Guid)submissionToClear.EvaluationId;
-            if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
-                        && submissionToClear.UserId == null
-                        && (submissionToClear.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionToClear.UserId == _user.GetId())
-            ))
+            if (!(await HasOptionAccess(submissionToClear, ct)))
                 throw new ForbiddenException();
 
             if (submissionToClear.Status != Data.Enumerations.ItemStatus.Active)
@@ -734,14 +730,7 @@ namespace Cite.Api.Services
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == targetSubmission.TeamId);
             var evaluationId = (Guid)targetSubmission.EvaluationId;
-            if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
-                        && targetSubmission.UserId == null
-                        && (targetSubmission.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && targetSubmission.UserId == _user.GetId())
-            ))
+            if (!(await HasOptionAccess(targetSubmission, ct)))
                 throw new ForbiddenException();
 
             if (targetSubmission.Status != Data.Enumerations.ItemStatus.Active)
@@ -793,6 +782,80 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return true;
+        }
+
+        public async Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct)
+        {
+            var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
+            if (submissionEntity == null)
+                throw new EntityNotFoundException<Submission>();
+
+            if (!(await HasOptionAccess(submissionEntity, ct)))
+                throw new ForbiddenException();
+            // Add the submission comment
+            submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
+            submissionComment.DateCreated = DateTime.UtcNow;
+            submissionComment.CreatedBy = _user.GetId();
+            submissionComment.DateModified = null;
+            submissionComment.ModifiedBy = null;
+            var submissionCommentEntity = _mapper.Map<SubmissionCommentEntity>(submissionComment);
+            _context.SubmissionComments.Add(submissionCommentEntity);
+            // update and return the submission
+            submissionEntity.DateModified = submissionComment.DateCreated;
+            submissionEntity.ModifiedBy = submissionComment.CreatedBy;
+            await _context.SaveChangesAsync(ct);
+            
+            return await GetAsync(submissionId, ct);
+        }
+
+        public async Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct)
+        {
+            var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
+            if (submissionEntity == null)
+                throw new EntityNotFoundException<Submission>();
+
+            if (!(await HasOptionAccess(submissionEntity, ct)))
+                throw new ForbiddenException();
+
+            var submissionCommentToUpdate = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
+
+            if (submissionCommentToUpdate == null)
+                throw new EntityNotFoundException<SubmissionComment>();
+
+            submissionComment.CreatedBy = submissionCommentToUpdate.CreatedBy;
+            submissionComment.DateCreated = submissionCommentToUpdate.DateCreated;
+            submissionComment.ModifiedBy = _user.GetId();
+            submissionComment.DateModified = DateTime.UtcNow;
+            _mapper.Map(submissionComment, submissionCommentToUpdate);
+            _context.SubmissionComments.Update(submissionCommentToUpdate);
+            // update and return the submission
+            submissionEntity.DateModified = submissionComment.DateCreated;
+            submissionEntity.ModifiedBy = submissionComment.CreatedBy;
+            await _context.SaveChangesAsync(ct);
+            
+            return await GetAsync(submissionId, ct);
+        }
+
+        public async Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct)
+        {
+            var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
+            if (submissionEntity == null)
+                throw new EntityNotFoundException<Submission>();
+
+            if (!(await HasOptionAccess(submissionEntity, ct)))
+                throw new ForbiddenException();
+
+            var submissionCommentEntity = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
+            if (submissionCommentEntity == null)
+                throw new EntityNotFoundException<SubmissionComment>();
+            // delete the comment
+            _context.SubmissionComments.Remove(submissionCommentEntity);
+            // update and return the submission
+            submissionEntity.DateModified = DateTime.UtcNow;
+            submissionEntity.ModifiedBy = _user.GetId();
+            await _context.SaveChangesAsync(ct);
+            
+            return await GetAsync(submissionId, ct);
         }
 
         private async Task<IEnumerable<SubmissionCategoryEntity>> CreateSubmissionCategories(
@@ -990,6 +1053,26 @@ namespace Cite.Api.Services
 
             return result;
         }
+
+        private async Task<bool> HasOptionAccess(SubmissionEntity submissionEntity, CancellationToken ct)
+        {
+            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
+            var evaluationId = (Guid)submissionEntity.EvaluationId;
+            return (
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
+                        && submissionEntity.UserId == null
+                        && (submissionEntity.TeamId == null || isOnTeam)) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
+                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
+            );
+
+
+
+
+            
+        }
+
 
     }
 
