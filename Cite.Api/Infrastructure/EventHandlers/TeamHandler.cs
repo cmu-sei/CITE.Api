@@ -40,6 +40,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
             var groupIds = new List<string>();
             // add the team
             groupIds.Add(teamEntity.Id.ToString());
+            // add the evaluation
+            groupIds.Add(teamEntity.EvaluationId.ToString());
             // the admin data group gets everything
             groupIds.Add(MainHub.ADMIN_DATA_GROUP);
 
