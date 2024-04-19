@@ -32,6 +32,7 @@ namespace Cite.Api.Services
         Task<ViewModels.ScoringModel> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct);
         Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct);
+        Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct);
         Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid scoringModelId, CancellationToken ct);
         Task<ScoringModel> UploadJsonAsync(FileForm form, CancellationToken ct);
         Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.ScoringModel scoringModel, CancellationToken ct);
@@ -130,13 +131,13 @@ namespace Cite.Api.Services
             if (scoringModelEntity == null)
                 throw new EntityNotFoundException<ScoringModelEntity>("ScoringModel not found with ID=" + scoringModelId.ToString());
 
-            var newScoringModelEntity = await privateScoringModelCopyAsync(scoringModelEntity, ct);
+            var newScoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct);
             var scoringModel = _mapper.Map<ScoringModel>(newScoringModelEntity);
 
             return scoringModel;
         }
 
-        private async Task<ScoringModelEntity> privateScoringModelCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct)
+        public async Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
             var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
@@ -150,9 +151,9 @@ namespace Cite.Api.Services
             // copy ScoringCategories
             foreach (var scoringCategory in scoringModelEntity.ScoringCategories)
             {
-                var newDataFieldId = Guid.NewGuid();
-                scoringCategoryIdCrossReference[scoringCategory.Id] = newDataFieldId;
-                scoringCategory.Id = newDataFieldId;
+                var newId = Guid.NewGuid();
+                scoringCategoryIdCrossReference[scoringCategory.Id] = newId;
+                scoringCategory.Id = newId;
                 scoringCategory.ScoringModelId = scoringModelEntity.Id;
                 scoringCategory.ScoringModel = null;
                 scoringCategory.DateCreated = scoringModelEntity.DateCreated;
@@ -229,7 +230,7 @@ namespace Cite.Api.Services
             };
             var scoringModelEntity = JsonSerializer.Deserialize<ScoringModelEntity>(scoringModelJson, options);
             // make a copy and add it to the database
-            scoringModelEntity = await privateScoringModelCopyAsync(scoringModelEntity, ct);
+            scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct);
 
             return _mapper.Map<ScoringModel>(scoringModelEntity);
         }

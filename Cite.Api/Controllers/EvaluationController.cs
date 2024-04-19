@@ -124,6 +124,25 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Creates a new Evaluation by copying an existing Evaluation
+        /// </summary>
+        /// <remarks>
+        /// Creates a new Evaluation from the specified existing Evaluation
+        /// <para />
+        /// Accessible only to a ContentDeveloper or an Administrator
+        /// </remarks>
+        /// <param name="id">The ID of the Evaluation to be copied</param>
+        /// <param name="ct"></param>
+        [HttpPost("evaluations/{id}/copy")]
+        [ProducesResponseType(typeof(Evaluation), (int)HttpStatusCode.Created)]
+        [SwaggerOperation(OperationId = "copyEvaluation")]
+        public async Task<IActionResult> Copy(Guid id, CancellationToken ct)
+        {
+            var createdEvaluation = await _evaluationService.CopyAsync(id, ct);
+            return CreatedAtAction(nameof(this.Get), new { id = createdEvaluation.Id }, createdEvaluation);
+        }
+
+        /// <summary>
         /// Updates an Evaluation
         /// </summary>
         /// <remarks>
@@ -199,6 +218,32 @@ namespace Cite.Api.Controllers
         {
             await _evaluationService.DeleteAsync(id, ct);
             return NoContent();
+        }
+
+        /// <summary> Upload a json Evaluation file </summary>
+        /// <param name="form"> The files to upload and their settings </param>
+        /// <param name="ct"></param>
+        [HttpPost("evaluations/json")]
+        [ProducesResponseType(typeof(Evaluation), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "uploadJsonFiles")]
+        public async Task<IActionResult> UploadJsonAsync([FromForm] FileForm form, CancellationToken ct)
+        {
+            var result = await _evaluationService.UploadJsonAsync(form, ct);
+            return Ok(result);
+        }
+
+        /// <summary> Download a Evaluation by id as json file </summary>
+        /// <param name="id"> The id of the evaluation </param>
+        /// <param name="ct"></param>
+        [HttpGet("evaluations/{id}/json")]
+        [ProducesResponseType(typeof(FileResult), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "downloadJson")]
+        public async Task<IActionResult> DownloadJsonAsync(Guid id, CancellationToken ct)
+        {
+            (var stream, var fileName) = await _evaluationService.DownloadJsonAsync(id, ct);
+
+            // If this is wrapped in an Ok, it throws an exception
+            return File(stream, "application/octet-stream", fileName);
         }
 
     }

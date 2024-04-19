@@ -26,6 +26,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.TeamType>> GetAsync(CancellationToken ct);
         Task<ViewModels.TeamType> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.TeamType> CreateAsync(ViewModels.TeamType teamType, CancellationToken ct);
+        Task<ViewModels.TeamType> InternalCreateAsync(ViewModels.TeamType teamType, CancellationToken ct);
         Task<ViewModels.TeamType> UpdateAsync(Guid id, ViewModels.TeamType teamType, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
@@ -74,6 +75,11 @@ namespace Cite.Api.Services
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
 
+            return await InternalCreateAsync(teamType, ct);
+        }
+
+        public async Task<ViewModels.TeamType> InternalCreateAsync(ViewModels.TeamType teamType, CancellationToken ct)
+        {
             teamType.Id = teamType.Id != Guid.Empty ? teamType.Id : Guid.NewGuid();
             teamType.DateCreated = DateTime.UtcNow;
             teamType.CreatedBy = _user.GetId();
