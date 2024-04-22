@@ -3,9 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -30,6 +34,9 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct);
         Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct);
+        Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct);
+        Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct);
+        Task<Evaluation> UploadJsonAsync(FileForm form, CancellationToken ct);
         Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct);
         Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct);
@@ -45,6 +52,8 @@ namespace Cite.Api.Services
         private readonly ISubmissionService _submissionService;
         private readonly ILogger<EvaluationService> _logger;
         private readonly IMoveService _moveService;
+        private readonly IScoringModelService _scoringModelService;
+        private readonly ITeamTypeService _teamTypeService;
 
         public EvaluationService(
             CiteContext context,
@@ -193,6 +202,143 @@ namespace Cite.Api.Services
             await VerifyOfficialAndTeamSubmissions(evaluationEntity, ct);
 
             return await GetAsync(evaluation.Id, ct);
+        }
+
+        public async Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+            
+            var evaluationEntity = await _context.Evaluations
+                .AsNoTracking()
+                .Include(m => m.Teams)
+                .Include(m => m.Moves)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(m => m.Id == evaluationId);
+            if (evaluationEntity == null)
+                throw new EntityNotFoundException<EvaluationEntity>("Evaluation not found with ID=" + evaluationId.ToString());
+
+            var newEvaluationEntity = await privateEvaluationCopyAsync(evaluationEntity, ct);
+            var evaluation = _mapper.Map<Evaluation>(newEvaluationEntity);
+
+            return evaluation;
+        }
+
+        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity evaluationEntity, CancellationToken ct)
+        {
+            var currentUserId = _user.GetId();
+            var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
+            evaluationEntity.Id = Guid.NewGuid();
+            evaluationEntity.DateCreated = DateTime.UtcNow;
+            evaluationEntity.CreatedBy = currentUserId;
+            evaluationEntity.DateModified = evaluationEntity.DateCreated;
+            evaluationEntity.ModifiedBy = evaluationEntity.CreatedBy;
+            evaluationEntity.Description = evaluationEntity.Description + " - " + username;
+            // copy teams
+            foreach (var team in evaluationEntity.Teams)
+            {
+                team.Id = Guid.NewGuid();
+                team.EvaluationId = evaluationEntity.Id;
+                team.Evaluation = null;
+                team.DateCreated = evaluationEntity.DateCreated;
+                team.CreatedBy = evaluationEntity.CreatedBy;
+            }
+            // copy moves
+            foreach (var move in evaluationEntity.Moves)
+            {
+                move.Id = Guid.NewGuid();
+                move.EvaluationId = evaluationEntity.Id;
+                move.Evaluation = null;
+                move.DateCreated = evaluationEntity.DateCreated;
+                move.CreatedBy = evaluationEntity.CreatedBy;
+            }
+            _context.Evaluations.Add(evaluationEntity);
+            await _context.SaveChangesAsync(ct);
+
+            // get the new Evaluation to return
+            evaluationEntity = await _context.Evaluations
+                .Include(m => m.Teams)
+                .ThenInclude(t => t.TeamType)
+                .Include(m => m.Moves)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(sm => sm.Id == evaluationEntity.Id, ct);
+
+            return evaluationEntity;
+        }
+
+        public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)
+        {
+            // user must be a Content Developer
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var evaluation = await _context.Evaluations
+                .Include(m => m.ScoringModel)
+                .ThenInclude(m => m.ScoringCategories)
+                .ThenInclude(sc => sc.ScoringOptions)
+                .Include(m => m.Teams)
+                .ThenInclude(t => t.TeamType)
+                .Include(m => m.Moves)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(sm => sm.Id == evaluationId, ct);
+            if (evaluation == null)
+            {
+                throw new EntityNotFoundException<EvaluationEntity>("Evaluation not found " + evaluationId);
+            }
+
+            var evaluationJson = "";
+            var options = new JsonSerializerOptions()
+            {
+                ReferenceHandler = ReferenceHandler.Preserve
+            };
+            evaluationJson = JsonSerializer.Serialize(evaluation, options);
+            // convert string to stream
+            byte[] byteArray = Encoding.ASCII.GetBytes(evaluationJson);
+            MemoryStream memoryStream = new MemoryStream(byteArray);
+            var filename = evaluation.Description.ToLower().EndsWith(".json") ? evaluation.Description : evaluation.Description + ".json";
+
+            return System.Tuple.Create(memoryStream, filename);
+        }
+
+        public async Task<Evaluation> UploadJsonAsync(FileForm form, CancellationToken ct)
+        {
+            // user must be a Content Developer
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var uploadItem = form.ToUpload;
+            var evaluationJson = "";
+            using (StreamReader reader = new StreamReader(uploadItem.OpenReadStream()))
+            {
+                // convert stream to string
+                evaluationJson = reader.ReadToEnd();
+            }
+            var options = new JsonSerializerOptions()
+            {
+                ReferenceHandler = ReferenceHandler.Preserve
+            };
+            var evaluationEntity = JsonSerializer.Deserialize<EvaluationEntity>(evaluationJson, options);
+            // if the scoring model doesn't exist, create it
+            var exists = await _context.ScoringModels.AnyAsync(m => m.Id == evaluationEntity.ScoringModelId, ct);
+            if (!exists)
+            {
+                await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
+            }
+            evaluationEntity.ScoringModel = null;
+            // if TeamTypes don't exist, then create them
+            foreach (var team in evaluationEntity.Teams)
+            {
+                exists = await _context.TeamTypes.AnyAsync(m => m.Id == team.TeamTypeId, ct);
+                if (!exists)
+                {
+                    await _teamTypeService.InternalCreateAsync(_mapper.Map<TeamType>(team.TeamType), ct);
+                }
+                team.TeamType = null;
+            }
+            // make a copy and add it to the database
+            evaluationEntity = await privateEvaluationCopyAsync(evaluationEntity, ct);
+
+            return _mapper.Map<Evaluation>(evaluationEntity);
         }
 
         public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
