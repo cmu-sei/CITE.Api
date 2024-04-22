@@ -324,6 +324,7 @@ namespace Cite.Api.Services
             {
                 await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
             }
+            evaluationEntity.ScoringModel = null;
             // if TeamTypes don't exist, then create them
             foreach (var team in evaluationEntity.Teams)
             {
@@ -332,6 +333,7 @@ namespace Cite.Api.Services
                 {
                     await _teamTypeService.InternalCreateAsync(_mapper.Map<TeamType>(team.TeamType), ct);
                 }
+                team.TeamType = null;
             }
             // make a copy and add it to the database
             evaluationEntity = await privateEvaluationCopyAsync(evaluationEntity, ct);
