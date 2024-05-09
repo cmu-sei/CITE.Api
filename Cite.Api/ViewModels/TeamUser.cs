@@ -28,6 +28,7 @@ namespace Cite.Api.ViewModels
         public Boolean CanIncrementMove { get; set; }
         public Boolean CanModify { get; set; }
         public Boolean CanSubmit { get; set; }
+        public Boolean CanManageTeam { get; set; }
     }
 
 }

@@ -32,6 +32,7 @@ namespace Cite.Api.Data.Models
         public Boolean CanIncrementMove { get; set; }
         public Boolean CanModify { get; set; }
         public Boolean CanSubmit { get; set; }
+        public Boolean CanManageTeam { get; set; }
     }
 
     public class TeamUserConfiguration : IEntityTypeConfiguration<TeamUserEntity>
