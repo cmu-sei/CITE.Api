@@ -154,7 +154,7 @@ namespace Cite.Api.Services
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
             var evaluationList = await _context.Evaluations
-                .Where(e => evaluationIdList.Contains(e.Id) && e.Status == ItemStatus.Active)
+                .Where(e => evaluationIdList.Contains(e.Id) && e.Status != ItemStatus.Cancelled && e.Status != ItemStatus.Archived)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Evaluation>>(evaluationList);
