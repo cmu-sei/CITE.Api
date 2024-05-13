@@ -176,6 +176,40 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Sets the selected TeamUser manager flag
+        /// </summary>
+        /// <remarks>
+        /// Sets the TeamUser to an manager.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/manager/set")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "setManager")]
+        public async Task<IActionResult> SetManager([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetManagerAsync(id, true, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Clears the selected TeamUser manager flag
+        /// </summary>
+        /// <remarks>
+        /// Clears the TeamUser from being an manager.
+        /// </remarks>
+        /// <param name="id">The Id of the TeamUser to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("teamusers/{id}/manager/clear")]
+        [ProducesResponseType(typeof(TeamUser), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearManager")]
+        public async Task<IActionResult> ClearManager([FromRoute] Guid id, CancellationToken ct)
+        {
+            var result = await _teamUserService.SetManagerAsync(id, false, ct);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Sets the selected TeamUser modifier flag
         /// </summary>
         /// <remarks>
