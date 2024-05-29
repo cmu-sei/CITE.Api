@@ -478,7 +478,6 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
-            //await _xApiService.CreateAsync(verb, requestedSubmissionEntity.ScoringModel.Description, requestedSubmissionEntity.EvaluationId.Value, requestedSubmissionEntity.TeamId.Value, ct);
             await LogXApiAsync(verb, submission, null, ct);
 
             return _mapper.Map<ViewModels.Submission>(requestedSubmissionEntity);
@@ -517,7 +516,6 @@ namespace Cite.Api.Services
             if (submission.Status == Data.Enumerations.ItemStatus.Complete) {
                 verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/submitted");
             }
-            //await _xApiService.CreateAsync(verb, submission.Score.ToString(), submission.EvaluationId, submission.TeamId.Value, ct);
             await LogXApiAsync(verb, submission, null, ct);
 
             return submission;
@@ -655,7 +653,6 @@ namespace Cite.Api.Services
                     .ThenInclude(sc => sc.ScoringOptions)
                     .FirstAsync(sm => sm.Id == submissionEntity.ScoringModelId);
                 await CreateSubmissionCategories(submissionEntity, scoringModelEntity, ct);
-                //_logger.LogDebug("*** Created a submission");
                 _logger.LogInformation("Created submission for move " + submission.MoveNumber.ToString());
 
                 return submissionEntity;
@@ -694,7 +691,6 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/evaluated"); // could be interacted
-            //await _xApiService.CreateAsync(verb, submissionEntity.ScoringModel.Description, submissionEntity.EvaluationId.Value, submissionEntity.TeamId.Value, ct);
             await LogXApiAsync(verb, _mapper.Map<Submission>(submissionEntity), null, ct);
 
             return submissionEntity;
@@ -742,7 +738,6 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset"); // could be interacted or initialized
-            //await _xApiService.CreateAsync(verb, submissionToClear.Score.ToString(), submissionToClear.EvaluationId.Value, submissionToClear.TeamId.Value, ct);
             await LogXApiAsync(verb, submission, null, ct);
 
             return submission;
@@ -800,7 +795,6 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initialized"); // could be interacted
-            //await _xApiService.CreateAsync(verb, targetSubmission.Score.ToString(), targetSubmission.EvaluationId.Value, targetSubmission.TeamId.Value, ct);
             await LogXApiAsync(verb, submission, null, ct);
 
             return submission;

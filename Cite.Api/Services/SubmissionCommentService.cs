@@ -223,19 +223,9 @@ namespace Cite.Api.Services
                 category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
                 category.Add("moreInfo", "");
 
-                // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String,String>();
-/*
-                grouping.Add("id", card.Id.ToString());
-                grouping.Add("name", card.Name);
-                grouping.Add("description", card.Description);
-                grouping.Add("type", "card");
-                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
-                grouping.Add("moreInfo", "/?section=archive&exhibit=" + article.ExhibitId.ToString() + "&card=" + card.Id.ToString());
-*/
                 var other = new Dictionary<String,String>();
 
-                // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
                     verb, activity, parent, category, grouping, other, teamId, ct);
 

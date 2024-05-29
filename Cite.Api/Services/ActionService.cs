@@ -243,14 +243,6 @@ namespace Cite.Api.Services
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
                 var category = new Dictionary<String,String>();
-                /*
-                category.Add("id", scoringCategory.Id.ToString());
-                category.Add("name", scoringCategory.Description);
-                category.Add("description", "The scoring category type for the option.");
-                category.Add("type", "scoringCategory");
-                category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
-                category.Add("moreInfo", "");
-                */
 
                 var grouping = new Dictionary<String,String>();
                 grouping.Add("id", move.Id.ToString());
@@ -258,11 +250,9 @@ namespace Cite.Api.Services
                 grouping.Add("description", move.Description);
                 grouping.Add("type", "moves");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
-                //grouping.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString() + "&move=" + move.MoveNumber);
 
                 var other = new Dictionary<String,String>();
 
-                // TODO determine if we should log evaluation as registration
                 return await _xApiService.CreateAsync(
                     verb, activity, parent, category, grouping, other, teamId, ct);
 

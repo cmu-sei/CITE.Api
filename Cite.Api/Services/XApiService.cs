@@ -196,8 +196,6 @@ namespace Cite.Api.Services
                 contextActivities.other = new List<Activity>();
                 context.contextActivities.other.Add(other);
             }
-            //var extensions = new Extensions();
-            //context.extensions = new TinCan.Extensions();
 
             if (groupingData.Count() > 0) {
                 var grouping = new TinCan.Activity();
