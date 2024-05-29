@@ -49,10 +49,6 @@
     {
       "UserId": "ac4d3e32-c2d6-4f99-9aef-0fcd62a568a6",
       "PermissionId": "c881417e-02f1-4232-b06b-723901120e20"
-    },
-    {
-      "UserId": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
-      "PermissionId": "e0317506-fc9a-412d-a4bf-ac5ec915490e"
     }
   ],
   "TeamTypes": [
@@ -677,13 +673,14 @@
       "EvaluationId":"b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     },
     {
+      "Id": "d5ce7b40-5b93-41c6-ab45-36bddd387ab3",
       "Name": "Administrators",
       "ShortName": "Admin",
       "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
       "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     },
     {
-      "Id": "d208de1e-3792-4a87-ac97-212d1cc5faca",
+      "Id": "6a6bd639-c9f7-434c-b0cf-3dc9870cac3f",
       "Name": "Official Score Users",
       "ShortName": "Users",
       "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
@@ -756,7 +753,7 @@
     {
       "Id": "2e9a8669-844e-4d13-a0b6-5ca22e35f5a7",
       "Description": "The exercise has begun",
-      "MoveNumber": 1,
+      "MoveNumber": 2,
       "SituationTime": "2021-12-03T20:38:00Z",
       "SituationDescription": "Please score the current incident using the National Cyber Incident Scoring System.",
       "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
