@@ -678,19 +678,22 @@
     },
       "Name": "Administrators",
       "ShortName": "Admin",
-      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     },
     {
       "Id": "d208de1e-3792-4a87-ac97-212d1cc5faca",
       "Name": "Official Score Users",
       "ShortName": "Users",
-      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810"
+      "TeamTypeId": "28c9d58d-b273-48b1-a1f5-ac1048c55810",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     },
     {
       "Id": "9149f2ec-2e55-44f6-b92d-988ede6ca1f9",
       "Name": "Observers",
       "ShortName": "Observers",
-      "TeamTypeId": "e5a06ded-8895-47e7-84d7-52c4cc0487a8"
+      "TeamTypeId": "e5a06ded-8895-47e7-84d7-52c4cc0487a8",
+      "EvaluationId": "b92f00e7-8b7d-491f-afdb-389a0332b3b3"
     }
   ],
   "TeamUsers": [
