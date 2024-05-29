@@ -31,6 +31,8 @@ namespace Cite.Api.Services
         Task<ViewModels.Role> AddUserAsync(Guid roleId, Guid userId, CancellationToken ct);
         Task<ViewModels.Role> RemoveUserAsync(Guid roleId, Guid userId, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct);
+
     }
 
     public class RoleService : IRoleService
@@ -40,12 +42,14 @@ namespace Cite.Api.Services
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
          private readonly DatabaseOptions _options;
+        private readonly IXApiService _xApiService;
 
         public RoleService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
+            IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
@@ -53,6 +57,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _options = options;
+            _xApiService = xApiService;
         }
 
         public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
@@ -185,6 +190,11 @@ namespace Cite.Api.Services
             _context.RoleUsers.Add(roleUserEntity);
             await _context.SaveChangesAsync(ct);
 
+            // create and send xapi statement
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/assigned");
+            // object could be the user being added
+            await LogXApiAsync(verb, roleToUpdate, userToAdd, ct);
+
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
 
@@ -209,6 +219,14 @@ namespace Cite.Api.Services
             _context.RoleUsers.Remove(roleUserToRemove);
             await _context.SaveChangesAsync(ct);
 
+            // create and send xapi statement
+            var verb = new Uri ("https://w3id.org/xapi/dod-isd/verbs/removed");
+            var userToRemove = await _context.Users.SingleOrDefaultAsync(v => v.Id == userId, ct);
+            if (userToRemove == null)
+                throw new EntityNotFoundException<UserEntity>();
+            // object could be the user being removed
+            await LogXApiAsync(verb, roleToUpdate, userToRemove, ct);
+
             return _mapper.Map<ViewModels.Role>(roleToUpdate);
         }
 
@@ -230,6 +248,54 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return true;
+        }
+        public async Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct)
+        {
+
+            if (_xApiService.IsConfigured())
+            {
+                var evaluation = await _context.Evaluations.Where(e => e.Id == role.EvaluationId).FirstAsync();
+                var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
+
+                var teamId = (await _context.TeamUsers
+                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == role.EvaluationId)).TeamId;
+
+                var activity = new Dictionary<String,String>();
+                activity.Add("id", role.Id.ToString());
+                activity.Add("name", role.Name);
+                activity.Add("description", "Team-defined role.");
+                activity.Add("type", "roles");
+                activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+
+                var parent = new Dictionary<String,String>();
+                parent.Add("id", evaluation.Id.ToString());
+                parent.Add("name", "Evaluation");
+                parent.Add("description", evaluation.Description);
+                parent.Add("type", "evaluations");
+                parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
+                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
+
+                var category = new Dictionary<String,String>();
+
+                var grouping = new Dictionary<String,String>();
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.MoveNumber.ToString());
+                grouping.Add("description", move.Description);
+                grouping.Add("type", "moves");
+                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
+
+                var other = new Dictionary<String,String>();
+                other.Add("id", user.Id.ToString());
+                other.Add("name", user.Name);
+                other.Add("description", "The user assigned or removed from the role.");
+                other.Add("type", "users");
+                other.Add("activityType", "http://id.tincanapi.com/activitytype/user-profile");
+
+                return await _xApiService.CreateAsync(
+                    verb, activity, parent, category, grouping, other, teamId, ct);
+
+            }
+            return false;
         }
 
     }

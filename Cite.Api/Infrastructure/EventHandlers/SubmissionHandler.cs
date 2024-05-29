@@ -141,7 +141,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options) { }
+            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            {
+            }
 
         public async Task Handle(EntityCreated<SubmissionEntity> notification, CancellationToken cancellationToken)
         {
@@ -156,7 +158,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
             IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options) { }
+            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            {
+            }
 
         public async Task Handle(EntityUpdated<SubmissionEntity> notification, CancellationToken cancellationToken)
         {

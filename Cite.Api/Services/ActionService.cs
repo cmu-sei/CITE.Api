@@ -31,6 +31,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct);
         Task<ViewModels.Action> SetIsCheckedAsync(Guid id, bool value, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, ActionEntity action, CancellationToken ct);
     }
 
     public class ActionService : IActionService
@@ -39,13 +40,15 @@ namespace Cite.Api.Services
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
-         private readonly DatabaseOptions _options;
+        private readonly DatabaseOptions _options;
+        private readonly IXApiService _xApiService;
 
         public ActionService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
+            IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
@@ -53,6 +56,7 @@ namespace Cite.Api.Services
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _options = options;
+            _xApiService = xApiService;
         }
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
@@ -182,6 +186,14 @@ namespace Cite.Api.Services
             actionToUpdate.ChangedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
+            // create and send xapi statement
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/completed");
+            if (!value) {
+                verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset");
+            }
+
+            await LogXApiAsync(verb, actionToUpdate, ct);
+
             return _mapper.Map<ViewModels.Action>(actionToUpdate);
         }
 
@@ -203,6 +215,49 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return true;
+        }
+        public async Task<bool> LogXApiAsync(Uri verb, ActionEntity action, CancellationToken ct)
+        {
+
+            if (_xApiService.IsConfigured())
+            {
+                var evaluation = await _context.Evaluations.Where(e => e.Id == action.EvaluationId).FirstAsync();
+                var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
+
+                var teamId = (await _context.TeamUsers
+                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == action.EvaluationId)).TeamId;
+
+                var activity = new Dictionary<String,String>();
+                activity.Add("id", action.Id.ToString());
+                activity.Add("name", action.Description);
+                activity.Add("description", "Team-defined action or task.");
+                activity.Add("type", "actions");
+                activity.Add("activityType", "http://id.tincanapi.com/activitytype/checklist-item");
+
+                var parent = new Dictionary<String,String>();
+                parent.Add("id", evaluation.Id.ToString());
+                parent.Add("name", "Evaluation");
+                parent.Add("description", evaluation.Description);
+                parent.Add("type", "evaluations");
+                parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
+                parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
+
+                var category = new Dictionary<String,String>();
+
+                var grouping = new Dictionary<String,String>();
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.MoveNumber.ToString());
+                grouping.Add("description", move.Description);
+                grouping.Add("type", "moves");
+                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
+
+                var other = new Dictionary<String,String>();
+
+                return await _xApiService.CreateAsync(
+                    verb, activity, parent, category, grouping, other, teamId, ct);
+
+            }
+            return false;
         }
 
     }

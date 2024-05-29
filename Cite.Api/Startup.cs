@@ -36,7 +36,7 @@ namespace Cite.Api
     public class Startup
     {
         public Infrastructure.Options.AuthorizationOptions _authOptions = new Infrastructure.Options.AuthorizationOptions();
-        public Infrastructure.Options.VmTaskProcessingOptions _vmTaskProcessingOptions = new Infrastructure.Options.VmTaskProcessingOptions();
+        public Infrastructure.Options.XApiOptions _xApiOptions = new Infrastructure.Options.XApiOptions();
         public IConfiguration Configuration { get; }
         private string _pathbase;
         private const string _routePrefix = "api";
@@ -45,7 +45,7 @@ namespace Cite.Api
         {
             Configuration = configuration;
             Configuration.GetSection("Authorization").Bind(_authOptions);
-            Configuration.GetSection("VmTaskProcessing").Bind(_vmTaskProcessingOptions);
+            Configuration.GetSection("XApiOptions").Bind(_xApiOptions);
             _pathbase = Configuration["PathBase"];
         }
 
@@ -91,6 +91,9 @@ namespace Cite.Api
             services.AddOptions()
                 .Configure<DatabaseOptions>(Configuration.GetSection("Database"))
                     .AddScoped(config => config.GetService<IOptionsMonitor<DatabaseOptions>>().CurrentValue)
+
+                .Configure<XApiOptions>(Configuration.GetSection("XApiOptions"))
+                    .AddScoped(config => config.GetService<IOptionsMonitor<XApiOptions>>().CurrentValue)
 
                 .Configure<ClaimsTransformationOptions>(Configuration.GetSection("ClaimsTransformation"))
                     .AddScoped(config => config.GetService<IOptionsMonitor<ClaimsTransformationOptions>>().CurrentValue)
@@ -171,6 +174,7 @@ namespace Cite.Api
             services.AddScoped<IEvaluationService, EvaluationService>();
             services.AddScoped<IGalleryService, GalleryService>();
             services.AddScoped<IMoveService, MoveService>();
+            services.AddScoped<IXApiService, XApiService>();
             services.AddScoped<IRoleService, RoleService>();
             services.AddScoped<IScoringCategoryService, ScoringCategoryService>();
             services.AddScoped<IScoringModelService, ScoringModelService>();
@@ -199,7 +203,6 @@ namespace Cite.Api
                     (pm, c) => c.MapFrom<object, object, object, object>(new IgnoreNullSourceValues(), pm.SourceMember.Name));
             }, typeof(Startup));
             services.AddMediatR(typeof(Startup));
-            services.Configure<VmTaskProcessingOptions>(Configuration.GetSection("VmTaskProcessing"));
             services
                 .Configure<ResourceOwnerAuthorizationOptions>(Configuration.GetSection("ResourceOwnerAuthorization"))
                 .AddScoped(config => config.GetService<IOptionsMonitor<ResourceOwnerAuthorizationOptions>>().CurrentValue);
