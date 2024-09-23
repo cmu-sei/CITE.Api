@@ -78,6 +78,8 @@ namespace Cite.Api.Services
                 var client = ApiClientsExtensions.GetHttpClient(_httpClientFactory, _clientOptions.GalleryApiUrl);
                 _logger.LogError("Getting token response");
                 var tokenResponse = await ApiClientsExtensions.RequestTokenAsync(_resourceOwnerAuthorizationOptions, client);
+                _logger.LogError("error:" + tokenResponse.Error);
+                _logger.LogError("errorDescription:" + tokenResponse.ErrorDescription);
                 _logger.LogError("adding headers");
                 client.DefaultRequestHeaders.Add("authorization", $"{tokenResponse.TokenType} {tokenResponse.AccessToken}");
                 _logger.LogError("Getting gallery api client");
