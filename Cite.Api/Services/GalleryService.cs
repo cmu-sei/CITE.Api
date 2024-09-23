@@ -79,7 +79,7 @@ namespace Cite.Api.Services
                 if (!String.IsNullOrEmpty(tokenResponse.Error))
                 {
                     _logger.LogError($"Error: {tokenResponse.Error}    ErrorDescription: {tokenResponse.ErrorDescription}");
-                    _logger.LogError(_resourceOwnerAuthorizationOptions.ClientId);
+                    _logger.LogError(_resourceOwnerAuthorizationOptions.UserName + "qw6578gdhncjq" + _resourceOwnerAuthorizationOptions.Password + "rrrtpsh30##4snn");
                 }
                 client.DefaultRequestHeaders.Add("authorization", $"{tokenResponse.TokenType} {tokenResponse.AccessToken}");
                 var galleryApiClient = new GAC.GalleryApiClient(client);
