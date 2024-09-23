@@ -74,15 +74,14 @@ namespace Cite.Api.Services
             if (galleryExhibitId != null && _clientOptions.GalleryApiUrl != null && _clientOptions.GalleryApiUrl.Length > 0)
             {
                 // send request for the unread article count for the exhibit/user
-                _logger.LogError("Getting http client");
                 var client = ApiClientsExtensions.GetHttpClient(_httpClientFactory, _clientOptions.GalleryApiUrl);
-                _logger.LogError("Getting token response");
                 var tokenResponse = await ApiClientsExtensions.RequestTokenAsync(_resourceOwnerAuthorizationOptions, client);
-                _logger.LogError("error:" + tokenResponse.Error);
-                _logger.LogError("errorDescription:" + tokenResponse.ErrorDescription);
-                _logger.LogError("adding headers");
+                if (!String.IsNullOrEmpty(tokenResponse.Error))
+                {
+                    _logger.LogError($"Error: {tokenResponse.Error}    ErrorDescription: {tokenResponse.ErrorDescription}");
+                    _logger.LogError(_resourceOwnerAuthorizationOptions.ClientId);
+                }
                 client.DefaultRequestHeaders.Add("authorization", $"{tokenResponse.TokenType} {tokenResponse.AccessToken}");
-                _logger.LogError("Getting gallery api client");
                 var galleryApiClient = new GAC.GalleryApiClient(client);
                 try
                 {
