@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
-    public partial class incidentNumber : Migration
+    public partial class IncidentNumber : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

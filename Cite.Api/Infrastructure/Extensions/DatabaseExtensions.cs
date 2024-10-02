@@ -2,7 +2,6 @@
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,8 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Hosting;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
@@ -22,7 +19,7 @@ namespace Cite.Api.Infrastructure.Extensions
 {
     public static class DatabaseExtensions
     {
-        public static IWebHost InitializeDatabase(this IWebHost webHost)
+        public static IHost InitializeDatabase(this IHost webHost)
         {
             using (var scope = webHost.Services.CreateScope())
             {

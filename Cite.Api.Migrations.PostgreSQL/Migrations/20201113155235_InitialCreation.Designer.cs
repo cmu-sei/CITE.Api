@@ -65,7 +65,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringModelId");
 
-                    b.ToTable("evaluations");
+                    b.ToTable("evaluations", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.PermissionEntity", b =>
@@ -113,7 +113,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Key", "Value")
                         .IsUnique();
 
-                    b.ToTable("permissions");
+                    b.ToTable("permissions", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringCategoryEntity", b =>
@@ -164,7 +164,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringModelId");
 
-                    b.ToTable("scoring_categories");
+                    b.ToTable("scoring_categories", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelEntity", b =>
@@ -201,7 +201,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("scoring_models");
+                    b.ToTable("scoring_models", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringOptionEntity", b =>
@@ -248,7 +248,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringCategoryId");
 
-                    b.ToTable("scoring_options");
+                    b.ToTable("scoring_options", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionCategoryEntity", b =>
@@ -299,7 +299,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("SubmissionId");
 
-                    b.ToTable("submission_categories");
+                    b.ToTable("submission_categories", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionEntity", b =>
@@ -364,7 +364,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("submissions");
+                    b.ToTable("submissions", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionOptionEntity", b =>
@@ -415,7 +415,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("SubmissionCategoryId");
 
-                    b.ToTable("submission_options");
+                    b.ToTable("submission_options", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamEntity", b =>
@@ -457,7 +457,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Id")
                         .IsUnique();
 
-                    b.ToTable("teams");
+                    b.ToTable("teams", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamUserEntity", b =>
@@ -483,7 +483,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("UserId", "TeamId")
                         .IsUnique();
 
-                    b.ToTable("team_users");
+                    b.ToTable("team_users", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserEntity", b =>
@@ -519,7 +519,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Id")
                         .IsUnique();
 
-                    b.ToTable("users");
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserPermissionEntity", b =>
@@ -545,7 +545,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("UserId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("user_permissions");
+                    b.ToTable("user_permissions", (string)null);
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>

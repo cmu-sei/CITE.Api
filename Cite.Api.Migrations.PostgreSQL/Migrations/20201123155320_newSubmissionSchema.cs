@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
-    public partial class newSubmissionSchema : Migration
+    public partial class NewSubmissionSchema : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
