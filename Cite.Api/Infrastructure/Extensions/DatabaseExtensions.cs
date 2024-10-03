@@ -206,7 +206,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
                 foreach (TeamUserEntity teamUser in options.TeamUsers)
                 {
-                    if (!dbTeamUsers.Where(x => x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId).Any())
+                    if (!dbTeamUsers.Where(x => (x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId) || x.Id == teamUser.Id).Any())
                     {
                         context.TeamUsers.Add(teamUser);
                     }
@@ -220,7 +220,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
                 foreach (MoveEntity move in options.Moves)
                 {
-                    if (!dbMoves.Where(x => x.Id == move.Id).Any())
+                    if (!dbMoves.Where(x => x.Id == move.Id || (x.EvaluationId == move.EvaluationId && x.MoveNumber == move.MoveNumber)).Any())
                     {
                         context.Moves.Add(move);
                     }

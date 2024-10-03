@@ -62,6 +62,8 @@ namespace Cite.Api.Services
             IMapper mapper,
             ISubmissionService submissionService,
             IMoveService moveService,
+            IScoringModelService scoringModelService,
+            ITeamTypeService teamTypeService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
@@ -70,6 +72,8 @@ namespace Cite.Api.Services
             _mapper = mapper;
             _submissionService = submissionService;
             _moveService = moveService;
+            _scoringModelService = scoringModelService;
+            _teamTypeService = teamTypeService;
             _logger = logger;
         }
 
@@ -208,7 +212,7 @@ namespace Cite.Api.Services
         {
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
-            
+
             var evaluationEntity = await _context.Evaluations
                 .AsNoTracking()
                 .Include(m => m.Teams)
@@ -545,4 +549,3 @@ namespace Cite.Api.Services
         public string SituationDescription { get; set; }
     }
 }
-

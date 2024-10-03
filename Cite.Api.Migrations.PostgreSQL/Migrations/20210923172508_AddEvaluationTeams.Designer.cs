@@ -71,7 +71,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringModelId");
 
-                    b.ToTable("evaluations", (string)null);
+                    b.ToTable("evaluations");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.EvaluationTeamEntity", b =>
@@ -113,7 +113,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("EvaluationId", "TeamId")
                         .IsUnique();
 
-                    b.ToTable("evaluation_teams", (string)null);
+                    b.ToTable("evaluation_teams");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.GroupEntity", b =>
@@ -149,7 +149,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Id")
                         .IsUnique();
 
-                    b.ToTable("groups", (string)null);
+                    b.ToTable("groups");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.GroupTeamEntity", b =>
@@ -175,7 +175,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("GroupId", "TeamId")
                         .IsUnique();
 
-                    b.ToTable("group_teams", (string)null);
+                    b.ToTable("group_teams");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
@@ -219,7 +219,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("EvaluationId", "MoveNumber")
                         .IsUnique();
 
-                    b.ToTable("moves", (string)null);
+                    b.ToTable("moves");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.PermissionEntity", b =>
@@ -267,7 +267,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Key", "Value")
                         .IsUnique();
 
-                    b.ToTable("permissions", (string)null);
+                    b.ToTable("permissions");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringCategoryEntity", b =>
@@ -322,7 +322,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringModelId");
 
-                    b.ToTable("scoring_categories", (string)null);
+                    b.ToTable("scoring_categories");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelEntity", b =>
@@ -363,7 +363,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("scoring_models", (string)null);
+                    b.ToTable("scoring_models");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringOptionEntity", b =>
@@ -414,7 +414,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("ScoringCategoryId");
 
-                    b.ToTable("scoring_options", (string)null);
+                    b.ToTable("scoring_options");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionCategoryEntity", b =>
@@ -459,7 +459,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("SubmissionId");
 
-                    b.ToTable("submission_categories", (string)null);
+                    b.ToTable("submission_categories");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionCommentEntity", b =>
@@ -498,7 +498,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("SubmissionOptionId");
 
-                    b.ToTable("submission_comments", (string)null);
+                    b.ToTable("submission_comments");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionEntity", b =>
@@ -564,7 +564,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("EvaluationId", "UserId", "TeamId", "MoveNumber")
                         .IsUnique();
 
-                    b.ToTable("submissions", (string)null);
+                    b.ToTable("submissions");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.SubmissionOptionEntity", b =>
@@ -609,7 +609,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("SubmissionCategoryId");
 
-                    b.ToTable("submission_options", (string)null);
+                    b.ToTable("submission_options");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamEntity", b =>
@@ -661,7 +661,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasIndex("TeamTypeId");
 
-                    b.ToTable("teams", (string)null);
+                    b.ToTable("teams");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamTypeEntity", b =>
@@ -694,7 +694,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("team_types", (string)null);
+                    b.ToTable("team_types");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamUserEntity", b =>
@@ -720,7 +720,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("UserId", "TeamId")
                         .IsUnique();
 
-                    b.ToTable("team_users", (string)null);
+                    b.ToTable("team_users");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserEntity", b =>
@@ -756,7 +756,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("Id")
                         .IsUnique();
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("users");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserPermissionEntity", b =>
@@ -782,7 +782,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("UserId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("user_permissions", (string)null);
+                    b.ToTable("user_permissions");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>

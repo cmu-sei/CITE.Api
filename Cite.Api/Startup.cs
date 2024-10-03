@@ -233,7 +233,7 @@ public class Startup
                     .SingleOrDefault(x => x.StartsWith("bearer="))?.Split('=')[1];
 
                 if (!String.IsNullOrWhiteSpace(token))
-                    context.Request.Headers.Add("Authorization", new[] { $"Bearer {token}" });
+                    context.Request.Headers.Append("Authorization", new[] { $"Bearer {token}" });
             }
 
             await next.Invoke();

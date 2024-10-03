@@ -5,7 +5,7 @@
     <ProjectGuid>{94A7F5B1-E6D5-465C-B07F-2573ACCD0236}</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cite.Api.Data\Cite.Api.Data.csproj" />
