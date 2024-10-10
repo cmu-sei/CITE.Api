@@ -257,7 +257,10 @@ public class Startup
         app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                endpoints.MapHub<Hubs.MainHub>("/hubs/main");
+                endpoints.MapHub<Hubs.MainHub>("/hubs/main", options =>
+                    {
+                        options.AllowStatefulReconnects = _signalROptions.EnableStatefulReconnect;
+                    });
                 endpoints.MapHealthChecks($"/{_routePrefix}/health/ready", new HealthCheckOptions()
                 {
                     Predicate = (check) => check.Tags.Contains("ready"),
