@@ -1,21 +1,19 @@
 // Copyright 2022 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
+using System;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Cite.Api.Data.Models;
 using Cite.Api.Data.Extensions;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.Internal;
 
 namespace Cite.Api.Data
 {
     public class CiteContext : DbContext
     {
-        private DbContextOptions<CiteContext> _options;
+        // Needed for EventInterceptor
+        public IServiceProvider ServiceProvider;
 
-        public CiteContext(DbContextOptions<CiteContext> options) : base(options) {
-            _options = options;
-        }
+        public CiteContext(DbContextOptions<CiteContext> options) : base(options) { }
 
         public DbSet<ScoringModelEntity> ScoringModels { get; set; }
         public DbSet<ScoringCategoryEntity> ScoringCategories { get; set; }
@@ -50,4 +48,3 @@ namespace Cite.Api.Data
         }
     }
 }
-

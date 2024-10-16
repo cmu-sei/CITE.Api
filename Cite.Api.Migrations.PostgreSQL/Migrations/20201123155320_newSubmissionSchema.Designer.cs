@@ -14,7 +14,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
     [Migration("20201123155320_newSubmissionSchema")]
-    partial class newSubmissionSchema
+    partial class NewSubmissionSchema
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

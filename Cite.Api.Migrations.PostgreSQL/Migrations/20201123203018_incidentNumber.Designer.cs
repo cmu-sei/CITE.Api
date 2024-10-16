@@ -14,7 +14,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
     [Migration("20201123203018_incidentNumber")]
-    partial class incidentNumber
+    partial class IncidentNumber
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

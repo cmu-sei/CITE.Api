@@ -2,7 +2,6 @@
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,8 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Hosting;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
@@ -22,7 +19,7 @@ namespace Cite.Api.Infrastructure.Extensions
 {
     public static class DatabaseExtensions
     {
-        public static IWebHost InitializeDatabase(this IWebHost webHost)
+        public static IHost InitializeDatabase(this IHost webHost)
         {
             using (var scope = webHost.Services.CreateScope())
             {
@@ -209,7 +206,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
                 foreach (TeamUserEntity teamUser in options.TeamUsers)
                 {
-                    if (!dbTeamUsers.Where(x => x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId).Any())
+                    if (!dbTeamUsers.Where(x => (x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId) || x.Id == teamUser.Id).Any())
                     {
                         context.TeamUsers.Add(teamUser);
                     }
@@ -223,7 +220,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
                 foreach (MoveEntity move in options.Moves)
                 {
-                    if (!dbMoves.Where(x => x.Id == move.Id).Any())
+                    if (!dbMoves.Where(x => x.Id == move.Id || (x.EvaluationId == move.EvaluationId && x.MoveNumber == move.MoveNumber)).Any())
                     {
                         context.Moves.Add(move);
                     }
