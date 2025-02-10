@@ -76,6 +76,9 @@ namespace Cite.Api.Services
                 // send request for the unread article count for the exhibit/user
                 var client = ApiClientsExtensions.GetHttpClient(_httpClientFactory, _clientOptions.GalleryApiUrl);
                 var tokenResponse = await ApiClientsExtensions.RequestTokenAsync(_resourceOwnerAuthorizationOptions, client);
+                if (tokenResponse.IsError)
+                    throw new SystemException($"Error getting resource owner authorization token.  Error: {tokenResponse.Error}.  Description: {tokenResponse.ErrorDescription}");
+
                 client.DefaultRequestHeaders.Add("authorization", $"{tokenResponse.TokenType} {tokenResponse.AccessToken}");
                 var galleryApiClient = new GAC.GalleryApiClient(client);
                 try
@@ -93,4 +96,3 @@ namespace Cite.Api.Services
 
     }
 }
-
