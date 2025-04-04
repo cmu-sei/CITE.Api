@@ -326,7 +326,8 @@ namespace Cite.Api.Services
             var exists = await _context.ScoringModels.AnyAsync(m => m.Id == evaluationEntity.ScoringModelId, ct);
             if (!exists)
             {
-                await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
+                var newScoringModel = await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
+                evaluationEntity.ScoringModelId = newScoringModel.Id;
             }
             evaluationEntity.ScoringModel = null;
             // if TeamTypes don't exist, then create them
