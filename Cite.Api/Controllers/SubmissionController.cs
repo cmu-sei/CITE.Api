@@ -47,6 +47,24 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets Submissions by evaluation
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of Submissions for the evaluation.
+        /// </remarks>
+        /// <param name="evaluationId"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/submissions")]
+        [ProducesResponseType(typeof(IEnumerable<Submission>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getByEvaluation")]
+        public async Task<IActionResult> GetByEvaluation(Guid evaluationId, CancellationToken ct)
+        {
+            var list = await _submissionService.GetByEvaluationAsync(evaluationId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets Submissions by evaluation for current user
         /// </summary>
         /// <remarks>
@@ -295,4 +313,3 @@ namespace Cite.Api.Controllers
 
     }
 }
-
