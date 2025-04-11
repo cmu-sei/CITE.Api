@@ -144,11 +144,12 @@ namespace Cite.Api.Services
 
             var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
             var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
-            var submissionEntities = _context.Submissions.Where(sm => sm.EvaluationId == evaluationId && sm.MoveNumber <= currentMoveNumber);
-            var submissionEntityList = await submissionEntities
+            var submissionEntities = _context.Submissions
                 .Include(sm => sm.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
+                .Where(sm => sm.EvaluationId == evaluationId && sm.MoveNumber <= currentMoveNumber);
+            var submissionEntityList = await submissionEntities
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
 
@@ -488,19 +489,20 @@ namespace Cite.Api.Services
             {
                 _logger.LogDebug("Requested submission was created before this call could create it");
                 // find the requested submission entity
-                requestedSubmissionEntity = await _context.Submissions.FirstOrDefaultAsync(s =>
-                    s.UserId == submission.UserId &&
-                    s.TeamId == submission.TeamId &&
-                    s.EvaluationId == submission.EvaluationId &&
-                    s.MoveNumber == submission.MoveNumber
-                );
+                requestedSubmissionEntity = await _context.Submissions
+                    .FirstOrDefaultAsync(s =>
+                        s.UserId == submission.UserId &&
+                        s.TeamId == submission.TeamId &&
+                        s.EvaluationId == submission.EvaluationId &&
+                        s.MoveNumber == submission.MoveNumber
+                    );
             }
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
             await LogXApiAsync(verb, submission, null, ct);
 
-            return _mapper.Map<ViewModels.Submission>(requestedSubmissionEntity);
+            return await GetAsync(requestedSubmissionEntity.Id, ct);
         }
 
         public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct)
@@ -607,7 +609,7 @@ namespace Cite.Api.Services
             }
             await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
 
-            return _mapper.Map<Submission>(submissionEntity);
+            return await GetAsync(submissionEntity.Id, ct);
         }
 
         private async Task<SubmissionEntity> createRequestedSubmissionAndOthers(ViewModels.Submission submission, CancellationToken ct)
