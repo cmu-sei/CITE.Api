@@ -20,13 +20,13 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
-using Cite.Api.Migrations.PostgreSQL.Migrations;
 
 namespace Cite.Api.Services
 {
     public interface ISubmissionService
     {
         Task<IEnumerable<ViewModels.Submission>> GetAsync(SubmissionGet queryParameters, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Submission>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<ViewModels.Submission> GetAsync(Guid id, CancellationToken ct);
@@ -137,6 +137,25 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<Submission>>(await submissions.ToListAsync());
         }
 
+        public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
+        {
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+                throw new ForbiddenException();
+
+            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
+            var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
+            var submissionEntities = _context.Submissions
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
+                .Where(sm => sm.EvaluationId == evaluationId && sm.MoveNumber <= currentMoveNumber);
+            var submissionEntityList = await submissionEntities
+                .ToListAsync();
+            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
+
+            return submissions;
+        }
+
         public async Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
@@ -151,11 +170,16 @@ namespace Cite.Api.Services
             var isContributor = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
             var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
-            var submissionEntities = _context.Submissions.Where(sm =>
-                (sm.UserId == userId && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
-                (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
-                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
-                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor));
+            var submissionEntities = _context.Submissions
+                .Include(sm => sm.SubmissionCategories)
+                .ThenInclude(sc => sc.SubmissionOptions)
+                .ThenInclude(so => so.SubmissionComments)
+                .Where(sm =>
+                    (sm.UserId == userId && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
+                    (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
+                    (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
+                    (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor)
+                );
             if (!scoringModel.UseUserScore)
             {
                 submissionEntities = submissionEntities.Where(sm => !(sm.UserId == userId));
@@ -173,9 +197,6 @@ namespace Cite.Api.Services
                 submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == null));
             }
             var submissionEntityList = await submissionEntities
-                .Include(sm => sm.SubmissionCategories)
-                .ThenInclude(sc => sc.SubmissionOptions)
-                .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync();
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
             var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
@@ -317,7 +338,7 @@ namespace Cite.Api.Services
             {
                 throw new ForbiddenException("TeamType " + teamType.Name + " cannot view the average score for the TeamType.");
             }
-            var isObserver = (await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(submission.EvaluationId, _context))).Succeeded;            
+            var isObserver = (await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(submission.EvaluationId, _context))).Succeeded;
             var userId = _user.GetId();
             var teamIdList = await _context.Teams.Where(t => t.EvaluationId == submission.EvaluationId && t.TeamTypeId == submission.GroupId).Select(t => t.Id).ToListAsync(ct);
             var canSeeTeamTypeAverage = await _context.TeamUsers.Where(tu => teamIdList.Contains(tu.TeamId) && tu.UserId == userId).AnyAsync(ct);
@@ -468,19 +489,20 @@ namespace Cite.Api.Services
             {
                 _logger.LogDebug("Requested submission was created before this call could create it");
                 // find the requested submission entity
-                requestedSubmissionEntity = await _context.Submissions.FirstOrDefaultAsync(s =>
-                    s.UserId == submission.UserId &&
-                    s.TeamId == submission.TeamId &&
-                    s.EvaluationId == submission.EvaluationId &&
-                    s.MoveNumber == submission.MoveNumber
-                );
+                requestedSubmissionEntity = await _context.Submissions
+                    .FirstOrDefaultAsync(s =>
+                        s.UserId == submission.UserId &&
+                        s.TeamId == submission.TeamId &&
+                        s.EvaluationId == submission.EvaluationId &&
+                        s.MoveNumber == submission.MoveNumber
+                    );
             }
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
             await LogXApiAsync(verb, submission, null, ct);
 
-            return _mapper.Map<ViewModels.Submission>(requestedSubmissionEntity);
+            return await GetAsync(requestedSubmissionEntity.Id, ct);
         }
 
         public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct)
@@ -587,7 +609,7 @@ namespace Cite.Api.Services
             }
             await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
 
-            return _mapper.Map<Submission>(submissionEntity);
+            return await GetAsync(submissionEntity.Id, ct);
         }
 
         private async Task<SubmissionEntity> createRequestedSubmissionAndOthers(ViewModels.Submission submission, CancellationToken ct)
@@ -836,7 +858,7 @@ namespace Cite.Api.Services
             submissionEntity.DateModified = submissionComment.DateCreated;
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
-            
+
             return await GetAsync(submissionId, ct);
         }
 
@@ -864,7 +886,7 @@ namespace Cite.Api.Services
             submissionEntity.DateModified = submissionComment.DateCreated;
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
-            
+
             return await GetAsync(submissionId, ct);
         }
 
@@ -886,7 +908,7 @@ namespace Cite.Api.Services
             submissionEntity.DateModified = DateTime.UtcNow;
             submissionEntity.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
-            
+
             return await GetAsync(submissionId, ct);
         }
 
@@ -1182,7 +1204,7 @@ namespace Cite.Api.Services
 
 
 
-            
+
         }
 
     }
@@ -1196,4 +1218,3 @@ namespace Cite.Api.Services
     }
 
 }
-
