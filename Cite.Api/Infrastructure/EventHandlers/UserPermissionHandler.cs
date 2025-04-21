@@ -25,7 +25,6 @@ namespace Cite.Api.Infrastructure.EventHandlers
         public BaseUserPermissionHandler(
             CiteContext db,
             IMapper mapper,
-            IUserService userService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
@@ -69,8 +68,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
         public UserPermissionCreatedSignalRHandler(
             CiteContext db,
             IMapper mapper,
-            IUserService userPermissionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, userPermissionService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, mapper, mainHub) { }
 
         public async Task Handle(EntityCreated<UserPermissionEntity> notification, CancellationToken cancellationToken)
         {
@@ -83,8 +81,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
         public UserPermissionDeletedSignalRHandler(
             CiteContext db,
             IMapper mapper,
-            IUserService userPermissionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, userPermissionService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, mapper, mainHub)
         {
         }
 

@@ -18,20 +18,14 @@ namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class UserHandler
     {
-        protected readonly CiteContext _db;
         protected readonly IMapper _mapper;
-        protected readonly IUserService _UserService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public UserHandler(
-            CiteContext db,
             IMapper mapper,
-            IUserService UserService,
             IHubContext<MainHub> mainHub)
         {
-            _db = db;
             _mapper = mapper;
-            _UserService = UserService;
             _mainHub = mainHub;
         }
 
@@ -67,10 +61,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserCreatedSignalRHandler : UserHandler, INotificationHandler<EntityCreated<UserEntity>>
     {
         public UserCreatedSignalRHandler(
-            CiteContext db,
             IMapper mapper,
-            IUserService userService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, userService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(mapper, mainHub) { }
 
         public async Task Handle(EntityCreated<UserEntity> notification, CancellationToken cancellationToken)
         {
@@ -81,10 +73,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserUpdatedSignalRHandler : UserHandler, INotificationHandler<EntityUpdated<UserEntity>>
     {
         public UserUpdatedSignalRHandler(
-            CiteContext db,
             IMapper mapper,
-            IUserService userService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, userService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(mapper, mainHub) { }
 
         public async Task Handle(EntityUpdated<UserEntity> notification, CancellationToken cancellationToken)
         {
@@ -99,10 +89,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserDeletedSignalRHandler : UserHandler, INotificationHandler<EntityDeleted<UserEntity>>
     {
         public UserDeletedSignalRHandler(
-            CiteContext db,
             IMapper mapper,
-            IUserService userService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, userService, mainHub)
+            IHubContext<MainHub> mainHub) : base(mapper, mainHub)
         {
         }
 
