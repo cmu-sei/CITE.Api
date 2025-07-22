@@ -403,17 +403,22 @@ namespace Cite.Api.Services
                 }
             }
             // okay to update this evaluation
+            await _context.Database.BeginTransactionAsync(ct);
             evaluation.CreatedBy = evaluationToUpdate.CreatedBy;
             evaluation.DateCreated = evaluationToUpdate.DateCreated;
             evaluation.ModifiedBy = _user.GetId();
             evaluation.DateModified = DateTime.UtcNow;
+            evaluation.Submissions = [];
+            evaluation.ScoringModel = null;
+            evaluation.Teams = [];
+            evaluation.Moves = [];
+            evaluation.SituationTime = evaluation.SituationTime.ToUniversalTime();
             _mapper.Map(evaluation, evaluationToUpdate);
-
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
             _logger.LogDebug("Saving the Evaluation change");
-            _context.Evaluations.Update(evaluationToUpdate);
             await _context.SaveChangesAsync(ct);
-
+            _logger.LogDebug("Verifying required submissions exist");
+            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
+            await _context.Database.CommitTransactionAsync(ct);
             evaluation = await GetAsync(evaluationToUpdate.Id, ct);
 
             return evaluation;
@@ -531,7 +536,7 @@ namespace Cite.Api.Services
                             UserId = null,
                             ScoringModelId = evaluation.ScoringModelId,
                             MoveNumber = move.MoveNumber,
-                        DateCreated = DateTime.UtcNow
+                            DateCreated = DateTime.UtcNow
                         };
                         _logger.LogInformation("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
                         await _submissionService.CreateNewSubmission(_context, submission, ct);
