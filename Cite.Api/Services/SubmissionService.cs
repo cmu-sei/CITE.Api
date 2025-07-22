@@ -671,8 +671,6 @@ namespace Cite.Api.Services
             // catch race condition if we try to add the same submission twice
             try
             {
-                SubmissionEntity testO = null;
-                var x = testO.DateCreated;
                 await citeContext.SaveChangesAsync(ct);
                 var scoringModelEntity = await citeContext.ScoringModels
                     .Include(sm => sm.ScoringCategories)
