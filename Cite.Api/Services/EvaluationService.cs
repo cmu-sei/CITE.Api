@@ -505,40 +505,39 @@ namespace Cite.Api.Services
             // get a list of moves for the evaluation
             var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
             // verify submissions exist for all moves
-            foreach (var move in moves)
+            // make sure all official and team submissions exist
+            var moveNumber = evaluation.CurrentMoveNumber;
+            if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == moveNumber))
             {
-                // make sure all official and team submissions exist
-                if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == move.MoveNumber))
+                var submission = new Submission()
+                {
+                    Id = Guid.NewGuid(),
+                    EvaluationId = evaluation.Id,
+                    TeamId = null,
+                    UserId = null,
+                    ScoringModelId = evaluation.ScoringModelId,
+                    MoveNumber = moveNumber,
+                    DateCreated = DateTime.UtcNow
+                };
+                _logger.LogDebug("Make Official submission for move " + moveNumber.ToString());
+                await _submissionService.CreateNewSubmission(_context, submission, ct);
+            }
+            // team submissions
+            foreach (var team in evaluationTeamList)
+            {
+                if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == moveNumber))
                 {
                     var submission = new Submission() {
                         Id = Guid.NewGuid(),
                         EvaluationId = evaluation.Id,
-                        TeamId = null,
+                        TeamId = team.Id,
                         UserId = null,
                         ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = move.MoveNumber,
+                        MoveNumber = moveNumber,
                         DateCreated = DateTime.UtcNow
                     };
-                    _logger.LogInformation("Make Official submission for move " + move.MoveNumber.ToString());
+                    _logger.LogDebug("Make Team submission for move " + moveNumber + "  team=" + submission.TeamId.ToString());
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
-                }
-                // team submissions
-                foreach (var team in evaluationTeamList)
-                {
-                    if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == move.MoveNumber))
-                    {
-                        var submission = new Submission() {
-                            Id = Guid.NewGuid(),
-                            EvaluationId = evaluation.Id,
-                            TeamId = team.Id,
-                            UserId = null,
-                            ScoringModelId = evaluation.ScoringModelId,
-                            MoveNumber = move.MoveNumber,
-                            DateCreated = DateTime.UtcNow
-                        };
-                        _logger.LogInformation("Make Team submission for move " + move.MoveNumber + "  team=" + submission.TeamId.ToString());
-                        await _submissionService.CreateNewSubmission(_context, submission, ct);
-                    }
                 }
             }
 

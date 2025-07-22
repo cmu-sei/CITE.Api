@@ -643,6 +643,7 @@ namespace Cite.Api.Services
                         (s.UserId == submission.UserId)))
                         {
                             submission.MoveNumber = move.MoveNumber;
+                            _logger.LogDebug("Creating new submission from createRequestedSubmissionAndOthers");
                             await CreateNewSubmission(_context, submission, ct);
                         }
                     }
@@ -667,17 +668,17 @@ namespace Cite.Api.Services
             submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
             submissionEntity.Evaluation = null;
             submissionEntity.ScoringModel = null;
-            citeContext.Submissions.Add(submissionEntity);
             // catch race condition if we try to add the same submission twice
             try
             {
-                await citeContext.SaveChangesAsync(ct);
                 var scoringModelEntity = await citeContext.ScoringModels
                     .Include(sm => sm.ScoringCategories)
                     .ThenInclude(sc => sc.ScoringOptions)
                     .FirstAsync(sm => sm.Id == submissionEntity.ScoringModelId);
-                await CreateSubmissionCategories(submissionEntity, scoringModelEntity, ct);
-                _logger.LogInformation("Created submission for move " + submission.MoveNumber.ToString());
+                CreateSubmissionCategories(submissionEntity, scoringModelEntity, ct);
+                citeContext.Submissions.Add(submissionEntity);
+                await citeContext.SaveChangesAsync(ct);
+                _logger.LogDebug("Created submission for move " + submission.MoveNumber.ToString());
 
                 return submissionEntity;
             }
@@ -915,33 +916,37 @@ namespace Cite.Api.Services
             return await GetAsync(submissionId, ct);
         }
 
-        private async Task<IEnumerable<SubmissionCategoryEntity>> CreateSubmissionCategories(
+        private IEnumerable<SubmissionCategoryEntity> CreateSubmissionCategories(
             SubmissionEntity submissionEntity, ScoringModelEntity scoringModelEntity, CancellationToken ct)
         {
             foreach (var scoringCategoryEntity in scoringModelEntity.ScoringCategories)
             {
-                var submissionCategoryEntity = new SubmissionCategoryEntity();
-                submissionCategoryEntity.ScoringCategoryId = scoringCategoryEntity.Id;
-                submissionCategoryEntity.SubmissionId = submissionEntity.Id;
-                submissionCategoryEntity.Score = 0;
-                _context.SubmissionCategories.Add(submissionCategoryEntity);
-                await _context.SaveChangesAsync(ct);
-                await CreateSubmissionOptions(submissionCategoryEntity, scoringCategoryEntity, ct);
+                var submissionCategoryEntity = new SubmissionCategoryEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    ScoringCategoryId = scoringCategoryEntity.Id,
+                    SubmissionId = submissionEntity.Id,
+                    Score = 0,
+                };
+                CreateSubmissionOptions(submissionCategoryEntity, scoringCategoryEntity, ct);
+                submissionEntity.SubmissionCategories.Add(submissionCategoryEntity);
             }
             return submissionEntity.SubmissionCategories;
         }
 
-        private async Task<IEnumerable<SubmissionOptionEntity>> CreateSubmissionOptions(
+        private IEnumerable<SubmissionOptionEntity> CreateSubmissionOptions(
             SubmissionCategoryEntity submissionCategoryEntity, ScoringCategoryEntity scoringCategoryEntity, CancellationToken ct)
         {
             foreach (var scoringOptionEntity in scoringCategoryEntity.ScoringOptions)
             {
-                var submissionOptionEntity = new SubmissionOptionEntity();
-                submissionOptionEntity.ScoringOptionId = scoringOptionEntity.Id;
-                submissionOptionEntity.SubmissionCategoryId = submissionCategoryEntity.Id;
-                submissionOptionEntity.IsSelected = false;
-                _context.SubmissionOptions.Add(submissionOptionEntity);
-                await _context.SaveChangesAsync(ct);
+                var submissionOptionEntity = new SubmissionOptionEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    ScoringOptionId = scoringOptionEntity.Id,
+                    SubmissionCategoryId = submissionCategoryEntity.Id,
+                    IsSelected = false
+                };
+                submissionCategoryEntity.SubmissionOptions.Add(submissionOptionEntity);
             }
             return submissionCategoryEntity.SubmissionOptions;
         }
