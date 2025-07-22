@@ -403,7 +403,6 @@ namespace Cite.Api.Services
                 }
             }
             // okay to update this evaluation
-            await _context.Database.BeginTransactionAsync(ct);
             evaluation.CreatedBy = evaluationToUpdate.CreatedBy;
             evaluation.DateCreated = evaluationToUpdate.DateCreated;
             evaluation.ModifiedBy = _user.GetId();
@@ -418,7 +417,6 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             _logger.LogDebug("Verifying required submissions exist");
             await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
-            await _context.Database.CommitTransactionAsync(ct);
             evaluation = await GetAsync(evaluationToUpdate.Id, ct);
 
             return evaluation;
