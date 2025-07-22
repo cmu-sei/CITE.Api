@@ -658,13 +658,15 @@ namespace Cite.Api.Services
         public async Task<SubmissionEntity> CreateNewSubmission(CiteContext citeContext, ViewModels.Submission submission, CancellationToken ct)
         {
             // actually create a new submission
-            submission.Id = Guid.NewGuid();
-            submission.DateCreated = DateTime.UtcNow;
-            submission.CreatedBy = _user.GetId();
-            submission.DateModified = null;
-            submission.ModifiedBy = null;
-            submission.Status = Data.Enumerations.ItemStatus.Active;
             var submissionEntity = _mapper.Map<SubmissionEntity>(submission);
+            submissionEntity.Id = Guid.NewGuid();
+            submissionEntity.DateCreated = DateTime.UtcNow;
+            submissionEntity.CreatedBy = _user.GetId();
+            submissionEntity.DateModified = null;
+            submissionEntity.ModifiedBy = null;
+            submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
+            submissionEntity.Evaluation = null;
+            submissionEntity.ScoringModel = null;
             citeContext.Submissions.Add(submissionEntity);
             // catch race condition if we try to add the same submission twice
             try
