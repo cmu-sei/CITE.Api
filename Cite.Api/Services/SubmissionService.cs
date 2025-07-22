@@ -671,6 +671,8 @@ namespace Cite.Api.Services
             // catch race condition if we try to add the same submission twice
             try
             {
+                SubmissionEntity testO = null;
+                var x = testO.DateCreated;
                 await citeContext.SaveChangesAsync(ct);
                 var scoringModelEntity = await citeContext.ScoringModels
                     .Include(sm => sm.ScoringCategories)
@@ -681,9 +683,10 @@ namespace Cite.Api.Services
 
                 return submissionEntity;
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                _logger.LogWarning("!!! Tried to create a duplicate submission");
+                var message = "!!! Error creating submission. " + ex.Message + " ===> " + ex.InnerException?.Message;
+                _logger.LogWarning(message);
                 return null;
             }
         }
