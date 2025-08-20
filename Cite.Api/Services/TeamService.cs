@@ -43,7 +43,12 @@ namespace Cite.Api.Services
         private readonly IMapper _mapper;
         private readonly ILogger<ITeamService> _logger;
 
-        public TeamService(CiteContext context, IPrincipal team, IAuthorizationService authorizationService, ILogger<ITeamService> logger, IMapper mapper)
+        public TeamService(
+            CiteContext context,
+            IPrincipal team,
+            IAuthorizationService authorizationService,
+            ILogger<ITeamService> logger,
+            IMapper mapper)
         {
             _context = context;
             _user = team as ClaimsPrincipal;
@@ -143,7 +148,8 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Team> CreateAsync(ViewModels.Team team, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded)
                 throw new ForbiddenException();
 
             team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
@@ -161,7 +167,8 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Team> UpdateAsync(Guid id, ViewModels.Team team, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded)
                 throw new ForbiddenException();
 
             // Don't allow changing your own Id
@@ -197,25 +204,28 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            if (id == _user.GetId())
-            {
-                throw new ForbiddenException("You cannot delete your own account");
-            }
-
             var teamToDelete = await _context.Teams.SingleOrDefaultAsync(v => v.Id == id, ct);
 
             if (teamToDelete == null)
                 throw new EntityNotFoundException<Team>();
 
+            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
+                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)teamToDelete.EvaluationId, _context))).Succeeded)
+                throw new ForbiddenException();
+
             _context.Teams.Remove(teamToDelete);
             await _context.SaveChangesAsync(ct);
             _logger.LogWarning($"Team {teamToDelete.Name} ({teamToDelete.Id}) in Evaluation {teamToDelete.EvaluationId} deleted by {_user.GetId()}");
+            await DeleteTeamSubmissions((Guid)teamToDelete.EvaluationId, teamToDelete.Id, ct);
             return true;
+        }
+
+        public async Task DeleteTeamSubmissions(Guid evaluationId, Guid teamId, CancellationToken ct)
+        {
+            var submissions = await _context.Submissions.Where(m => m.EvaluationId == evaluationId && m.TeamId == teamId).ToListAsync(ct);
+            _context.RemoveRange(submissions);
+            await _context.SaveChangesAsync(ct);
         }
 
     }
 }
-

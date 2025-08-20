@@ -153,7 +153,7 @@ namespace Cite.Api.Services
                     throw new ForbiddenException();
             }
 
-            var evaluationIdList =  await _context.TeamUsers
+            var evaluationIdList = await _context.TeamUsers
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
@@ -194,16 +194,15 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
             // create a default move, if necessary
-            if (evaluation.Moves.Count() == 0) {
-              ViewModels.Move move = new Move();
-              move.Description = "Default Move";
-              move.MoveNumber = 0;
-              move.SituationTime = evaluation.SituationTime;
-              move.EvaluationId = evaluation.Id;
-              await _moveService.CreateAsync(move, ct);
+            if (evaluation.Moves.Count() == 0)
+            {
+                ViewModels.Move move = new Move();
+                move.Description = "Default Move";
+                move.MoveNumber = 0;
+                move.SituationTime = evaluation.SituationTime;
+                move.EvaluationId = evaluation.Id;
+                await _moveService.CreateAsync(move, ct);
             }
-            // create the official and team submissions, if necessary
-            await VerifyOfficialAndTeamSubmissions(evaluationEntity, ct);
 
             return await GetAsync(evaluation.Id, ct);
         }
@@ -415,8 +414,6 @@ namespace Cite.Api.Services
             _mapper.Map(evaluation, evaluationToUpdate);
             _logger.LogDebug("Saving the Evaluation change");
             await _context.SaveChangesAsync(ct);
-            _logger.LogDebug("Verifying required submissions exist");
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
             evaluation = await GetAsync(evaluationToUpdate.Id, ct);
 
             return evaluation;
@@ -463,7 +460,6 @@ namespace Cite.Api.Services
             evaluationToUpdate.CurrentMoveNumber = moveNumber;
             evaluationToUpdate.SituationDescription = move.SituationDescription;
             evaluationToUpdate.SituationTime = move.SituationTime;
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
 
             await _context.SaveChangesAsync(ct);
 
@@ -487,64 +483,7 @@ namespace Cite.Api.Services
 
             return true;
         }
-
-        private async Task VerifyOfficialAndTeamSubmissions(EvaluationEntity evaluation, CancellationToken ct)
-        {
-            // verify all of the official and team submissions for this evaluation
-            var submissionList = await _context.Submissions
-                .Where(s => s.EvaluationId == evaluation.Id && s.UserId == null)
-                .AsNoTracking()
-                .ToListAsync();
-            // get the teams for this evaluation
-            var evaluationTeamList = await _context.Teams
-                .Include(t => t.TeamUsers)
-                .ThenInclude(tu => tu.User)
-                .Where(t => t.EvaluationId == evaluation.Id)
-                .AsNoTracking()
-                .ToListAsync();
-            // get a list of moves for the evaluation
-            var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
-            // verify submissions exist for all moves
-            // make sure all official and team submissions exist
-            var moveNumber = evaluation.CurrentMoveNumber;
-            if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == moveNumber))
-            {
-                var submission = new Submission()
-                {
-                    Id = Guid.NewGuid(),
-                    EvaluationId = evaluation.Id,
-                    TeamId = null,
-                    UserId = null,
-                    ScoringModelId = evaluation.ScoringModelId,
-                    MoveNumber = moveNumber,
-                    DateCreated = DateTime.UtcNow
-                };
-                _logger.LogDebug("Make Official submission for move " + moveNumber.ToString());
-                await _submissionService.CreateNewSubmission(_context, submission, ct);
-            }
-            // team submissions
-            foreach (var team in evaluationTeamList)
-            {
-                if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == moveNumber))
-                {
-                    var submission = new Submission() {
-                        Id = Guid.NewGuid(),
-                        EvaluationId = evaluation.Id,
-                        TeamId = team.Id,
-                        UserId = null,
-                        ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = moveNumber,
-                        DateCreated = DateTime.UtcNow
-                    };
-                    _logger.LogDebug("Make Team submission for move " + moveNumber + "  team=" + submission.TeamId.ToString());
-                    await _submissionService.CreateNewSubmission(_context, submission, ct);
-                }
-            }
-
-        }
-
     }
-
 
     public class EvaluationSituation
     {

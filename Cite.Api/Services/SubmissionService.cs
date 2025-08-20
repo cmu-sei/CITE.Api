@@ -45,6 +45,9 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct);
         Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
         Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct);
+        Task CreateMoveSubmissions(MoveEntity moveEntity, CiteContext citeContext, CancellationToken ct);
+        Task CreateTeamSubmissions(TeamEntity teamEntity, CiteContext citeContext, CancellationToken ct);
+        Task CreateUserSubmissions(TeamUserEntity teamUserEntity, CiteContext citeContext, CancellationToken ct);
    }
 
     public class SubmissionService : ISubmissionService
@@ -254,7 +257,7 @@ namespace Cite.Api.Services
             // calculate the average of users on the team
             var submissionEntities = await _context.Submissions.Where(sm =>
                 (sm.UserId != null && sm.TeamId == team.Id && sm.EvaluationId == evaluationId)).ToListAsync(ct);
-            for (var move = 0; move <= currentMoveNumber; move ++)
+            for (var move = 0; move <= currentMoveNumber; move++)
             {
                 var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
                 if (useTeamAverage)
@@ -287,7 +290,7 @@ namespace Cite.Api.Services
             // get the submission entities
             var submissionEntities = await _context.Submissions.Where(sm =>
                 (sm.UserId != null && sm.TeamId == team.Id && sm.EvaluationId == evaluationId)).ToListAsync(ct);
-            for (var move = 0; move <= currentMoveNumber; move ++)
+            for (var move = 0; move <= currentMoveNumber; move++)
             {
                 var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
             }
@@ -297,7 +300,7 @@ namespace Cite.Api.Services
                 var teamIds = await _context.Teams.Where(t => t.TeamTypeId == team.TeamTypeId).Select(t => t.Id).ToListAsync(ct);
                 submissionEntities = await _context.Submissions.Where(sm =>
                     (sm.UserId == null && teamIds.Contains((Guid)sm.TeamId) && sm.EvaluationId == evaluationId)).ToListAsync(ct);
-                for (var move = 0; move <= currentMoveNumber; move ++)
+                for (var move = 0; move <= currentMoveNumber; move++)
                 {
                     var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
                     var teamTypeAverageSubmission = CreateAverageSubmission(moveSubmissions);
@@ -357,7 +360,7 @@ namespace Cite.Api.Services
             var move = submission.MoveNumber;
             // calculate the average of users on the team
             var teamUserSubmissions = await _context.Submissions
-                .Where(sm =>(sm.UserId != null && sm.TeamId == submission.TeamId && sm.EvaluationId == submission.EvaluationId && sm.MoveNumber == move))
+                .Where(sm => (sm.UserId != null && sm.TeamId == submission.TeamId && sm.EvaluationId == submission.EvaluationId && sm.MoveNumber == move))
                 .Include(s => s.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ToListAsync(ct);
@@ -430,7 +433,7 @@ namespace Cite.Api.Services
             // Observers can view all team scores, others can only view their own team
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement((Guid)item.EvaluationId, _context))).Succeeded)
             {
-                evaluationTeamIdList = new List<Guid>{team.Id};
+                evaluationTeamIdList = new List<Guid> { team.Id };
             }
             var isCollaborator = team.TeamType.IsOfficialScoreContributor;
             var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
@@ -484,23 +487,30 @@ namespace Cite.Api.Services
                 }
             }
             // Create requested submission
-            var requestedSubmissionEntity = await createRequestedSubmissionAndOthers(submission, ct);
+            // find the requested submission entity
+            var requestedSubmissionEntity = await _context.Submissions
+                .FirstOrDefaultAsync(s =>
+                    s.UserId == submission.UserId &&
+                    s.TeamId == submission.TeamId &&
+                    s.EvaluationId == submission.EvaluationId &&
+                    s.MoveNumber == submission.MoveNumber
+                );
             if (requestedSubmissionEntity == null)
             {
-                _logger.LogDebug("Requested submission was created before this call could create it");
-                // find the requested submission entity
-                requestedSubmissionEntity = await _context.Submissions
-                    .FirstOrDefaultAsync(s =>
-                        s.UserId == submission.UserId &&
-                        s.TeamId == submission.TeamId &&
-                        s.EvaluationId == submission.EvaluationId &&
-                        s.MoveNumber == submission.MoveNumber
-                    );
+                requestedSubmissionEntity = _mapper.Map<SubmissionEntity>(submission);
+                requestedSubmissionEntity.CreatedBy = _user.GetId();
+                requestedSubmissionEntity.DateCreated = DateTime.UtcNow;
+                // create the new submission
+                _context.Submissions.Add(requestedSubmissionEntity);
+                await _context.SaveChangesAsync(ct);
+                // create and send xapi statement
+                var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
+                await LogXApiAsync(verb, submission, null, ct);
             }
-
-            // create and send xapi statement
-            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
-            await LogXApiAsync(verb, submission, null, ct);
+            else
+            {
+                _logger.LogDebug("Requested submission was created before this call could create it");
+            }
 
             return await GetAsync(requestedSubmissionEntity.Id, ct);
         }
@@ -535,7 +545,8 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");
-            if (submission.Status == Data.Enumerations.ItemStatus.Complete) {
+            if (submission.Status == Data.Enumerations.ItemStatus.Complete)
+            {
                 verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/submitted");
             }
             await LogXApiAsync(verb, submission, null, ct);
@@ -565,7 +576,7 @@ namespace Cite.Api.Services
             if (submissionOptionToUpdate.ScoringOption.IsModifier && value)
             {
                 var submissionOptionsToClear = _context.SubmissionOptions.Include(so => so.ScoringOption).Where(so =>
-                    so.SubmissionCategoryId == submissionCategoryEntity.Id  && so.ScoringOption.IsModifier && so.IsSelected);
+                    so.SubmissionCategoryId == submissionCategoryEntity.Id && so.ScoringOption.IsModifier && so.IsSelected);
                 foreach (var submissionOption in submissionOptionsToClear)
                 {
                     submissionOption.IsSelected = false;
@@ -584,7 +595,7 @@ namespace Cite.Api.Services
                 if (scoringOptionSelection != Data.Enumerations.ScoringOptionSelection.Multiple)
                 {
                     var submissionOptionsToClear = _context.SubmissionOptions.Where(so =>
-                        so.SubmissionCategoryId == submissionCategoryEntity.Id  && so.IsSelected);
+                        so.SubmissionCategoryId == submissionCategoryEntity.Id && so.IsSelected);
                     foreach (var submissionOption in submissionOptionsToClear)
                     {
                         submissionOption.IsSelected = false;
@@ -604,56 +615,13 @@ namespace Cite.Api.Services
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/selected");
-            if (value == false) {
+            if (value == false)
+            {
                 verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset");
             }
             await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
 
             return await GetAsync(submissionEntity.Id, ct);
-        }
-
-        private async Task<SubmissionEntity> createRequestedSubmissionAndOthers(ViewModels.Submission submission, CancellationToken ct)
-        {
-            var requestedUserId = submission.UserId;
-            var requestedTeamId = submission.TeamId;
-            // get the requested and maximum move numbers
-            var requestedMoveNumber = submission.MoveNumber;
-            // maxMoveNumber is the current move
-            var maxMoveNumber = await _context.Evaluations
-                .Where(e => e.Id == submission.EvaluationId)
-                .Select(e => e.CurrentMoveNumber)
-                .MaxAsync(ct);
-            // get the current user/team/evaluation submissions.
-            // user submissions are only returned if the submission UserId is equal to the current user's ID
-            var submissionEntityList = await _context.Submissions.Where(s =>
-                s.EvaluationId == submission.EvaluationId &&
-                ((s.UserId == submission.UserId && submission.UserId == _user.GetId()) || s.UserId == null) &&
-                (s.TeamId == submission.TeamId || s.TeamId == null)
-            ).ToListAsync(ct);
-            // get a list of moves for the evaluation
-            var moves = await _moveService.GetByEvaluationAsync(submission.EvaluationId, ct);
-            // verify submissions for previous moves, if the requested submission is for the current user
-            if (submission.UserId == _user.GetId() || submission.UserId == null)
-            {
-                foreach (var move in moves)
-                {
-                    if (move.MoveNumber <= maxMoveNumber)
-                    {
-                    if (!submissionEntityList.Any(s => s.MoveNumber == move.MoveNumber &&
-                        (s.UserId == submission.UserId)))
-                        {
-                            submission.MoveNumber = move.MoveNumber;
-                            _logger.LogDebug("Creating new submission from createRequestedSubmissionAndOthers");
-                            await CreateNewSubmission(_context, submission, ct);
-                        }
-                    }
-                }
-            }
-            // return the requested submission
-            var submissionEntity = await _context.Submissions.FirstOrDefaultAsync(s =>
-                s.MoveNumber == requestedMoveNumber && s.UserId == requestedUserId && s.TeamId == requestedTeamId && s.EvaluationId == submission.EvaluationId);
-
-            return submissionEntity;
         }
 
         public async Task<SubmissionEntity> CreateNewSubmission(CiteContext citeContext, ViewModels.Submission submission, CancellationToken ct)
@@ -745,18 +713,20 @@ namespace Cite.Api.Services
             {
                 foreach (var submissionOption in submissionCategory.SubmissionOptions)
                 {
-                    if (submissionOption.IsSelected) {
+                    if (submissionOption.IsSelected)
+                    {
                         submissionOption.IsSelected = false;
                         submissionOption.ModifiedBy = _user.GetId();
                         submissionOption.DateModified = DateTime.UtcNow;
                     }
-                    foreach(var submissionComment in submissionOption.SubmissionComments)
+                    foreach (var submissionComment in submissionOption.SubmissionComments)
                     {
-                    _context.SubmissionComments.Remove(submissionComment);
+                        _context.SubmissionComments.Remove(submissionComment);
                     }
                 }
                 submissionCategory.Score = 0.0;
-            };
+            }
+            ;
             submissionToClear.Score = 0.0;
             _context.Submissions.Update(submissionToClear);
             await _context.SaveChangesAsync(ct);
@@ -790,7 +760,7 @@ namespace Cite.Api.Services
             if (targetSubmission.Status != Data.Enumerations.ItemStatus.Active)
                 throw new Exception($"Cannot preset selections of a submission ({targetSubmission.Id}) that is not currently active.");
 
-            var baseSubmission = await  _context.Submissions
+            var baseSubmission = await _context.Submissions
                 .Include(s => s.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .FirstOrDefaultAsync(b => b.EvaluationId == targetSubmission.EvaluationId
@@ -806,14 +776,16 @@ namespace Cite.Api.Services
                     foreach (var submissionOption in targetSubmissionCategory.SubmissionOptions)
                     {
                         var baseSubmissionOption = baseSubmissionCategory.SubmissionOptions.First(so => so.ScoringOptionId == submissionOption.ScoringOptionId);
-                        if (submissionOption.IsSelected != baseSubmissionOption.IsSelected) {
+                        if (submissionOption.IsSelected != baseSubmissionOption.IsSelected)
+                        {
                             submissionOption.IsSelected = baseSubmissionOption.IsSelected;
                             submissionOption.ModifiedBy = _user.GetId();
                             submissionOption.DateModified = DateTime.UtcNow;
                         }
                     }
                     targetSubmissionCategory.Score = baseSubmissionCategory.Score;
-                };
+                }
+                ;
                 _context.Submissions.Update(targetSubmission);
                 await _context.SaveChangesAsync(ct);
             }
@@ -1124,12 +1096,14 @@ namespace Cite.Api.Services
                 SubmissionCategoryEntity submissionCategory = null;
                 ScoringCategoryEntity scoringCategory = null;
 
-                if (submissionOption != null) {
+                if (submissionOption != null)
+                {
                     scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
                     submissionCategory = await _context.SubmissionCategories.Where(sc => sc.Id == submissionOption.SubmissionCategoryId).FirstAsync();
                     scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
                 }
-                if ((submission == null) && (submissionCategory != null)) {
+                if ((submission == null) && (submissionCategory != null))
+                {
                     // TODO make this async
                     submission = _mapper.Map<Submission>(_context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First());
                 }
@@ -1142,15 +1116,18 @@ namespace Cite.Api.Services
 
                 // create and send xapi statement
 
-                var activity = new Dictionary<String,String>();
-                if (scoringOption != null) {
+                var activity = new Dictionary<String, String>();
+                if (scoringOption != null)
+                {
                     activity.Add("id", scoringOption.Id.ToString());
                     activity.Add("name", scoringOption.Description);
                     activity.Add("description", "Line item within a scoring category.");
                     activity.Add("type", "scoringOption");
                     activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
                     activity.Add("moreInfo", "/scoringOption/" + scoringOption.Id.ToString());
-                } else {
+                }
+                else
+                {
                     // log the submission
                     activity.Add("id", submission.Id.ToString());
                     activity.Add("name", "New Submission");
@@ -1160,7 +1137,7 @@ namespace Cite.Api.Services
                     activity.Add("moreInfo", "/submission/" + submission.Id.ToString());
                 }
 
-                var parent = new Dictionary<String,String>();
+                var parent = new Dictionary<String, String>();
                 parent.Add("id", evaluation.Id.ToString());
                 parent.Add("name", "Evaluation");
                 parent.Add("description", evaluation.Description);
@@ -1168,8 +1145,9 @@ namespace Cite.Api.Services
                 parent.Add("activityType", "http://adlnet.gov/expapi/activities/simulation");
                 parent.Add("moreInfo", "/?evaluation=" + evaluation.Id.ToString());
 
-                var category = new Dictionary<String,String>();
-                if (scoringCategory != null) {
+                var category = new Dictionary<String, String>();
+                if (scoringCategory != null)
+                {
                     category.Add("id", scoringCategory.Id.ToString());
                     category.Add("name", scoringCategory.Description);
                     category.Add("description", "The scoring category type for the option.");
@@ -1178,7 +1156,7 @@ namespace Cite.Api.Services
                     category.Add("moreInfo", "");
                 }
                 // TODO maybe add all scoring categories
-                var grouping = new Dictionary<String,String>();
+                var grouping = new Dictionary<String, String>();
                 grouping.Add("id", move.Id.ToString());
                 grouping.Add("name", move.Description);
                 grouping.Add("description", "The exercise move associated with the score.");
@@ -1186,7 +1164,7 @@ namespace Cite.Api.Services
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
                 grouping.Add("moreInfo", "");
 
-                var other = new Dictionary<String,String>();
+                var other = new Dictionary<String, String>();
 
                 // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
@@ -1209,10 +1187,118 @@ namespace Cite.Api.Services
                     ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
             );
 
+        }
 
+        public async Task CreateMoveSubmissions(MoveEntity move, CiteContext citeContext, CancellationToken ct)
+        {
+            var dateCreated = DateTime.UtcNow;
+            var userId = _user.GetId();
+            var evaluation = await citeContext.Evaluations.AsNoTracking().FirstOrDefaultAsync(m => m.Id == move.EvaluationId);
+            var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
+            var teams = await citeContext.Teams.AsNoTracking().Where(m => m.EvaluationId == evaluation.Id).ToListAsync(ct);
+            var teamUsers = await citeContext.TeamUsers.AsNoTracking().Where(m => m.Team.EvaluationId == evaluation.Id).ToListAsync(ct);
+            var officialSubmission = new SubmissionEntity()
+            {
+                Id = Guid.NewGuid(),
+                EvaluationId = evaluation.Id,
+                TeamId = null,
+                UserId = null,
+                ScoringModelId = scoringModel.Id,
+                MoveNumber = move.MoveNumber,
+                Status = Data.Enumerations.ItemStatus.Active,
+                DateCreated = dateCreated,
+                CreatedBy = userId
+            };
+            citeContext.Submissions.Add(officialSubmission);
+            CreateSubmissionCategories(officialSubmission, scoringModel, ct);
+            foreach (var team in teams)
+            {
+                var teamSubmission = new SubmissionEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    EvaluationId = team.EvaluationId,
+                    TeamId = team.Id,
+                    UserId = null,
+                    ScoringModelId = scoringModel.Id,
+                    MoveNumber = move.MoveNumber,
+                    Status = Data.Enumerations.ItemStatus.Active,
+                    DateCreated = dateCreated,
+                    CreatedBy = userId
+                };
+                CreateSubmissionCategories(teamSubmission, scoringModel, ct);
+                citeContext.Submissions.Add(teamSubmission);
+            }
+            foreach (var teamUser in teamUsers)
+            {
+                var userSubmission = new SubmissionEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    EvaluationId = evaluation.Id,
+                    TeamId = teamUser.TeamId,
+                    UserId = teamUser.UserId,
+                    ScoringModelId = scoringModel.Id,
+                    MoveNumber = move.MoveNumber,
+                    Status = Data.Enumerations.ItemStatus.Active,
+                    DateCreated = dateCreated,
+                    CreatedBy = userId
+                };
+                CreateSubmissionCategories(userSubmission, scoringModel, ct);
+                citeContext.Submissions.Add(userSubmission);
+            }
+            await citeContext.SaveChangesAsync(ct);
+        }
 
+        public async Task CreateTeamSubmissions(TeamEntity team, CiteContext citeContext, CancellationToken ct)
+        {
+            var dateCreated = DateTime.UtcNow;
+            var userId = _user.GetId();
+            var evaluation = await citeContext.Evaluations.AsNoTracking().Include(m => m.Moves).FirstOrDefaultAsync(m => m.Id == team.EvaluationId, ct);
+            var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
+            foreach (var move in evaluation.Moves)
+            {
+                var submission = new SubmissionEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    EvaluationId = move.EvaluationId,
+                    TeamId = team.Id,
+                    UserId = null,
+                    ScoringModelId = scoringModel.Id,
+                    MoveNumber = move.MoveNumber,
+                    Status = Data.Enumerations.ItemStatus.Active,
+                    DateCreated = dateCreated,
+                    CreatedBy = userId
+                };
+                CreateSubmissionCategories(submission, scoringModel, ct);
+                citeContext.Submissions.Add(submission);
+            }
+            await citeContext.SaveChangesAsync(ct);
+        }
 
-
+        public async Task CreateUserSubmissions(TeamUserEntity teamUser, CiteContext citeContext, CancellationToken ct)
+        {
+            var dateCreated = DateTime.UtcNow;
+            var userId = _user.GetId();
+            var evaluation = await citeContext.Teams.AsNoTracking().Where(m => m.Id == teamUser.TeamId).Select(m => m.Evaluation).FirstOrDefaultAsync(ct);
+            var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
+            var moves = await citeContext.Moves.AsNoTracking().Where(m => m.EvaluationId == teamUser.Team.EvaluationId).ToListAsync(ct);
+            foreach (var move in moves)
+            {
+                var submission = new SubmissionEntity()
+                {
+                    Id = Guid.NewGuid(),
+                    EvaluationId = move.EvaluationId,
+                    TeamId = teamUser.TeamId,
+                    UserId = teamUser.UserId,
+                    ScoringModelId = scoringModel.Id,
+                    MoveNumber = move.MoveNumber,
+                    Status = Data.Enumerations.ItemStatus.Active,
+                    DateCreated = dateCreated,
+                    CreatedBy = userId
+                };
+                CreateSubmissionCategories(submission, scoringModel, ct);
+                citeContext.Submissions.Add(submission);
+            }
+            await citeContext.SaveChangesAsync(ct);
         }
 
     }

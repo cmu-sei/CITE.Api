@@ -127,10 +127,17 @@ namespace Cite.Api.Services
 
             _context.Moves.Remove(moveToDelete);
             await _context.SaveChangesAsync(ct);
+            await DeleteMoveSubmissions(moveToDelete.EvaluationId, moveToDelete.MoveNumber, ct);
 
             return true;
         }
 
+        public async Task DeleteMoveSubmissions(Guid evaluationId, int moveNumber, CancellationToken ct)
+        {
+            var submissions = await _context.Submissions.Where(m => m.EvaluationId == evaluationId && m.MoveNumber == moveNumber).ToListAsync(ct);
+            _context.RemoveRange(submissions);
+            await _context.SaveChangesAsync(ct);
+        }
+
     }
 }
-
