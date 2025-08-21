@@ -19,8 +19,11 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<Team, TeamEntity>()
                 .ForMember(m => m.Submissions, opt => opt.Ignore())
                 .ForMember(m => m.TeamUsers, opt => opt.Ignore());
+
+            CreateMap<TeamEntity, TeamEntity>()
+                .ForMember(m => m.Id, opt => opt.Ignore())
+                .ForMember(m => m.Submissions, opt => opt.Ignore())
+                .ForMember(m => m.TeamUsers, opt => opt.Ignore());
         }
     }
 }
-
-

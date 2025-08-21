@@ -4,6 +4,8 @@ This project provides a restful api for the Collaborative Incident Threat Evalua
 
 By default, cite.api is available at localhost:4720, with the swagger page at localhost:4720/api/index.html.
 
+# ATTENTION: PosgreSQL version 15 or greater is required to run CITE API!!!
+
 # Database Migrations
 
 When the data model is changed, a new database migration must be created.  From the Cite.Api directory, run this command to create the new migration:
@@ -35,4 +37,3 @@ CanModify permission required for:
 
 Authenticated user has permission to:
     * Create a Submission
-

@@ -35,7 +35,7 @@ namespace Cite.Api.Data.Models
         public void Configure(EntityTypeBuilder<SubmissionEntity> builder)
         {
             builder
-                .HasIndex(a => new { a.EvaluationId, a.UserId, a.TeamId, a.MoveNumber }).IsUnique();
+                .HasIndex(a => new { a.EvaluationId, a.UserId, a.TeamId, a.MoveNumber }).IsUnique().AreNullsDistinct(false);
             builder
                 .HasOne(d => d.Evaluation)
                 .WithMany(d => d.Submissions)
@@ -52,4 +52,3 @@ namespace Cite.Api.Data.Models
     }
 
 }
-

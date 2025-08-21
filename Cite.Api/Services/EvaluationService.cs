@@ -227,46 +227,57 @@ namespace Cite.Api.Services
             return evaluation;
         }
 
-        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity evaluationEntity, CancellationToken ct)
+        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEvaluationEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
             var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
-            evaluationEntity.Id = Guid.NewGuid();
-            evaluationEntity.DateCreated = DateTime.UtcNow;
-            evaluationEntity.CreatedBy = currentUserId;
-            evaluationEntity.DateModified = evaluationEntity.DateCreated;
-            evaluationEntity.ModifiedBy = evaluationEntity.CreatedBy;
-            evaluationEntity.Description = evaluationEntity.Description + " - " + username;
+            var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
+            newEvaluationEntity.Id = Guid.NewGuid();
+            newEvaluationEntity.DateCreated = DateTime.UtcNow;
+            newEvaluationEntity.CreatedBy = currentUserId;
+            newEvaluationEntity.DateModified = null;
+            newEvaluationEntity.ModifiedBy = null;
+            newEvaluationEntity.Description = newEvaluationEntity.Description + " - " + username;
+            _context.Evaluations.Add(newEvaluationEntity);
+            await _context.SaveChangesAsync(ct);
             // copy teams
-            foreach (var team in evaluationEntity.Teams)
+            foreach (var oldTeam in oldEvaluationEntity.Teams)
             {
-                team.Id = Guid.NewGuid();
-                team.EvaluationId = evaluationEntity.Id;
-                team.Evaluation = null;
-                team.DateCreated = evaluationEntity.DateCreated;
-                team.CreatedBy = evaluationEntity.CreatedBy;
+                var newTeam = _mapper.Map<TeamEntity, TeamEntity>(oldTeam);
+                newTeam.Id = Guid.NewGuid();
+                newTeam.EvaluationId = newEvaluationEntity.Id;
+                newTeam.Evaluation = null;
+                newTeam.DateCreated = newEvaluationEntity.DateCreated;
+                newTeam.CreatedBy = newEvaluationEntity.CreatedBy;
+                newTeam.DateModified = null;
+                newTeam.ModifiedBy = null;
+                _context.Teams.Add(newTeam);
+                await _context.SaveChangesAsync(ct);
             }
             // copy moves
-            foreach (var move in evaluationEntity.Moves)
+            foreach (var oldMove in oldEvaluationEntity.Moves)
             {
-                move.Id = Guid.NewGuid();
-                move.EvaluationId = evaluationEntity.Id;
-                move.Evaluation = null;
-                move.DateCreated = evaluationEntity.DateCreated;
-                move.CreatedBy = evaluationEntity.CreatedBy;
+                var newMove = _mapper.Map<MoveEntity, MoveEntity>(oldMove);
+                newMove.Id = Guid.NewGuid();
+                newMove.EvaluationId = newEvaluationEntity.Id;
+                newMove.Evaluation = null;
+                newMove.DateCreated = newEvaluationEntity.DateCreated;
+                newMove.CreatedBy = newEvaluationEntity.CreatedBy;
+                newMove.DateModified = null;
+                newMove.ModifiedBy = null;
+                _context.Moves.Add(newMove);
+                await _context.SaveChangesAsync(ct);
             }
-            _context.Evaluations.Add(evaluationEntity);
-            await _context.SaveChangesAsync(ct);
 
             // get the new Evaluation to return
-            evaluationEntity = await _context.Evaluations
+            newEvaluationEntity = await _context.Evaluations
                 .Include(m => m.Teams)
                 .ThenInclude(t => t.TeamType)
                 .Include(m => m.Moves)
                 .AsSplitQuery()
-                .SingleOrDefaultAsync(sm => sm.Id == evaluationEntity.Id, ct);
+                .SingleOrDefaultAsync(sm => sm.Id == newEvaluationEntity.Id, ct);
 
-            return evaluationEntity;
+            return newEvaluationEntity;
         }
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)
