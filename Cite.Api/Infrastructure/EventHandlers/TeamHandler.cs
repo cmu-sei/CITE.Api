@@ -122,4 +122,13 @@ namespace Cite.Api.Infrastructure.EventHandlers
             await Task.WhenAll(tasks);
         }
     }
+
+    public class TeamCreatedSubmissionHandler(ISubmissionService submissionService, CiteContext db) : INotificationHandler<EntityCreated<TeamEntity>>
+    {
+        public async Task Handle(EntityCreated<TeamEntity> notification, CancellationToken cancellationToken)
+        {
+            await submissionService.CreateTeamSubmissions(notification.Entity, db, cancellationToken);
+        }
+    }
+
 }

@@ -15,8 +15,10 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<Move, MoveEntity>()
                 .ForMember(m => m.Evaluation, opt => opt.Ignore());
 
+            CreateMap<MoveEntity, MoveEntity>()
+                .ForMember(m => m.Id, opt => opt.Ignore())
+                .ForMember(m => m.Evaluation, opt => opt.Ignore());
+
         }
     }
 }
-
-

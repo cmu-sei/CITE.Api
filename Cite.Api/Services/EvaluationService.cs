@@ -153,7 +153,7 @@ namespace Cite.Api.Services
                     throw new ForbiddenException();
             }
 
-            var evaluationIdList =  await _context.TeamUsers
+            var evaluationIdList = await _context.TeamUsers
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
@@ -194,16 +194,15 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
             // create a default move, if necessary
-            if (evaluation.Moves.Count() == 0) {
-              ViewModels.Move move = new Move();
-              move.Description = "Default Move";
-              move.MoveNumber = 0;
-              move.SituationTime = evaluation.SituationTime;
-              move.EvaluationId = evaluation.Id;
-              await _moveService.CreateAsync(move, ct);
+            if (evaluation.Moves.Count() == 0)
+            {
+                ViewModels.Move move = new Move();
+                move.Description = "Default Move";
+                move.MoveNumber = 0;
+                move.SituationTime = evaluation.SituationTime;
+                move.EvaluationId = evaluation.Id;
+                await _moveService.CreateAsync(move, ct);
             }
-            // create the official and team submissions, if necessary
-            await VerifyOfficialAndTeamSubmissions(evaluationEntity, ct);
 
             return await GetAsync(evaluation.Id, ct);
         }
@@ -228,46 +227,57 @@ namespace Cite.Api.Services
             return evaluation;
         }
 
-        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity evaluationEntity, CancellationToken ct)
+        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEvaluationEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
             var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
-            evaluationEntity.Id = Guid.NewGuid();
-            evaluationEntity.DateCreated = DateTime.UtcNow;
-            evaluationEntity.CreatedBy = currentUserId;
-            evaluationEntity.DateModified = evaluationEntity.DateCreated;
-            evaluationEntity.ModifiedBy = evaluationEntity.CreatedBy;
-            evaluationEntity.Description = evaluationEntity.Description + " - " + username;
+            var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
+            newEvaluationEntity.Id = Guid.NewGuid();
+            newEvaluationEntity.DateCreated = DateTime.UtcNow;
+            newEvaluationEntity.CreatedBy = currentUserId;
+            newEvaluationEntity.DateModified = null;
+            newEvaluationEntity.ModifiedBy = null;
+            newEvaluationEntity.Description = newEvaluationEntity.Description + " - " + username;
+            _context.Evaluations.Add(newEvaluationEntity);
+            await _context.SaveChangesAsync(ct);
             // copy teams
-            foreach (var team in evaluationEntity.Teams)
+            foreach (var oldTeam in oldEvaluationEntity.Teams)
             {
-                team.Id = Guid.NewGuid();
-                team.EvaluationId = evaluationEntity.Id;
-                team.Evaluation = null;
-                team.DateCreated = evaluationEntity.DateCreated;
-                team.CreatedBy = evaluationEntity.CreatedBy;
+                var newTeam = _mapper.Map<TeamEntity, TeamEntity>(oldTeam);
+                newTeam.Id = Guid.NewGuid();
+                newTeam.EvaluationId = newEvaluationEntity.Id;
+                newTeam.Evaluation = null;
+                newTeam.DateCreated = newEvaluationEntity.DateCreated;
+                newTeam.CreatedBy = newEvaluationEntity.CreatedBy;
+                newTeam.DateModified = null;
+                newTeam.ModifiedBy = null;
+                _context.Teams.Add(newTeam);
+                await _context.SaveChangesAsync(ct);
             }
             // copy moves
-            foreach (var move in evaluationEntity.Moves)
+            foreach (var oldMove in oldEvaluationEntity.Moves)
             {
-                move.Id = Guid.NewGuid();
-                move.EvaluationId = evaluationEntity.Id;
-                move.Evaluation = null;
-                move.DateCreated = evaluationEntity.DateCreated;
-                move.CreatedBy = evaluationEntity.CreatedBy;
+                var newMove = _mapper.Map<MoveEntity, MoveEntity>(oldMove);
+                newMove.Id = Guid.NewGuid();
+                newMove.EvaluationId = newEvaluationEntity.Id;
+                newMove.Evaluation = null;
+                newMove.DateCreated = newEvaluationEntity.DateCreated;
+                newMove.CreatedBy = newEvaluationEntity.CreatedBy;
+                newMove.DateModified = null;
+                newMove.ModifiedBy = null;
+                _context.Moves.Add(newMove);
+                await _context.SaveChangesAsync(ct);
             }
-            _context.Evaluations.Add(evaluationEntity);
-            await _context.SaveChangesAsync(ct);
 
             // get the new Evaluation to return
-            evaluationEntity = await _context.Evaluations
+            newEvaluationEntity = await _context.Evaluations
                 .Include(m => m.Teams)
                 .ThenInclude(t => t.TeamType)
                 .Include(m => m.Moves)
                 .AsSplitQuery()
-                .SingleOrDefaultAsync(sm => sm.Id == evaluationEntity.Id, ct);
+                .SingleOrDefaultAsync(sm => sm.Id == newEvaluationEntity.Id, ct);
 
-            return evaluationEntity;
+            return newEvaluationEntity;
         }
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)
@@ -415,8 +425,6 @@ namespace Cite.Api.Services
             _mapper.Map(evaluation, evaluationToUpdate);
             _logger.LogDebug("Saving the Evaluation change");
             await _context.SaveChangesAsync(ct);
-            _logger.LogDebug("Verifying required submissions exist");
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
             evaluation = await GetAsync(evaluationToUpdate.Id, ct);
 
             return evaluation;
@@ -463,7 +471,6 @@ namespace Cite.Api.Services
             evaluationToUpdate.CurrentMoveNumber = moveNumber;
             evaluationToUpdate.SituationDescription = move.SituationDescription;
             evaluationToUpdate.SituationTime = move.SituationTime;
-            await VerifyOfficialAndTeamSubmissions(evaluationToUpdate, ct);
 
             await _context.SaveChangesAsync(ct);
 
@@ -487,64 +494,7 @@ namespace Cite.Api.Services
 
             return true;
         }
-
-        private async Task VerifyOfficialAndTeamSubmissions(EvaluationEntity evaluation, CancellationToken ct)
-        {
-            // verify all of the official and team submissions for this evaluation
-            var submissionList = await _context.Submissions
-                .Where(s => s.EvaluationId == evaluation.Id && s.UserId == null)
-                .AsNoTracking()
-                .ToListAsync();
-            // get the teams for this evaluation
-            var evaluationTeamList = await _context.Teams
-                .Include(t => t.TeamUsers)
-                .ThenInclude(tu => tu.User)
-                .Where(t => t.EvaluationId == evaluation.Id)
-                .AsNoTracking()
-                .ToListAsync();
-            // get a list of moves for the evaluation
-            var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
-            // verify submissions exist for all moves
-            // make sure all official and team submissions exist
-            var moveNumber = evaluation.CurrentMoveNumber;
-            if (!submissionList.Any(s => s.UserId == null && s.TeamId == null && s.MoveNumber == moveNumber))
-            {
-                var submission = new Submission()
-                {
-                    Id = Guid.NewGuid(),
-                    EvaluationId = evaluation.Id,
-                    TeamId = null,
-                    UserId = null,
-                    ScoringModelId = evaluation.ScoringModelId,
-                    MoveNumber = moveNumber,
-                    DateCreated = DateTime.UtcNow
-                };
-                _logger.LogDebug("Make Official submission for move " + moveNumber.ToString());
-                await _submissionService.CreateNewSubmission(_context, submission, ct);
-            }
-            // team submissions
-            foreach (var team in evaluationTeamList)
-            {
-                if (!submissionList.Any(s => s.UserId == null && s.TeamId == team.Id && s.MoveNumber == moveNumber))
-                {
-                    var submission = new Submission() {
-                        Id = Guid.NewGuid(),
-                        EvaluationId = evaluation.Id,
-                        TeamId = team.Id,
-                        UserId = null,
-                        ScoringModelId = evaluation.ScoringModelId,
-                        MoveNumber = moveNumber,
-                        DateCreated = DateTime.UtcNow
-                    };
-                    _logger.LogDebug("Make Team submission for move " + moveNumber + "  team=" + submission.TeamId.ToString());
-                    await _submissionService.CreateNewSubmission(_context, submission, ct);
-                }
-            }
-
-        }
-
     }
-
 
     public class EvaluationSituation
     {
