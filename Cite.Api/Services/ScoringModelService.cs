@@ -121,7 +121,7 @@ namespace Cite.Api.Services
         {
             if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
                 throw new ForbiddenException();
-            
+
             var scoringModelEntity = await _context.ScoringModels
                 .AsNoTracking()
                 .Include(m => m.ScoringCategories)
@@ -277,4 +277,3 @@ namespace Cite.Api.Services
 
     }
 }
-
