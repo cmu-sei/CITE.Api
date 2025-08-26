@@ -282,7 +282,11 @@ namespace Cite.Api.Infrastructure.Extensions
 
         private static Guid CopyScoringModel(CiteContext context, Guid scoringModelId, Guid currentUserId, DateTime dateCreated, Guid evaluationId)
         {
-            var scoringModelEntity = context.ScoringModels.AsNoTracking().FirstOrDefault(m => m.Id == scoringModelId);
+            var scoringModelEntity = context.ScoringModels
+                .Include(m => m.ScoringCategories)
+                .ThenInclude(n => n.ScoringOptions)
+                .AsNoTracking()
+                .FirstOrDefault(m => m.Id == scoringModelId);
             scoringModelEntity.Id = Guid.NewGuid();
             scoringModelEntity.DateCreated = dateCreated;
             scoringModelEntity.CreatedBy = currentUserId;
