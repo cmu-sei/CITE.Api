@@ -7,13 +7,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
+using Cite.Api.Services;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Cite.Api.Infrastructure.Extensions
 {
@@ -27,7 +30,7 @@ namespace Cite.Api.Infrastructure.Extensions
 
                 try
                 {
-                    var databaseOptions = services.GetService<DatabaseOptions>();
+                    var databaseOptions = services.GetRequiredService<DatabaseOptions>();
                     var ctx = services.GetRequiredService<CiteContext>();
 
                     if (ctx != null)
@@ -46,15 +49,9 @@ namespace Cite.Api.Infrastructure.Extensions
                             ctx.Database.EnsureCreated();
                         }
 
-                        IHostEnvironment env = services.GetService<IHostEnvironment>();
-                        string seedFile = Path.Combine(
-                            env.ContentRootPath,
-                            databaseOptions.SeedFile
-                        );
-                        if (File.Exists(seedFile)) {
-                            SeedDataOptions seedDataOptions = JsonSerializer.Deserialize<SeedDataOptions>(File.ReadAllText(seedFile));
-                            ProcessSeedDataOptions(seedDataOptions, ctx);
-                        }
+                        var seedDataOptions = services.GetService<SeedDataOptions>();
+                        ProcessSeedDataOptions(seedDataOptions, ctx);
+                        ProcessScoringModelsBeforeTemplates(ctx);
                     }
 
                 }
@@ -269,6 +266,55 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
+        }
+
+        private static void ProcessScoringModelsBeforeTemplates(CiteContext context)
+        {
+            var evaluationsPointingToTemplates = context.Evaluations.Where(m => m.ScoringModel.EvaluationId == null);
+            foreach (var evaluation in evaluationsPointingToTemplates)
+            {
+                var newScoringModelId = CopyScoringModel(context, evaluation.ScoringModelId, evaluation.CreatedBy, evaluation.DateCreated, evaluation.Id);
+                evaluation.ScoringModel = null;
+                evaluation.ScoringModelId = newScoringModelId;
+                context.SaveChanges();
+            }
+        }
+
+        private static Guid CopyScoringModel(CiteContext context, Guid scoringModelId, Guid currentUserId, DateTime dateCreated, Guid evaluationId)
+        {
+            var scoringModelEntity = context.ScoringModels.AsNoTracking().FirstOrDefault(m => m.Id == scoringModelId);
+            scoringModelEntity.Id = Guid.NewGuid();
+            scoringModelEntity.DateCreated = dateCreated;
+            scoringModelEntity.CreatedBy = currentUserId;
+            scoringModelEntity.DateModified = null;
+            scoringModelEntity.ModifiedBy = null;
+            scoringModelEntity.Description = scoringModelEntity.Description;
+            scoringModelEntity.EvaluationId = evaluationId;
+            var scoringCategoryIdCrossReference = new Dictionary<Guid, Guid>();
+            // copy ScoringCategories
+            foreach (var scoringCategory in scoringModelEntity.ScoringCategories)
+            {
+                var newId = Guid.NewGuid();
+                scoringCategoryIdCrossReference[scoringCategory.Id] = newId;
+                scoringCategory.Id = newId;
+                scoringCategory.ScoringModelId = scoringModelEntity.Id;
+                scoringCategory.ScoringModel = null;
+                scoringCategory.DateCreated = dateCreated;
+                scoringCategory.CreatedBy = currentUserId;
+                // copy DataOptions
+                foreach (var scoringOption in scoringCategory.ScoringOptions)
+                {
+                    scoringOption.Id = Guid.NewGuid();
+                    scoringOption.ScoringCategoryId = scoringCategory.Id;
+                    scoringOption.ScoringCategory = null;
+                    scoringOption.DateCreated = dateCreated;
+                    scoringOption.CreatedBy = currentUserId;
+                }
+            }
+            context.ScoringModels.Add(scoringModelEntity);
+            context.SaveChanges();
+
+            return scoringModelEntity.Id;
         }
 
         private static string DbProvider(IConfiguration config)

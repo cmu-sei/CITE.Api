@@ -31,6 +31,6 @@ namespace Cite.Api.ViewModels
         public RightSideDisplay RightSideDisplay { get; set; }
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }
+        public Guid? EvaluationId { get; set; }
     }
 }
-
