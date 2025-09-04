@@ -28,5 +28,36 @@ namespace Cite.Api.Data.Enumerations
         None = 20
     }
 
-}
+    public enum SystemPermission
+    {
+        CreateScoringModels,
+        ViewScoringModels,
+        EditScoringModels,
+        ManageScoringModels,
+        CreateEvaluations,
+        ViewEvaluations,
+        EditEvaluations,
+        ManageEvaluations,
+        ViewUsers,
+        ManageUsers,
+        ViewRoles,
+        ManageRoles,
+        ViewGroups,
+        ManageGroups
+    }
 
+    public enum EvaluationPermission
+    {
+        ViewEvaluation,
+        EditEvaluation,
+        ManageEvaluation
+    }
+
+    public enum ScoringModelPermission
+    {
+        ViewScoringModel,
+        EditScoringModel,
+        ManageScoringModel
+    }
+
+}

@@ -3,13 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
+using Cite.Api.Infrastructure.Identity;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
@@ -20,12 +24,14 @@ namespace Cite.Api.Controllers
     public class EvaluationController : BaseController
     {
         private readonly IEvaluationService _evaluationService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IIdentityResolver _identityResolver;
 
-        public EvaluationController(IEvaluationService evaluationService, IAuthorizationService authorizationService)
+        public EvaluationController(IEvaluationService evaluationService, ICiteAuthorizationService authorizationService, IIdentityResolver identotyResolver)
         {
             _evaluationService = evaluationService;
             _authorizationService = authorizationService;
+            _identityResolver = identotyResolver;
         }
 
         /// <summary>
@@ -42,7 +48,21 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getEvaluations")]
         public async Task<IActionResult> Get([FromQuery] EvaluationGet queryParameters, CancellationToken ct)
         {
-            var list = await _evaluationService.GetAsync(queryParameters, ct);
+            var userIdString = _identityResolver.GetId().ToString();
+            var list = new List<Evaluation>();
+            // get ALL evaluations
+            if (await _authorizationService.AuthorizeAsync([SystemPermission.ViewEvaluations], ct))
+            {
+                list = (await _evaluationService.GetAsync(queryParameters, ct)).ToList();
+            }
+            // get evaluations  the user can access
+            else if (queryParameters.UserId == null || queryParameters.UserId == userIdString)
+            {
+                queryParameters.UserId = userIdString;
+                list = (await _evaluationService.GetAsync(queryParameters, ct)).ToList();
+            }
+            AddPermissions(list);
+
             return Ok(list);
         }
 
@@ -60,24 +80,8 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> GetMine(CancellationToken ct)
         {
             var list = await _evaluationService.GetMineAsync(ct);
-            return Ok(list);
-        }
+            AddPermissions(list);
 
-        /// <summary>
-        /// Gets Evaluations for the requested user
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of the requested user's active Evaluations.
-        /// </remarks>
-        /// <param name="userId"></param>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("users/{userId}/evaluations")]
-        [ProducesResponseType(typeof(IEnumerable<Evaluation>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getUserEvaluations")]
-        public async Task<IActionResult> GetUserEvaluations(Guid userId, CancellationToken ct)
-        {
-            var list = await _evaluationService.GetUserEvaluationsAsync(userId, ct);
             return Ok(list);
         }
 
@@ -95,10 +99,14 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getEvaluation")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var evaluation = await _evaluationService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
 
+            var evaluation = await _evaluationService.GetAsync(id, ct);
             if (evaluation == null)
                 throw new EntityNotFoundException<Evaluation>();
+
+            AddPermissions(evaluation);
 
             return Ok(evaluation);
         }
@@ -118,8 +126,13 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createEvaluation")]
         public async Task<IActionResult> Create([FromBody] Evaluation evaluation, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.CreateEvaluations], ct))
+                throw new ForbiddenException();
+
             evaluation.CreatedBy = User.GetId();
             var createdEvaluation = await _evaluationService.CreateAsync(evaluation, ct);
+            AddPermissions(createdEvaluation);
+
             return CreatedAtAction(nameof(this.Get), new { id = createdEvaluation.Id }, createdEvaluation);
         }
 
@@ -138,7 +151,13 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "copyEvaluation")]
         public async Task<IActionResult> Copy(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.CreateEvaluations], ct)
+                || !await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
             var createdEvaluation = await _evaluationService.CopyAsync(id, ct);
+            AddPermissions(createdEvaluation);
+
             return CreatedAtAction(nameof(this.Get), new { id = createdEvaluation.Id }, createdEvaluation);
         }
 
@@ -159,8 +178,13 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateEvaluation")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Evaluation evaluation, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             evaluation.ModifiedBy = User.GetId();
             var updatedEvaluation = await _evaluationService.UpdateAsync(id, evaluation, ct);
+            AddPermissions(updatedEvaluation);
+
             return Ok(updatedEvaluation);
         }
 
@@ -179,7 +203,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateEvaluationSituation")]
         public async Task<IActionResult> UpdateSituation([FromRoute] Guid id, [FromBody] EvaluationSituation evaluationSituation, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var updatedEvaluation = await _evaluationService.UpdateSituationAsync(id, evaluationSituation, ct);
+            AddPermissions(updatedEvaluation);
+
             return Ok(updatedEvaluation);
         }
 
@@ -197,7 +226,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "setEvaluationCurrentMove")]
         public async Task<IActionResult> SetCurrentMove([FromRoute] Guid id, int move, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var updatedEvaluation = await _evaluationService.SetCurrentMoveAsync(id, move, ct);
+            AddPermissions(updatedEvaluation);
+
             return Ok(updatedEvaluation);
         }
 
@@ -216,6 +250,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteEvaluation")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             await _evaluationService.DeleteAsync(id, ct);
             return NoContent();
         }
@@ -228,7 +265,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "uploadJsonFiles")]
         public async Task<IActionResult> UploadJsonAsync([FromForm] FileForm form, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.CreateEvaluations], ct))
+                throw new ForbiddenException();
+
             var result = await _evaluationService.UploadJsonAsync(form, ct);
+            AddPermissions(result);
+
             return Ok(result);
         }
 
@@ -240,12 +282,28 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "downloadJson")]
         public async Task<IActionResult> DownloadJsonAsync(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
             (var stream, var fileName) = await _evaluationService.DownloadJsonAsync(id, ct);
 
             // If this is wrapped in an Ok, it throws an exception
             return File(stream, "application/octet-stream", fileName);
         }
 
+        private void AddPermissions(IEnumerable<Evaluation> list)
+        {
+            foreach (var item in list)
+            {
+                AddPermissions(item);
+            }
+        }
+
+        private void AddPermissions(Evaluation item)
+        {
+            item.EvaluationPermissions = _authorizationService.GetEvaluationPermissions(item.Id).SelectMany(m => m.Permissions).Select(m => m.ToString()).ToList();
+
+        }
+
     }
 }
-

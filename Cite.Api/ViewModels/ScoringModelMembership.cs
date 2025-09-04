@@ -2,19 +2,20 @@
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 using System;
+using Cite.Api.Data;
 
 namespace Cite.Api.ViewModels
 {
-    public class Group : IAuthorizationType
+    public class ScoringModelMembership
     {
-        /// <summary>
-        /// ID of the group.
-        /// </summary>
         public Guid Id { get; set; }
 
-        /// <summary>
-        /// Name of the group.
-        /// </summary>
-        public string Name { get; set; }
+        public Guid ScoringModelId { get; set; }
+
+        public Guid? UserId { get; set; }
+
+        public Guid? GroupId { get; set; }
+
+        public Guid RoleId { get; set; }
     }
 }

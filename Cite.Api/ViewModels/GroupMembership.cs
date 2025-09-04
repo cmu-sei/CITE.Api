@@ -5,16 +5,18 @@ using System;
 
 namespace Cite.Api.ViewModels
 {
-    public class Group : IAuthorizationType
+    public class GroupMembership : IAuthorizationType
     {
-        /// <summary>
-        /// ID of the group.
-        /// </summary>
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Name of the group.
+        /// ID of the group.
         /// </summary>
-        public string Name { get; set; }
+        public Guid GroupId { get; set; }
+
+        /// <summary>
+        /// Id of the User.
+        /// </summary>
+        public Guid UserId { get; set; }
     }
 }

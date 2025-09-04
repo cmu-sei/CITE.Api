@@ -13,15 +13,10 @@ namespace Cite.Api.Infrastructure.Mappings
         public UserProfile()
         {
             CreateMap<UserEntity, User>()
-                .ForMember(m => m.Submissions, opt => opt.ExplicitExpansion())
-                .ForMember(m => m.Permissions, opt => opt.MapFrom(x => x.UserPermissions.Select(y => y.Permission)))
-                .ForMember(m => m.Permissions, opt => opt.ExplicitExpansion());
+                .ForMember(m => m.Submissions, opt => opt.ExplicitExpansion());
             CreateMap<User, UserEntity>()
                 .ForMember(m => m.Submissions, opt => opt.Ignore())
-                .ForMember(m => m.UserPermissions, opt => opt.Ignore())
                 .ForMember(m => m.TeamUsers, opt => opt.Ignore());
         }
     }
 }
-
-

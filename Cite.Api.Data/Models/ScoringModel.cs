@@ -1,4 +1,4 @@
-// Copyright 2022 Carnegie Mellon University. All Rights Reserved.
+// Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using System;
@@ -32,5 +32,6 @@ namespace Cite.Api.Data.Models
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }
         public Guid? EvaluationId { get; set; }
+        public virtual ICollection<ScoringModelMembershipEntity> Memberships { get; set; } = new List<ScoringModelMembershipEntity>();
     }
 }

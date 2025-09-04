@@ -2,19 +2,19 @@
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 using System;
+using Cite.Api.Data;
 
 namespace Cite.Api.ViewModels
 {
-    public class Group : IAuthorizationType
+    public class SystemRole
     {
-        /// <summary>
-        /// ID of the group.
-        /// </summary>
+
         public Guid Id { get; set; }
 
-        /// <summary>
-        /// Name of the group.
-        /// </summary>
         public string Name { get; set; }
+
+        public bool AllPermissions { get; set; }
+        public bool Immutable { get; set; }
+        public SystemPermission[] Permissions { get; set; }
     }
 }
