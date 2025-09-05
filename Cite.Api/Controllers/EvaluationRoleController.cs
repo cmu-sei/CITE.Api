@@ -8,7 +8,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;

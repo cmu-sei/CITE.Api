@@ -12,7 +12,7 @@ namespace Cite.Api.ViewModels
 
         public string Name { get; set; }
 
-        public Permission[] Permissions { get; set; }
         public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+        public string RoleId { get; set; }
     }
 }

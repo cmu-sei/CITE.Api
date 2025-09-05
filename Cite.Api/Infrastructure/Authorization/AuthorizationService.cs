@@ -7,12 +7,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.ViewModels;
 using Cite.Api.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using SAVM = Cite.Api.ViewModels;
-using Cite.Api.Infrastructure.Exceptions;
 
 namespace Cite.Api.Infrastructure.Authorization;
 
@@ -174,10 +173,7 @@ public class AuthorizationService(
         return typeof(T) switch
         {
             var t when t == typeof(Evaluation) => resourceId,
-            var t when t == typeof(SAVM.Task) => await GetEvaluationIdFromTask(resourceId, cancellationToken),
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
-            var t when t == typeof(Result) => await GetEvaluationIdFromResult(resourceId, cancellationToken),
-            var t when t == typeof(PlayerView) => await GetEvaluationIdFromPlayerView(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -188,26 +184,9 @@ public class AuthorizationService(
         {
             var t when t == typeof(ScoringModel) => resourceId,
             var t when t == typeof(Evaluation) => await GetScoringModelIdFromEvaluation(resourceId, cancellationToken),
-            var t when t == typeof(SAVM.Task) => await GetEvaluationIdFromTaskTemplate(resourceId, cancellationToken),
             var t when t == typeof(EvaluationMembership) => await GetScoringModelIdFromScoringModelMembership(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
-    }
-
-    private async Task<Guid> GetEvaluationIdFromTask(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Tasks
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromTaskTemplate(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Tasks
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<Guid> GetEvaluationIdFromEvaluationMembership(Guid id, CancellationToken cancellationToken)
@@ -218,48 +197,17 @@ public class AuthorizationService(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private async Task<Guid> GetEvaluationIdFromResult(Guid id, CancellationToken cancellationToken)
-    {
-        var taskId = await dbContext.Results
-            .Where(x => x.Id == id)
-            .Select(x => x.TaskId)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (taskId == null)
-            throw new EntityNotFoundException<Result>();
-
-        return (Guid)await dbContext.Tasks
-            .Where(m => m.Id == taskId)
-            .Select(m => m.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromPlayerView(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Evaluations
-            .Where(x => x.ViewId == id)
-            .Select(x => x.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
     private async Task<Guid> GetScoringModelIdFromEvaluation(Guid id, CancellationToken cancellationToken)
     {
-        return (Guid)await dbContext.Tasks
+        return (Guid)await dbContext.Evaluations
             .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
+            .Select(x => x.ScoringModelId)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<Guid> GetScoringModelIdFromScoringModelMembership(Guid id, CancellationToken cancellationToken)
     {
         return await dbContext.ScoringModelMemberships
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetScoringModelIdFromTask(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Tasks
             .Where(x => x.Id == id)
             .Select(x => x.ScoringModelId)
             .FirstOrDefaultAsync(cancellationToken);

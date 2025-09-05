@@ -3,7 +3,7 @@
 
 using System;
 using System.Text.Json;
-using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.Infrastructure.Authorization;
 

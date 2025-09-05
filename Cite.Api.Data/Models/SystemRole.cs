@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.Data.Models;
 
@@ -55,8 +56,7 @@ public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRole
                 Immutable = false,
                 Permissions = [
                     SystemPermission.CreateScoringModels,
-                    SystemPermission.CreateEvaluations,
-                    SystemPermission.ExecuteEvaluations
+                    SystemPermission.CreateEvaluations
                 ],
                 Description = "Can create and manage their own Evaluation Templates and Evaluations."
             },

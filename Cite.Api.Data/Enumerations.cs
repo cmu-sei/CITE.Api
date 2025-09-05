@@ -38,6 +38,8 @@ namespace Cite.Api.Data.Enumerations
         ViewEvaluations,
         EditEvaluations,
         ManageEvaluations,
+        ExecuteEvaluations,
+        ObserveEvaluations,
         ViewUsers,
         ManageUsers,
         ViewRoles,
@@ -50,7 +52,9 @@ namespace Cite.Api.Data.Enumerations
     {
         ViewEvaluation,
         EditEvaluation,
-        ManageEvaluation
+        ManageEvaluation,
+        ExecuteEvaluation,
+        ObserveEvaluation
     }
 
     public enum ScoringModelPermission
@@ -58,6 +62,14 @@ namespace Cite.Api.Data.Enumerations
         ViewScoringModel,
         EditScoringModel,
         ManageScoringModel
+    }
+
+    public enum TeamPermission
+    {
+        ViewTeam,
+        EditTeamScore,
+        SubmitTeamScore,
+        ManageTeam
     }
 
 }

@@ -35,20 +35,14 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
-        private readonly ITaskService _taskService;
-        private readonly IStackStormService _stackstormService;
 
         public GroupService(CiteContext context,
                                 IPrincipal user,
-                                IMapper mapper,
-                                ITaskService taskService,
-                                IStackStormService stackstormService)
+                                IMapper mapper)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
-            _taskService = taskService;
-            _stackstormService = stackstormService;
         }
 
         public async STT.Task<IEnumerable<ViewModels.Group>> GetAsync(CancellationToken ct)

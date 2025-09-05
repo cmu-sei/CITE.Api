@@ -70,20 +70,6 @@ namespace Cite.Api.Infrastructure.Extensions
 
         private static void ProcessSeedDataOptions(SeedDataOptions options, CiteContext context)
         {
-            // permissions
-            if (options.Permissions != null && options.Permissions.Any())
-            {
-                var dbPermissions = context.Permissions.ToList();
-
-                foreach (PermissionEntity permission in options.Permissions)
-                {
-                    if (!dbPermissions.Where(x => x.Key == permission.Key && x.Value == permission.Value).Any())
-                    {
-                        context.Permissions.Add(permission);
-                    }
-                }
-                context.SaveChanges();
-            }
             // users
             if (options.Users != null && options.Users.Any())
             {
@@ -94,20 +80,6 @@ namespace Cite.Api.Infrastructure.Extensions
                     if (!dbUsers.Where(x => x.Id == user.Id).Any())
                     {
                         context.Users.Add(user);
-                    }
-                }
-                context.SaveChanges();
-            }
-            // user permissions
-            if (options.UserPermissions != null && options.UserPermissions.Any())
-            {
-                var dbUserPermissions = context.UserPermissions.ToList();
-
-                foreach (UserPermissionEntity userPermission in options.UserPermissions)
-                {
-                    if (!dbUserPermissions.Where(x => x.UserId == userPermission.UserId && x.PermissionId == userPermission.PermissionId).Any())
-                    {
-                        context.UserPermissions.Add(userPermission);
                     }
                 }
                 context.SaveChanges();

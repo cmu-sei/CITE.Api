@@ -6,7 +6,7 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScenarioRole
+    public class EvaluationRole
     {
 
         public Guid Id { get; set; }

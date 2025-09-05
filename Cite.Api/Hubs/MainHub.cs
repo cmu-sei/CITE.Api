@@ -25,8 +25,13 @@ namespace Cite.Api.Hubs
         private readonly CiteContext _context;
         private readonly DatabaseOptions _options;
         private readonly CancellationToken _ct;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
         public const string ADMIN_DATA_GROUP = "AdminDataGroup";
+        public const string EVALUATION_GROUP = "AdminEvaluationGroup";
+        public const string SCORING_MODEL_GROUP = "AdminScoringModelGroup";
+        public const string GROUP_GROUP = "AdminGroupGroup";
+        public const string ROLE_GROUP = "AdminRoleGroup";
+        public const string USER_GROUP = "AdminUserGroup";
 
         public MainHub(
             ITeamService teamService,
@@ -34,7 +39,7 @@ namespace Cite.Api.Hubs
             IScoringModelService scoringModelService,
             CiteContext context,
             DatabaseOptions options,
-            IAuthorizationService authorizationService
+            ICiteAuthorizationService authorizationService
         )
         {
             _teamService = teamService;
@@ -189,7 +194,14 @@ namespace Cite.Api.Hubs
         public const string UserCreated = "UserCreated";
         public const string UserUpdated = "UserUpdated";
         public const string UserDeleted = "UserDeleted";
-        public const string UserPermissionCreated = "UserPermissionCreated";
-        public const string UserPermissionDeleted = "UserPermissionDeleted";
+        public const string GroupMembershipCreated = "GroupMembershipCreated";
+        public const string GroupMembershipUpdated = "GroupMembershipUpdated";
+        public const string GroupMembershipDeleted = "GroupMembershipDeleted";
+        public const string ScoringModelMembershipCreated = "ScoringModelMembershipCreated";
+        public const string ScoringModelMembershipUpdated = "ScoringModelMembershipUpdated";
+        public const string ScoringModelMembershipDeleted = "ScoringModelMembershipDeleted";
+        public const string EvaluationMembershipCreated = "EvaluationMembershipCreated";
+        public const string EvaluationMembershipUpdated = "EvaluationMembershipUpdated";
+        public const string EvaluationMembershipDeleted = "EvaluationMembershipDeleted";
     }
 }

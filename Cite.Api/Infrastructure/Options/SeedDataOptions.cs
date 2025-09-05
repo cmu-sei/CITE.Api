@@ -8,9 +8,7 @@ namespace Cite.Api.Infrastructure.Options
 {
     public class SeedDataOptions
     {
-        public List<PermissionEntity> Permissions { get; set; }
         public List<UserEntity> Users { get; set; }
-        public List<UserPermissionEntity> UserPermissions { get; set; }
         public List<TeamTypeEntity> TeamTypes { get; set; }
         public List<TeamEntity> Teams { get; set; }
         public List<TeamUserEntity> TeamUsers { get; set; }
@@ -24,4 +22,3 @@ namespace Cite.Api.Infrastructure.Options
         public List<RoleUserEntity> RoleUsers { get; set; }
     }
 }
-

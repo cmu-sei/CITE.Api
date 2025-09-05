@@ -12,7 +12,7 @@ using Cite.Api.Services;
 using SAVM = Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
 using Cite.Api.ViewModels;
-using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
 
 namespace Cite.Api.Controllers

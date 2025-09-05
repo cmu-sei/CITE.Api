@@ -236,7 +236,7 @@ namespace Cite.Api.Controllers
 
         private void AddPermissions(ScoringModel item)
         {
-            item.ScoringModelPermissions = _authorizationService.GetScoringModelPermissions(item.Id).SelectMany(m => m.Permissions).Select(m => m.ToString()).ToList();
+            item.ScoringModelPermissions = _authorizationService.GetScoringModelPermissions(item.Id).SelectMany(m => m.Permissions);
         }
 
     }

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
@@ -74,26 +73,6 @@ namespace Cite.Api.Controllers
                 throw new EntityNotFoundException<User>();
 
             return Ok(user);
-        }
-
-        /// <summary>
-        /// Gets all Users for a team
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of all of the Users on the team.
-        /// <para />
-        /// Only accessible to a SuperUser
-        /// </remarks>
-        /// <param name="teamId">The id of the Team</param>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("teams/{teamId}/users")]
-        [ProducesResponseType(typeof(IEnumerable<User>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getTeamUsers")]
-        public async Task<IActionResult> GetByTeam(Guid teamId, CancellationToken ct)
-        {
-            var list = await _userService.GetByTeamAsync(teamId, ct);
-            return Ok(list);
         }
 
         /// <summary>
