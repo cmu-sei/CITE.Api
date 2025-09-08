@@ -38,6 +38,8 @@ namespace Cite.Api.Data
         public DbSet<EvaluationMembershipEntity> EvaluationMemberships { get; set; }
         public DbSet<ScoringModelRoleEntity> ScoringModelRoles { get; set; }
         public DbSet<ScoringModelMembershipEntity> ScoringModelMemberships { get; set; }
+        public DbSet<TeamRoleEntity> TeamRoles { get; set; }
+        public DbSet<TeamMembershipEntity> TeamMemberships { get; set; }
         public DbSet<GroupEntity> Groups { get; set; }
         public DbSet<GroupMembershipEntity> GroupMemberships { get; set; }
 

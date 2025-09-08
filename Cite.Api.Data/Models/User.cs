@@ -22,8 +22,8 @@ namespace Cite.Api.Data.Models
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
         public Guid? RoleId { get; set; }
         public virtual SystemRoleEntity Role { get; set; }
-
         public ICollection<EvaluationMembershipEntity> EvaluationMemberships { get; set; } = new List<EvaluationMembershipEntity>();
+        public ICollection<TeamMembershipEntity> TeamMemberships { get; set; } = new List<TeamMembershipEntity>();
         public ICollection<ScoringModelMembershipEntity> ScoringModelMemberships { get; set; } = new List<ScoringModelMembershipEntity>();
         public ICollection<GroupMembershipEntity> GroupMemberships { get; set; } = new List<GroupMembershipEntity>();
     }

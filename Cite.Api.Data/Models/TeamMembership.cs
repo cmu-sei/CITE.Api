@@ -1,0 +1,53 @@
+// Copyright 2022 Carnegie Mellon University. All Rights Reserved.
+// Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
+
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Cite.Api.Data.Models
+{
+    public class TeamMembershipEntity
+    {
+        public TeamMembershipEntity() { }
+
+        public TeamMembershipEntity(Guid teamId, Guid userId)
+        {
+            TeamId = teamId;
+            UserId = userId;
+        }
+
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid Id { get; set; }
+
+        public Guid TeamId { get; set; }
+        public virtual TeamEntity Team { get; set; }
+
+        public Guid UserId { get; set; }
+        public virtual UserEntity User { get; set; }
+        public Guid? RoleId { get; set; }
+        public TeamRoleEntity Role { get; set; }
+    }
+
+    public class TeamMembershipConfiguration : IEntityTypeConfiguration<TeamMembershipEntity>
+    {
+        public void Configure(EntityTypeBuilder<TeamMembershipEntity> builder)
+        {
+            builder.HasIndex(e => new { e.TeamId, e.UserId }).IsUnique();
+
+            builder
+                .HasOne(tu => tu.Team)
+                .WithMany(t => t.Memberships)
+                .HasForeignKey(tu => tu.TeamId);
+
+            builder
+                .HasOne(tu => tu.User)
+                .WithMany(u => u.TeamMemberships)
+                .HasForeignKey(tu => tu.UserId)
+                .HasPrincipalKey(u => u.Id);
+        }
+    }
+}
