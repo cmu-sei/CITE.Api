@@ -54,7 +54,8 @@ namespace Cite.Api.Data.Enumerations
         EditEvaluation,
         ManageEvaluation,
         ExecuteEvaluation,
-        ObserveEvaluation
+        ObserveEvaluation,
+        ParticipateInEvaluation
     }
 
     public enum ScoringModelPermission

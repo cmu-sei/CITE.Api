@@ -29,8 +29,11 @@ public class EvaluationRoleEntity
 public static class EvaluationRoleDefaults
 {
     public static Guid EvaluationCreatorRoleId = new("1a3f26cd-9d99-4b98-b914-12931e786198");
-    public static Guid EvaluationReadOnlyRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c6f");
+    public static Guid EvaluationEditorRoleId = new("8aaa0d30-bdbe-4f2b-a6b8-f1a5466b2560");
+    public static Guid EvaluationViewerRoleId = new("4af74a62-596c-4767-a43a-b74aa8e48526");
     public static Guid EvaluationMemberRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e4");
+    public static Guid EvaluationObserverRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c6f");
+    public static Guid EvaluationAdvancerRoleId = new("7c366199-f795-4a04-b360-e8705e77a052");
 }
 
 public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRoleEntity>
@@ -44,15 +47,27 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                 Name = "Manager",
                 AllPermissions = true,
                 Permissions = [],
-                Description = "Can perform all actions on the Evaluation"
+                Description = "Can perform all actions on the Evaluation in administration"
             },
             new EvaluationRoleEntity
             {
-                Id = EvaluationRoleDefaults.EvaluationReadOnlyRoleId,
-                Name = "Observer",
+                Id = EvaluationRoleDefaults.EvaluationEditorRoleId,
+                Name = "Editor",
                 AllPermissions = false,
-                Permissions = [EvaluationPermission.ViewEvaluation],
-                Description = "Has read only access to the Evaluation"
+                Permissions = [
+
+                ],
+                Description = "Can edit the Evaluation in administration"
+            },
+            new EvaluationRoleEntity
+            {
+                Id = EvaluationRoleDefaults.EvaluationViewerRoleId,
+                Name = "Viewer",
+                AllPermissions = false,
+                Permissions = [
+
+                ],
+                Description = "Can view the Evaluation in administration"
             },
             new EvaluationRoleEntity
             {
@@ -63,7 +78,26 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                     EvaluationPermission.ViewEvaluation,
                     EvaluationPermission.EditEvaluation
                 ],
-                Description = "Has read only access to the Evaluation"
+                Description = "Has read only access to the Evaluation up to the current move"
+            },
+            new EvaluationRoleEntity
+            {
+                Id = EvaluationRoleDefaults.EvaluationObserverRoleId,
+                Name = "Observer",
+                AllPermissions = false,
+                Permissions = [EvaluationPermission.ViewEvaluation],
+                Description = "Has read only access to all teams in the Evaluation up to the current move"
+            },
+            new EvaluationRoleEntity
+            {
+                Id = EvaluationRoleDefaults.EvaluationAdvancerRoleId,
+                Name = "Advancer",
+                AllPermissions = false,
+                Permissions = [
+                    EvaluationPermission.ViewEvaluation,
+                    EvaluationPermission.ExecuteEvaluation
+                ],
+                Description = "Can advance moves for the Evaluation"
             }
         );
     }

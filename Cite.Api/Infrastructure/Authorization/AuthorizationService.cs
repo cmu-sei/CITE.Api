@@ -33,10 +33,17 @@ public interface ICiteAuthorizationService
         ScoringModelPermission[] requiredScoringModelPermissions,
         CancellationToken cancellationToken) where T : IAuthorizationType;
 
+    Task<bool> AuthorizeAsync<T>(
+        Guid? resourceId,
+        SystemPermission[] requiredSystemPermissions,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken) where T : IAuthorizationType;
+
     IEnumerable<Guid> GetAuthorizedEvaluationIds();
     IEnumerable<SystemPermission> GetSystemPermissions();
     IEnumerable<EvaluationPermissionClaim> GetEvaluationPermissions(Guid? evaluationId = null);
     IEnumerable<ScoringModelPermissionClaim> GetScoringModelPermissions(Guid? scoringModelId = null);
+    IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? teamId = null);
 }
 
 public class AuthorizationService(
@@ -103,6 +110,32 @@ public class AuthorizationService(
         return succeeded;
     }
 
+    public async Task<bool> AuthorizeAsync<T>(
+        Guid? resourceId,
+        SystemPermission[] requiredSystemPermissions,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken) where T : IAuthorizationType
+    {
+        var claimsPrincipal = identityResolver.GetClaimsPrincipal();
+        bool succeeded = await HasSystemPermission<IAuthorizationType>(requiredSystemPermissions);
+
+        if (!succeeded && resourceId.HasValue)
+        {
+            var evaluationId = await GetTeamId<T>(resourceId.Value, cancellationToken);
+
+            if (evaluationId != null)
+            {
+                var evaluationPermissionRequirement = new TeamPermissionRequirement(requiredTeamPermissions, evaluationId.Value);
+                var evaluationPermissionResult = await authService.AuthorizeAsync(claimsPrincipal, null, evaluationPermissionRequirement);
+
+                succeeded = evaluationPermissionResult.Succeeded;
+            }
+
+        }
+
+        return succeeded;
+    }
+
     public IEnumerable<Guid> GetAuthorizedEvaluationIds()
     {
         return identityResolver.GetClaimsPrincipal().Claims
@@ -153,6 +186,20 @@ public class AuthorizationService(
         if (scoringModelId.HasValue)
         {
             permissions = permissions.Where(x => x.ScoringModelId == scoringModelId.Value);
+        }
+
+        return permissions;
+    }
+
+    public IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? evaluationId = null)
+    {
+        var permissions = identityResolver.GetClaimsPrincipal().Claims
+           .Where(x => x.Type == AuthorizationConstants.TeamPermissionClaimType)
+           .Select(x => TeamPermissionClaim.FromString(x.Value));
+
+        if (evaluationId.HasValue)
+        {
+            permissions = permissions.Where(x => x.TeamId == evaluationId.Value);
         }
 
         return permissions;
@@ -210,6 +257,24 @@ public class AuthorizationService(
         return await dbContext.ScoringModelMemberships
             .Where(x => x.Id == id)
             .Select(x => x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid?> GetTeamId<T>(Guid resourceId, CancellationToken cancellationToken)
+    {
+        return typeof(T) switch
+        {
+            var t when t == typeof(Team) => resourceId,
+            var t when t == typeof(TeamMembership) => await GetTeamIdFromTeamMembership(resourceId, cancellationToken),
+            _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
+        };
+    }
+
+    private async Task<Guid> GetTeamIdFromTeamMembership(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.TeamMemberships
+            .Where(x => x.Id == id)
+            .Select(x => x.TeamId)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
