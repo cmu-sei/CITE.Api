@@ -34,7 +34,7 @@ namespace Cite.Api.Infrastructure.Authorization
             }
             else
             {
-                ScoringModelPermissionClaim scoringModelPermissionsClaim = null;
+                ScoringModelPermissionClaim scoringModelPermissionClaim = null;
 
                 var claims = context.User.Claims
                     .Where(x => x.Type == AuthorizationConstants.ScoringModelPermissionClaimType)
@@ -45,12 +45,12 @@ namespace Cite.Api.Infrastructure.Authorization
                     var claimValue = ScoringModelPermissionClaim.FromString(claim.Value);
                     if (claimValue.ScoringModelId == requirement.EvaluationId)
                     {
-                        scoringModelPermissionsClaim = claimValue;
+                        scoringModelPermissionClaim = claimValue;
                         break;
                     }
                 }
 
-                if (scoringModelPermissionsClaim == null)
+                if (scoringModelPermissionClaim == null)
                 {
                     context.Fail();
                 }
@@ -58,7 +58,7 @@ namespace Cite.Api.Infrastructure.Authorization
                 {
                     context.Succeed(requirement);
                 }
-                else if (requirement.RequiredPermissions.Any(x => scoringModelPermissionsClaim.Permissions.Contains(x)))
+                else if (requirement.RequiredPermissions.Any(x => scoringModelPermissionClaim.Permissions.Contains(x)))
                 {
                     context.Succeed(requirement);
                 }

@@ -2,14 +2,12 @@
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class Move : Base
+    public class Move : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -21,4 +19,3 @@ namespace Cite.Api.ViewModels
         public Guid EvaluationId { get; set; }
    }
 }
-

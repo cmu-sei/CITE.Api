@@ -1,7 +1,6 @@
 // Copyright 2022 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
-using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
@@ -22,7 +21,6 @@ namespace Cite.Api.Services
     public interface IGalleryService
     {
         Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid exhibitId, CancellationToken ct);
-        Task<GAC.UnreadArticles> GetUnreadArticleCountAsync(Guid exhibitId, Guid userId, CancellationToken ct);
     }
 
     public class GalleryService : IGalleryService
@@ -55,13 +53,10 @@ namespace Cite.Api.Services
 
         public async Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             return await GetUnreadArticleCountAsync(evaluationId, _user.GetId(), ct);
         }
 
-        public async Task<GAC.UnreadArticles> GetUnreadArticleCountAsync(Guid evaluationId, Guid userId, CancellationToken ct)
+        private async Task<GAC.UnreadArticles> GetUnreadArticleCountAsync(Guid evaluationId, Guid userId, CancellationToken ct)
         {
             // get the evaluation
             var evaluation = await _context.Evaluations.FindAsync(evaluationId);
@@ -93,4 +88,3 @@ namespace Cite.Api.Services
 
     }
 }
-

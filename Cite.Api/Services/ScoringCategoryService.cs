@@ -24,8 +24,8 @@ namespace Cite.Api.Services
     public interface IScoringCategoryService
     {
         Task<IEnumerable<ViewModels.ScoringCategory>> GetAsync(ScoringCategoryGet queryParameters, CancellationToken ct);
-        Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, CancellationToken ct);
-        Task<ViewModels.ScoringCategory> GetAsync(Guid id, CancellationToken ct);
+        Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, bool includeCalculations, CancellationToken ct);
+        Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct);
         Task<ViewModels.ScoringCategory> CreateAsync(ViewModels.ScoringCategory scoringCategory, CancellationToken ct);
         Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.ScoringCategory scoringCategory, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
@@ -52,11 +52,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.ScoringCategory>> GetAsync(ScoringCategoryGet queryParameters, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             IQueryable<ScoringCategoryEntity> scoringCategories = null;
-
             // filter based on description
             if (!String.IsNullOrEmpty(queryParameters.Description))
             {
@@ -70,14 +66,14 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<ScoringCategory>>(await scoringCategories.ToListAsync());
         }
 
-        public async Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, bool includeCalculations, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var scoringCategoryList = await _context.ScoringCategories.Where(sc => sc.ScoringModelId == scoringModelId).ToListAsync();
+            var scoringCategoryList = await _context.ScoringCategories.Where(sc =>
+                sc.ScoringModelId == scoringModelId &&
+                (includeCalculations || (sc.ScoringModel.EvaluationId != null))
+            ).ToListAsync();
             // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!includeCalculations)
             {
                 foreach (var scoringCategory in scoringCategoryList)
                 {
@@ -89,14 +85,11 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<ScoringCategory>>(scoringCategoryList);
         }
 
-        public async Task<ViewModels.ScoringCategory> GetAsync(Guid id, CancellationToken ct)
+        public async Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.ScoringCategories.SingleOrDefaultAsync(sc => sc.Id == id, ct);
             // only show scoring model calculations to content developers and system admins
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            if (!includeCalculations)
             {
                 item.CalculationEquation = "********";
                 item.ScoringWeight = 0.0;
@@ -107,30 +100,22 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringCategory> CreateAsync(ViewModels.ScoringCategory scoringCategory, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             scoringCategory.Id = scoringCategory.Id != Guid.Empty ? scoringCategory.Id : Guid.NewGuid();
             scoringCategory.DateCreated = DateTime.UtcNow;
             scoringCategory.CreatedBy = _user.GetId();
             scoringCategory.DateModified = null;
             scoringCategory.ModifiedBy = null;
             var scoringCategoryEntity = _mapper.Map<ScoringCategoryEntity>(scoringCategory);
-
             _context.ScoringCategories.Add(scoringCategoryEntity);
             await _context.SaveChangesAsync(ct);
-            scoringCategory = await GetAsync(scoringCategoryEntity.Id, ct);
+            scoringCategory = await GetAsync(scoringCategoryEntity.Id, true, ct);
 
             return scoringCategory;
         }
 
         public async Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.ScoringCategory scoringCategory, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringCategoryToUpdate = await _context.ScoringCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringCategoryToUpdate == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 
@@ -139,22 +124,16 @@ namespace Cite.Api.Services
             scoringCategory.ModifiedBy = _user.GetId();
             scoringCategory.DateModified = DateTime.UtcNow;
             _mapper.Map(scoringCategory, scoringCategoryToUpdate);
-
             _context.ScoringCategories.Update(scoringCategoryToUpdate);
             await _context.SaveChangesAsync(ct);
-
-            scoringCategory = await GetAsync(scoringCategoryToUpdate.Id, ct);
+            scoringCategory = await GetAsync(scoringCategoryToUpdate.Id, true, ct);
 
             return scoringCategory;
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringCategoryToDelete = await _context.ScoringCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringCategoryToDelete == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 
@@ -166,4 +145,3 @@ namespace Cite.Api.Services
 
     }
 }
-

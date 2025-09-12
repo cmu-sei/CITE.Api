@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Cite.Api.ViewModels
 {
-    public class Team : Base
+    public class Team : Base, IAuthorizationType
     {
         public Guid Id { get; set; }
         public string Name { get; set; }

@@ -191,15 +191,15 @@ public class AuthorizationService(
         return permissions;
     }
 
-    public IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? evaluationId = null)
+    public IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? teamId = null)
     {
         var permissions = identityResolver.GetClaimsPrincipal().Claims
            .Where(x => x.Type == AuthorizationConstants.TeamPermissionClaimType)
            .Select(x => TeamPermissionClaim.FromString(x.Value));
 
-        if (evaluationId.HasValue)
+        if (teamId.HasValue)
         {
-            permissions = permissions.Where(x => x.TeamId == evaluationId.Value);
+            permissions = permissions.Where(x => x.TeamId == teamId.Value);
         }
 
         return permissions;
@@ -221,6 +221,7 @@ public class AuthorizationService(
         {
             var t when t == typeof(Evaluation) => resourceId,
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
+            var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -231,6 +232,7 @@ public class AuthorizationService(
         {
             var t when t == typeof(ScoringModel) => resourceId,
             var t when t == typeof(Evaluation) => await GetScoringModelIdFromEvaluation(resourceId, cancellationToken),
+            var t when t == typeof(ScoringCategory) => await GetScoringModelIdFromScoringCategory(resourceId, cancellationToken),
             var t when t == typeof(EvaluationMembership) => await GetScoringModelIdFromScoringModelMembership(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
@@ -244,9 +246,25 @@ public class AuthorizationService(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private async Task<Guid> GetEvaluationIdFromAction(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Actions
+            .Where(x => x.Id == id)
+            .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     private async Task<Guid> GetScoringModelIdFromEvaluation(Guid id, CancellationToken cancellationToken)
     {
         return (Guid)await dbContext.Evaluations
+            .Where(x => x.Id == id)
+            .Select(x => x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetScoringModelIdFromScoringCategory(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.ScoringCategories
             .Where(x => x.Id == id)
             .Select(x => x.ScoringModelId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -266,6 +284,7 @@ public class AuthorizationService(
         {
             var t when t == typeof(Team) => resourceId,
             var t when t == typeof(TeamMembership) => await GetTeamIdFromTeamMembership(resourceId, cancellationToken),
+            var t when t == typeof(ViewModels.Action) => await GetTeamIdFromAction(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -273,6 +292,14 @@ public class AuthorizationService(
     private async Task<Guid> GetTeamIdFromTeamMembership(Guid id, CancellationToken cancellationToken)
     {
         return await dbContext.TeamMemberships
+            .Where(x => x.Id == id)
+            .Select(x => x.TeamId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetTeamIdFromAction(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Actions
             .Where(x => x.Id == id)
             .Select(x => x.TeamId)
             .FirstOrDefaultAsync(cancellationToken);

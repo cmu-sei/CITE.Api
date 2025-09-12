@@ -31,7 +31,6 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct);
         Task<IEnumerable<ViewModels.Evaluation>> GetMineAsync(CancellationToken ct);
-        Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct);
         Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct);
@@ -77,14 +76,9 @@ namespace Cite.Api.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct)
+        public async Task<IEnumerable<Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct)
         {
-            // only content developers can get all of the evaluations
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             IQueryable<EvaluationEntity> evaluations = null;
-
             // filter based on user
             if (!String.IsNullOrEmpty(queryParameters.UserId))
             {
@@ -139,20 +133,9 @@ namespace Cite.Api.Services
             return await GetUserEvaluationsAsync(userId, ct);
         }
 
-        public async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
+        private async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            if (currentUserId == userId)
-            {
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                    throw new ForbiddenException();
-            }
-            else
-            {
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
-                    throw new ForbiddenException();
-            }
-
             var evaluationIdList = await _context.TeamUsers
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
@@ -166,9 +149,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.Evaluations
                 .Include(e => e.Teams)
                 .Include(e => e.Moves)
@@ -179,9 +159,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.DateCreated = DateTime.UtcNow;
             evaluation.CreatedBy = _user.GetId();
@@ -209,9 +186,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationEntity = await _context.Evaluations
                 .AsNoTracking()
                 .Include(m => m.Teams)
@@ -282,10 +256,6 @@ namespace Cite.Api.Services
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluation = await _context.Evaluations
                 .Include(m => m.ScoringModel)
                 .ThenInclude(m => m.ScoringCategories)
@@ -316,10 +286,6 @@ namespace Cite.Api.Services
 
         public async Task<Evaluation> UploadJsonAsync(FileForm form, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var uploadItem = form.ToUpload;
             var evaluationJson = "";
             using (StreamReader reader = new StreamReader(uploadItem.OpenReadStream()))
@@ -358,12 +324,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToUpdate == null)
                 throw new EntityNotFoundException<Evaluation>();
 
@@ -432,12 +393,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToUpdate == null)
                 throw new EntityNotFoundException<Evaluation>();
 
@@ -453,10 +409,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations
                 .Include(e => e.Moves)
                 .SingleOrDefaultAsync(v => v.Id == id, ct);
@@ -481,11 +433,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToDelete = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToDelete == null)
                 throw new EntityNotFoundException<Evaluation>();
 

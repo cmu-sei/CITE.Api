@@ -23,12 +23,11 @@ namespace Cite.Api.Infrastructure.Extensions
             services.AddSingleton<IAuthorizationHandler, CanIncrementMoveHandler>();
             services.AddSingleton<IAuthorizationHandler, CanSubmitHandler>();
             services.AddSingleton<IAuthorizationHandler, CanModifyHandler>();
-            services.AddSingleton<IAuthorizationHandler, EvaluationUserHandler>();
             services.AddSingleton<IAuthorizationHandler, EvaluationObserverHandler>();
-            services.AddSingleton<IAuthorizationHandler, TeamUserHandler>();
             services.AddSingleton<IAuthorizationHandler, SystemPermissionHandler>();
             services.AddSingleton<IAuthorizationHandler, EvaluationPermissionHandler>();
             services.AddSingleton<IAuthorizationHandler, ScoringModelPermissionHandler>();
+            services.AddSingleton<IAuthorizationHandler, TeamPermissionHandler>();
         }
     }
 }

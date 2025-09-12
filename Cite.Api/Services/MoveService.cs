@@ -51,9 +51,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var moveEntities = await _context.Moves
                 .Where(move => move.EvaluationId == evaluationId)
                 .ToListAsync();
@@ -63,9 +60,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Move> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.Moves.SingleAsync(move => move.Id == id, ct);
 
             return _mapper.Map<Move>(item);
@@ -73,8 +67,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
             move.Id = move.Id != Guid.Empty ? move.Id : Guid.NewGuid();
             move.DateCreated = DateTime.UtcNow;
             move.CreatedBy = _user.GetId();
@@ -82,7 +74,6 @@ namespace Cite.Api.Services
             move.ModifiedBy = null;
             var moveEntity = _mapper.Map<MoveEntity>(move);
             moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
-
             _context.Moves.Add(moveEntity);
             await _context.SaveChangesAsync(ct);
             move = await GetAsync(moveEntity.Id, ct);
@@ -92,11 +83,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.Move move, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var moveToUpdate = await _context.Moves.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (moveToUpdate == null)
                 throw new EntityNotFoundException<Move>();
 
@@ -117,11 +104,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var moveToDelete = await _context.Moves.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (moveToDelete == null)
                 throw new EntityNotFoundException<Move>();
 

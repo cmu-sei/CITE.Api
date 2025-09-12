@@ -5,9 +5,12 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
+using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Services;
+using Cite.Api.ViewModels;
 using GAC = Gallery.Api.Client;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -16,9 +19,9 @@ namespace Cite.Api.Controllers
     public class GalleryController : BaseController
     {
         private readonly IGalleryService _moveService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public GalleryController(IGalleryService moveService, IAuthorizationService authorizationService)
+        public GalleryController(IGalleryService moveService, ICiteAuthorizationService authorizationService)
         {
             _moveService = moveService;
             _authorizationService = authorizationService;
@@ -38,10 +41,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getEvaluationUnreadArticleCount")]
         public async Task<IActionResult> GetEvaluationUnreadArticleCount(Guid evaluationId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
             var unreadArticles = await _moveService.GetMyUnreadArticleCountAsync(evaluationId, ct);
             return Ok(unreadArticles);
         }
 
     }
 }
-

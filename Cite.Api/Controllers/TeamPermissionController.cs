@@ -11,11 +11,11 @@ using System;
 
 namespace Cite.Api.Controllers;
 
-public class EvaluationPermissionsController : BaseController
+public class TeamPermissionsController : BaseController
 {
     private readonly ICiteAuthorizationService _authorizationService;
 
-    public EvaluationPermissionsController(ICiteAuthorizationService authorizationService)
+    public TeamPermissionsController(ICiteAuthorizationService authorizationService)
     {
         _authorizationService = authorizationService;
     }
@@ -24,12 +24,12 @@ public class EvaluationPermissionsController : BaseController
     /// Get all SystemPermissions for the calling User.
     /// </summary>
     /// <returns></returns>
-    [HttpGet("evaluations/{id}/me/permissions")]
-    [ProducesResponseType(typeof(IEnumerable<EvaluationPermissionClaim>), (int)HttpStatusCode.OK)]
-    [SwaggerOperation(OperationId = "GetMyEvaluationPermissions")]
+    [HttpGet("teams/{id}/me/permissions")]
+    [ProducesResponseType(typeof(IEnumerable<TeamPermissionClaim>), (int)HttpStatusCode.OK)]
+    [SwaggerOperation(OperationId = "GetMyTeamPermissions")]
     public async Task<IActionResult> GetMine(Guid id)
     {
-        var result = _authorizationService.GetEvaluationPermissions();
+        var result = _authorizationService.GetTeamPermissions();
         return Ok(result);
     }
 }

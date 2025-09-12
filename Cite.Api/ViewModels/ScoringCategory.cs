@@ -9,7 +9,7 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScoringCategory : Base
+    public class ScoringCategory : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

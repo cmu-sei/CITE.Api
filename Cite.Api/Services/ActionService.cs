@@ -61,12 +61,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            // must be on the specified Team or an observer for the specified Evaluation
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId, _context))).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId, _context))).Succeeded
-            )
-                throw new ForbiddenException();
-
             var actionEntities = await _context.Actions
                 .Where(a => a.EvaluationId == evaluationId &&
                             a.TeamId == teamId)
@@ -79,9 +73,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationMoveAsync(Guid evaluationId, int moveNumber, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var actionEntities = await _context.Actions
                 .Where(a => a.EvaluationId == evaluationId &&
                             a.MoveNumber == moveNumber)
@@ -96,9 +87,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationMoveTeamAsync(Guid evaluationId, int moveNumber, Guid teamId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var actionEntities = await _context.Actions
                 .Where(a => a.EvaluationId == evaluationId &&
                             a.MoveNumber == moveNumber &&
@@ -114,25 +102,14 @@ namespace Cite.Api.Services
         {
             var item = await _context.Actions
                 .SingleAsync(a => a.Id == id, ct);
-
             if (item == null)
                 throw new EntityNotFoundException<ActionEntity>();
-
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(item.TeamId, _context))).Succeeded)
-                throw new ForbiddenException();
 
             return _mapper.Map<ViewModels.Action>(item);
         }
 
         public async Task<ViewModels.Action> CreateAsync(ViewModels.Action action, CancellationToken ct)
         {
-            // user must be on the requested team or a content developer
-            if (
-                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId, _context))).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
-            )
-                throw new ForbiddenException();
-
             action.Id = action.Id != Guid.Empty ? action.Id : Guid.NewGuid();
             action.DateCreated = DateTime.UtcNow;
             action.CreatedBy = _user.GetId();
@@ -149,13 +126,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct)
         {
-            // user must be on the requested team or a content developer
-            if (
-                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(action.TeamId, _context))).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
-            )
-                throw new ForbiddenException();
-
             var actionToUpdate = await _context.Actions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (actionToUpdate == null)
                 throw new EntityNotFoundException<ActionEntity>();
@@ -178,10 +148,6 @@ namespace Cite.Api.Services
             if (actionToUpdate == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
-            // user must be on the requested team
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(actionToUpdate.TeamId, _context))).Succeeded)
-                throw new ForbiddenException();
-
             actionToUpdate.IsChecked = value;
             actionToUpdate.ChangedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
@@ -203,13 +169,6 @@ namespace Cite.Api.Services
 
             if (actionToDelete == null)
                 throw new EntityNotFoundException<ActionEntity>();
-
-            // user must be on the requested team or a content developer
-            if (
-                !(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(actionToDelete.TeamId, _context))).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded
-            )
-                throw new ForbiddenException();
 
             _context.Actions.Remove(actionToDelete);
             await _context.SaveChangesAsync(ct);
@@ -263,4 +222,3 @@ namespace Cite.Api.Services
     }
 
  }
-
