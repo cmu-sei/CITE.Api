@@ -87,13 +87,17 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct)
         {
-            var item = await _context.ScoringCategories.SingleOrDefaultAsync(sc => sc.Id == id, ct);
+            var item = await _context.ScoringCategories.Include(m => m.ScoringModel).AsNoTracking().SingleOrDefaultAsync(sc => sc.Id == id, ct);
+            if (!includeCalculations && item.ScoringModel.EvaluationId == null)
+                throw new ForbiddenException();
+
             // only show scoring model calculations to content developers and system admins
             if (!includeCalculations)
             {
                 item.CalculationEquation = "********";
                 item.ScoringWeight = 0.0;
             }
+            item.ScoringModel = null;
 
             return _mapper.Map<ScoringCategory>(item);
         }

@@ -43,7 +43,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getScoringCategories")]
         public async Task<IActionResult> Get([FromQuery] ScoringCategoryGet queryParameters, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], ct))
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewScoringModels], ct))
                 throw new ForbiddenException();
 
             var list = await _scoringCategoryService.GetAsync(queryParameters, ct);
@@ -93,7 +93,6 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var scoringCategory = await _scoringCategoryService.GetAsync(id, viewAsAdmin, ct);
-
             if (scoringCategory == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 

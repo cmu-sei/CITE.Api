@@ -7,7 +7,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
@@ -80,11 +79,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getScoringModel")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct))
+            var viewAsAdmin = await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct);
+            if (!viewAsAdmin &&
+                !await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ParticipateInEvaluation, EvaluationPermission.ObserveEvaluation], ct))
                 throw new ForbiddenException();
 
-            var scoringModel = await _scoringModelService.GetAsync(id, ct);
-
+            var scoringModel = await _scoringModelService.GetAsync(id, viewAsAdmin, ct);
             if (scoringModel == null)
                 throw new EntityNotFoundException<ScoringModel>();
 

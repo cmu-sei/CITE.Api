@@ -233,6 +233,7 @@ public class AuthorizationService(
             var t when t == typeof(ScoringModel) => resourceId,
             var t when t == typeof(Evaluation) => await GetScoringModelIdFromEvaluation(resourceId, cancellationToken),
             var t when t == typeof(ScoringCategory) => await GetScoringModelIdFromScoringCategory(resourceId, cancellationToken),
+            var t when t == typeof(ScoringOption) => await GetScoringModelIdFromScoringOption(resourceId, cancellationToken),
             var t when t == typeof(EvaluationMembership) => await GetScoringModelIdFromScoringModelMembership(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
@@ -267,6 +268,14 @@ public class AuthorizationService(
         return (Guid)await dbContext.ScoringCategories
             .Where(x => x.Id == id)
             .Select(x => x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetScoringModelIdFromScoringOption(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.ScoringOptions
+            .Where(x => x.Id == id)
+            .Select(x => x.ScoringCategory.ScoringModelId)
             .FirstOrDefaultAsync(cancellationToken);
     }
 

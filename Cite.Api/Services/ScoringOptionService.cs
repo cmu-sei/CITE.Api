@@ -52,11 +52,7 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.ScoringOption>> GetAsync(ScoringOptionGet queryParameters, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             IQueryable<ScoringOptionEntity> scoringOptions = null;
-
             // filter based on description
             if (!String.IsNullOrEmpty(queryParameters.Description))
             {
@@ -72,9 +68,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.ScoringOption>> GetForScoringCategoryAsync(Guid scoringCategoryId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringOptionList = await _context.ScoringOptions.Where(sc => sc.ScoringCategoryId == scoringCategoryId).ToListAsync();
 
             return _mapper.Map<IEnumerable<ScoringOption>>(scoringOptionList);
@@ -82,9 +75,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringOption> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.ScoringOptions.SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
             return _mapper.Map<ScoringOption>(item);
@@ -92,9 +82,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringOption> CreateAsync(ViewModels.ScoringOption scoringOption, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             scoringOption.Id = scoringOption.Id != Guid.Empty ? scoringOption.Id : Guid.NewGuid();
             scoringOption.DateCreated = DateTime.UtcNow;
             scoringOption.CreatedBy = _user.GetId();
@@ -111,11 +98,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringOption> UpdateAsync(Guid id, ViewModels.ScoringOption scoringOption, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringOptionToUpdate = await _context.ScoringOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringOptionToUpdate == null)
                 throw new EntityNotFoundException<ScoringOption>();
 
@@ -124,10 +107,8 @@ namespace Cite.Api.Services
             scoringOption.ModifiedBy = _user.GetId();
             scoringOption.DateModified = DateTime.UtcNow;
             _mapper.Map(scoringOption, scoringOptionToUpdate);
-
             _context.ScoringOptions.Update(scoringOptionToUpdate);
             await _context.SaveChangesAsync(ct);
-
             scoringOption = await GetAsync(scoringOptionToUpdate.Id, ct);
 
             return scoringOption;
@@ -135,11 +116,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringOptionToDelete = await _context.ScoringOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringOptionToDelete == null)
                 throw new EntityNotFoundException<ScoringOption>();
 
@@ -151,4 +128,3 @@ namespace Cite.Api.Services
 
     }
 }
-
