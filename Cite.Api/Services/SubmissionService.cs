@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
@@ -37,8 +38,6 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> ClearSelectionsAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> PresetSelectionsAsync(Guid id, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.Submission> FillTeamAverageAsync(ViewModels.Submission submission, CancellationToken ct);
-        Task<ViewModels.Submission> FillTeamTypeAverageAsync(ViewModels.Submission submission, CancellationToken ct);
         Task<ViewModels.Submission> GetTeamAverageAsync(SubmissionEntity submission, CancellationToken ct);
         Task<ViewModels.Submission> GetTypeAverageAsync(Submission submission, CancellationToken ct);
         Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct);
@@ -48,12 +47,13 @@ namespace Cite.Api.Services
         Task CreateMoveSubmissions(MoveEntity moveEntity, CiteContext citeContext, CancellationToken ct);
         Task CreateTeamSubmissions(TeamEntity teamEntity, CiteContext citeContext, CancellationToken ct);
         Task CreateUserSubmissions(TeamUserEntity teamUserEntity, CiteContext citeContext, CancellationToken ct);
-   }
+        Task<bool> HasSpecificPermission<T>(Guid submissionId, SpecificPermission specificPermission, CancellationToken ct);
+    }
 
     public class SubmissionService : ISubmissionService
     {
         private readonly CiteContext _context;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
         private readonly DatabaseOptions _options;
@@ -63,7 +63,7 @@ namespace Cite.Api.Services
 
         public SubmissionService(
             CiteContext context,
-            IAuthorizationService authorizationService,
+            ICiteAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
             DatabaseOptions options,
@@ -83,9 +83,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Submission>> GetAsync(SubmissionGet queryParameters, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var userId = Guid.Empty;
             var hasUserId = false;
             var evaluationId = Guid.Empty;
@@ -95,29 +92,17 @@ namespace Cite.Api.Services
             var teamId = Guid.Empty;
             var hasTeamId = false;
             // check queryParameters for filter terms
-            if ((await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            // get supplied user ID
+            hasUserId = !String.IsNullOrEmpty(queryParameters.UserId);
+            if (hasUserId)
             {
-                // get supplied user ID
-                hasUserId = !String.IsNullOrEmpty(queryParameters.UserId);
-                if (hasUserId)
-                {
-                    Guid.TryParse(queryParameters.UserId, out userId);
-                }
-                // get supplied team ID
-                hasTeamId = !String.IsNullOrEmpty(queryParameters.TeamId);
-                if (hasTeamId)
-                {
-                    Guid.TryParse(queryParameters.TeamId, out teamId);
-                }
+                Guid.TryParse(queryParameters.UserId, out userId);
             }
-            else
+            // get supplied team ID
+            hasTeamId = !String.IsNullOrEmpty(queryParameters.TeamId);
+            if (hasTeamId)
             {
-                // filter based on current user
-                hasUserId = true;
-                userId = _user.GetId();
-                // filter based on current user's team
-                hasTeamId = true;
-                teamId = await _context.TeamUsers.Where(tu => tu.UserId == userId).Select(tu => tu.TeamId).FirstAsync();
+                Guid.TryParse(queryParameters.TeamId, out teamId);
             }
             // filter based on evaluation
             hasEvaluationId = !String.IsNullOrEmpty(queryParameters.EvaluationId);
@@ -142,9 +127,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
             var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
             var submissionEntities = _context.Submissions
@@ -161,9 +143,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var userId = _user.GetId();
             var team = await _context.TeamUsers
                 .Where(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId)
@@ -213,18 +192,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            // if the user is on the specified team, call GetMineByEvaluationAsync for normal processing
-            if ((await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement(teamId, _context))).Succeeded)
-            {
-                var mySubmissions = await GetMineByEvaluationAsync(evaluationId, ct);
-                return mySubmissions;
-            }
-
-            // Otherwise, the user must be an observer to get the specified team's submissions
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId, _context))).Succeeded
-            )
-                throw new ForbiddenException();
-
             var userId = _user.GetId();
             var team = await _context.Teams
                 .Include(t => t.TeamType)
@@ -319,38 +286,6 @@ namespace Cite.Api.Services
             return averageSubmissions;
         }
 
-        public async Task<ViewModels.Submission> FillTeamAverageAsync(ViewModels.Submission submission, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new TeamUserRequirement((Guid)submission.TeamId, _context))).Succeeded)
-                throw new ForbiddenException();
-            if (!submission.ScoreIsAnAverage || submission.TeamId == null || submission.UserId != null)
-                throw new ArgumentException("The submission must be a team average submission.");
-
-            return await GetTeamAverageAsync(_mapper.Map<SubmissionEntity>(submission), ct);
-        }
-
-        public async Task<ViewModels.Submission> FillTeamTypeAverageAsync(ViewModels.Submission submission, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-            if (!submission.ScoreIsAnAverage || submission.TeamId != null || submission.UserId != null || submission.GroupId == null)
-                throw new ArgumentException("The submission must be a teamType average submission.");
-
-            var teamType = await _context.TeamTypes.SingleOrDefaultAsync(tt => tt.Id == submission.GroupId);
-            if (!teamType.ShowTeamTypeAverage)
-            {
-                throw new ForbiddenException("TeamType " + teamType.Name + " cannot view the average score for the TeamType.");
-            }
-            var isObserver = (await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(submission.EvaluationId, _context))).Succeeded;
-            var userId = _user.GetId();
-            var teamIdList = await _context.Teams.Where(t => t.EvaluationId == submission.EvaluationId && t.TeamTypeId == submission.GroupId).Select(t => t.Id).ToListAsync(ct);
-            var canSeeTeamTypeAverage = await _context.TeamUsers.Where(tu => teamIdList.Contains(tu.TeamId) && tu.UserId == userId).AnyAsync(ct);
-            if (!canSeeTeamTypeAverage && !isObserver)
-                throw new ForbiddenException("Your TeamType does not have the permission to view the TeamType average score.");
-
-            return await GetTypeAverageAsync(submission, ct);
-        }
-
         public async Task<ViewModels.Submission> GetTeamAverageAsync(SubmissionEntity submission, CancellationToken ct)
         {
             if (submission.TeamId == null)
@@ -405,9 +340,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Submission> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.Submissions
                 .Include(sm => sm.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
@@ -415,36 +347,6 @@ namespace Cite.Api.Services
                 .SingleAsync(sm => sm.Id == id, ct);
             if (item == null)
                 throw new EntityNotFoundException<Submission>("Submission not found " + id.ToString());
-            // verify permission for this object
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement((Guid)item.EvaluationId, _context))).Succeeded)
-                throw new ForbiddenException("Access to submission " + item.Id + " was denied.");
-
-            var userId = _user.GetId();
-            var evaluationTeamIdList = await _context.Teams
-                .Where(t => t.EvaluationId == item.EvaluationId)
-                .Select(t => t.Id)
-                .ToListAsync();
-            var team = await _context.TeamUsers
-                .Where(tu => tu.UserId == userId && evaluationTeamIdList.Contains(tu.TeamId))
-                .Include(tu => tu.Team.TeamType)
-                .Select(tu => tu.Team).FirstOrDefaultAsync();
-            var teamId = team.Id;
-            // Observers can view all team scores, others can only view their own team
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement((Guid)item.EvaluationId, _context))).Succeeded)
-            {
-                evaluationTeamIdList = new List<Guid> { team.Id };
-            }
-            var isCollaborator = team.TeamType.IsOfficialScoreContributor;
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
-            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)item.EvaluationId, _context))).Succeeded;
-            var hasAccess =
-                (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
-                (item.UserId == null && (item.TeamId != null && evaluationTeamIdList.Contains((Guid)item.TeamId)) && item.EvaluationId == item.EvaluationId) ||
-                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber < currentMoveNumber) ||
-                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer));
-            if (!hasAccess)
-                throw new ForbiddenException("Access to submission " + item.Id + " was denied.  TeamId was " + item.TeamId.ToString() + ".");
 
             return _mapper.Map<Submission>(item);
         }
@@ -453,39 +355,13 @@ namespace Cite.Api.Services
         {
             _logger.LogDebug("Making create request: Move=" + submission.MoveNumber + " user=" + submission.UserId + " team=" + submission.TeamId + " evaluation=" + submission.EvaluationId);
             var userId = _user.GetId();
-            // 1. An evaluationId must be supplied
+            // An evaluationId must be supplied
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
-            // 2. the calling user must be a user on this evaluation.
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(submission.EvaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
             var evaluationTeamIdList = await _context.Teams
                 .Where(t => t.EvaluationId == submission.EvaluationId)
                 .Select(t => t.Id)
                 .ToListAsync();
-            // if submission.userId is supplied
-            if (submission.UserId != null)
-            {
-                // 3. submission.userId must match the current user
-                if ((Guid)submission.UserId != userId)
-                    throw new ForbiddenException("You are not able to create a submission for user " + submission.UserId + ".");
-                // 4. a team ID must also be supplied
-                if (submission.TeamId == null)
-                    throw new ForbiddenException("A Team ID was not supplied for user " + submission.UserId + ".");
-            }
-            // if a teamId is supplied
-            else if (submission.TeamId != null)
-            {
-                // for a team submission, the user must be an evaluation observer or be a member of the team
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(submission.EvaluationId, _context))).Succeeded)
-                {
-                    var teamUserEntity = await _context.TeamUsers
-                        .SingleOrDefaultAsync(tu => tu.TeamId == submission.TeamId && tu.UserId == userId);
-                    // 5. the user is not on a required team
-                    if (teamUserEntity == null)
-                        throw new ForbiddenException("The requested user is not a member of the requested team.");
-                }
-            }
             // Create requested submission
             // find the requested submission entity
             var requestedSubmissionEntity = await _context.Submissions
@@ -517,18 +393,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct)
         {
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submission.TeamId);
-            if (!(
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(submission.EvaluationId, _context))).Succeeded
-                        && submission.UserId == null
-                        && (submission.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(submission.EvaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submission.UserId == _user.GetId())
-            ))
-                throw new ForbiddenException();
-
             var submissionToUpdate = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionToUpdate == null)
                 throw new EntityNotFoundException<Submission>();
 
@@ -566,8 +431,6 @@ namespace Cite.Api.Services
             var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
             var evaluationId = (Guid)submissionEntity.EvaluationId;
-            if (!(await HasOptionAccess(submissionEntity, ct)))
-                throw new ForbiddenException();
 
             // get modified date/time
             var modifiedDateTime = DateTime.UtcNow;
@@ -703,10 +566,7 @@ namespace Cite.Api.Services
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionToClear.TeamId);
             var evaluationId = (Guid)submissionToClear.EvaluationId;
-            if (!(await HasOptionAccess(submissionToClear, ct)))
-                throw new ForbiddenException();
-
-            if (submissionToClear.Status != Data.Enumerations.ItemStatus.Active)
+            if (submissionToClear.Status != ItemStatus.Active)
                 throw new Exception($"Cannot clear selections of a submission ({submissionToClear.Id}) that is not currently active.");
 
             foreach (var submissionCategory in submissionToClear.SubmissionCategories)
@@ -754,10 +614,7 @@ namespace Cite.Api.Services
 
             var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == targetSubmission.TeamId);
             var evaluationId = (Guid)targetSubmission.EvaluationId;
-            if (!(await HasOptionAccess(targetSubmission, ct)))
-                throw new ForbiddenException();
-
-            if (targetSubmission.Status != Data.Enumerations.ItemStatus.Active)
+            if (targetSubmission.Status != ItemStatus.Active)
                 throw new Exception($"Cannot preset selections of a submission ({targetSubmission.Id}) that is not currently active.");
 
             var baseSubmission = await _context.Submissions
@@ -800,11 +657,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionToDelete = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionToDelete == null)
                 throw new EntityNotFoundException<Submission>();
 
@@ -820,8 +673,6 @@ namespace Cite.Api.Services
             if (submissionEntity == null)
                 throw new EntityNotFoundException<Submission>();
 
-            if (!(await HasOptionAccess(submissionEntity, ct)))
-                throw new ForbiddenException();
             // Add the submission comment
             submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
             submissionComment.DateCreated = DateTime.UtcNow;
@@ -844,11 +695,7 @@ namespace Cite.Api.Services
             if (submissionEntity == null)
                 throw new EntityNotFoundException<Submission>();
 
-            if (!(await HasOptionAccess(submissionEntity, ct)))
-                throw new ForbiddenException();
-
             var submissionCommentToUpdate = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
-
             if (submissionCommentToUpdate == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
@@ -872,9 +719,6 @@ namespace Cite.Api.Services
             if (submissionEntity == null)
                 throw new EntityNotFoundException<Submission>();
 
-            if (!(await HasOptionAccess(submissionEntity, ct)))
-                throw new ForbiddenException();
-
             var submissionCommentEntity = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
             if (submissionCommentEntity == null)
                 throw new EntityNotFoundException<SubmissionComment>();
@@ -886,6 +730,80 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return await GetAsync(submissionId, ct);
+        }
+
+        public async Task<bool> HasSpecificPermission<T>(Guid id, SpecificPermission specificPermission, CancellationToken ct)
+        {
+            var submissionId = typeof(T) switch
+            {
+                var t when t == typeof(Submission) => id,
+                var t when t == typeof(SubmissionCategory) => await _context.SubmissionCategories.Where(m => m.Id == id).Select(m => m.SubmissionId).FirstOrDefaultAsync(),
+                var t when t == typeof(SubmissionOption) => await _context.SubmissionOptions.Where(m => m.Id == id).Select(m => m.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
+                var t when t == typeof(SubmissionComment) => await _context.SubmissionComments.Where(m => m.Id == id).Select(m => m.SubmissionOption.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
+                _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
+            };
+            var submission = await _context.Submissions.FirstOrDefaultAsync(m => m.Id == submissionId, ct);
+            return await HasSpecificPermission(submission, specificPermission, ct);
+        }
+
+        public async Task<bool> HasSpecificPermission(SubmissionEntity submission, SpecificPermission specificPermission, CancellationToken ct)
+        {
+            var hasAccess = false;
+            var userId = _user.GetId();
+            var isUserSubmission = submission.UserId != null;
+            var isTeamSubmission = !isUserSubmission && submission.TeamId != null;
+            var isOfficialSubmission = !isUserSubmission && !isTeamSubmission;
+            if (isUserSubmission)
+            {
+                // User can do everything with their submission
+                hasAccess = submission.UserId == userId;
+            }
+            else
+            {
+                var teamMembership = await _context.TeamMemberships.FirstOrDefaultAsync(m => m.UserId == userId && m.Team.EvaluationId == submission.EvaluationId);
+                // must be a team member to do anything else
+                if (teamMembership != null)
+                {
+                    if (isOfficialSubmission)
+                    {
+                        if (specificPermission == SpecificPermission.View)
+                        {
+                            var currentMoveNumber = (await _context.Evaluations.FindAsync(submission.EvaluationId)).CurrentMoveNumber;
+                            if (submission.MoveNumber < currentMoveNumber)
+                            {
+                                // has access to current official score
+                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewCurrentOfficialScore], ct);
+                            }
+                            else
+                            {
+                                // has access to previous official score
+                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewPastOfficialScore], ct);
+                            }
+                        }
+                        else
+                        {
+                            hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.EditOfficialScore], ct);
+                        }
+                    }
+                    else
+                    {
+                        switch (specificPermission)
+                        {
+                            case SpecificPermission.View:
+                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewTeam], ct);
+                                break;
+                            case SpecificPermission.Score:
+                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.EditTeamScore], ct);
+                                break;
+                            case SpecificPermission.Submit:
+                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.SubmitTeamScore], ct);
+                                break;
+                        }
+                    }
+                }
+            }
+
+            return hasAccess;
         }
 
         private IEnumerable<SubmissionCategoryEntity> CreateSubmissionCategories(
@@ -1174,21 +1092,6 @@ namespace Cite.Api.Services
             return false;
         }
 
-        private async Task<bool> HasOptionAccess(SubmissionEntity submissionEntity, CancellationToken ct)
-        {
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
-            var evaluationId = (Guid)submissionEntity.EvaluationId;
-            return (
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
-                        && submissionEntity.UserId == null
-                        && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
-            );
-
-        }
-
         public async Task CreateMoveSubmissions(MoveEntity move, CiteContext citeContext, CancellationToken ct)
         {
             var dateCreated = DateTime.UtcNow;
@@ -1309,6 +1212,13 @@ namespace Cite.Api.Services
         public double ActualScore { get; set; }
         public double MaxPossibleScore { get; set; }
         public double CategoryWeight { get; set; }
+    }
+
+    public enum SpecificPermission
+    {
+        View,
+        Score,
+        Submit
     }
 
 }

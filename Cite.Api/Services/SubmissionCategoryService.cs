@@ -12,22 +12,20 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Data.Models;
-using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
-using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
 
 namespace Cite.Api.Services
 {
     public interface ISubmissionCategoryService
     {
-        Task<IEnumerable<ViewModels.SubmissionCategory>> GetAsync(SubmissionCategoryGet queryParameters, CancellationToken ct);
-        Task<IEnumerable<ViewModels.SubmissionCategory>> GetForSubmissionAsync(Guid submissionModelId, CancellationToken ct);
-        Task<ViewModels.SubmissionCategory> GetAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.SubmissionCategory> CreateAsync(ViewModels.SubmissionCategory submissionCategory, CancellationToken ct);
-        Task<ViewModels.SubmissionCategory> UpdateAsync(Guid id, ViewModels.SubmissionCategory submissionCategory, CancellationToken ct);
+        Task<IEnumerable<SubmissionCategory>> GetForSubmissionAsync(Guid submissionModelId, CancellationToken ct);
+        Task<SubmissionCategory> GetAsync(Guid id, CancellationToken ct);
+        Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct);
+        Task<SubmissionCategory> UpdateAsync(Guid id, SubmissionCategory submissionCategory, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -37,54 +35,38 @@ namespace Cite.Api.Services
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
+        private readonly ISubmissionService _submissionService;
 
         public SubmissionCategoryService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper)
+            IMapper mapper,
+            ISubmissionService submissionService)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
+            _submissionService = submissionService;
         }
 
-        public async Task<IEnumerable<ViewModels.SubmissionCategory>> GetAsync(SubmissionCategoryGet queryParameters, CancellationToken ct)
+        public async Task<IEnumerable<SubmissionCategory>> GetForSubmissionAsync(Guid submissionId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var submissionCategories = _context.SubmissionCategories;
-
-            return _mapper.Map<IEnumerable<SubmissionCategory>>(await submissionCategories.ToListAsync());
-        }
-
-        public async Task<IEnumerable<ViewModels.SubmissionCategory>> GetForSubmissionAsync(Guid submissionId, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionCategories = _context.SubmissionCategories.Where(sc => sc.SubmissionId == submissionId);
 
             return _mapper.Map<IEnumerable<SubmissionCategory>>(await submissionCategories.ToListAsync());
         }
 
-        public async Task<ViewModels.SubmissionCategory> GetAsync(Guid id, CancellationToken ct)
+        public async Task<SubmissionCategory> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.SubmissionCategories.SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
             return _mapper.Map<SubmissionCategory>(item);
         }
 
-        public async Task<ViewModels.SubmissionCategory> CreateAsync(ViewModels.SubmissionCategory submissionCategory, CancellationToken ct)
+        public async Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             submissionCategory.Id = submissionCategory.Id != Guid.Empty ? submissionCategory.Id : Guid.NewGuid();
             submissionCategory.DateCreated = DateTime.UtcNow;
             submissionCategory.CreatedBy = _user.GetId();
@@ -99,13 +81,9 @@ namespace Cite.Api.Services
             return submissionCategory;
         }
 
-        public async Task<ViewModels.SubmissionCategory> UpdateAsync(Guid id, ViewModels.SubmissionCategory submissionCategory, CancellationToken ct)
+        public async Task<SubmissionCategory> UpdateAsync(Guid id, SubmissionCategory submissionCategory, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionCategoryToUpdate = await _context.SubmissionCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionCategoryToUpdate == null)
                 throw new EntityNotFoundException<SubmissionCategory>();
 
@@ -125,11 +103,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionCategoryToDelete = await _context.SubmissionCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionCategoryToDelete == null)
                 throw new EntityNotFoundException<SubmissionCategory>();
 
@@ -141,4 +115,3 @@ namespace Cite.Api.Services
 
     }
 }
-

@@ -49,12 +49,12 @@ namespace Cite.Api.Controllers
         {
             var userIdString = _identityResolver.GetId().ToString();
             var list = new List<ScoringModel>();
-            // get ALL scenario templates
+            // get ALL scoring models
             if (await _authorizationService.AuthorizeAsync([SystemPermission.ViewScoringModels], ct))
             {
                 list = (await _scoringModelService.GetAsync(queryParameters, ct)).ToList();
             }
-            // get scenario templates the user can access
+            // get scoring models the user can access
             else if (queryParameters.UserId == null || queryParameters.UserId == userIdString)
             {
                 queryParameters.UserId = userIdString;

@@ -222,6 +222,10 @@ public class AuthorizationService(
             var t when t == typeof(Evaluation) => resourceId,
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
+            var t when t == typeof(Submission) => await GetEvaluationIdFromSubmission(resourceId, cancellationToken),
+            var t when t == typeof(SubmissionCategory) => await GetEvaluationIdFromSubmissionCategory(resourceId, cancellationToken),
+            var t when t == typeof(SubmissionOption) => await GetEvaluationIdFromSubmissionOption(resourceId, cancellationToken),
+            var t when t == typeof(SubmissionComment) => await GetEvaluationIdFromSubmissionComment(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -252,6 +256,38 @@ public class AuthorizationService(
         return await dbContext.Actions
             .Where(x => x.Id == id)
             .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetEvaluationIdFromSubmission(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.Submissions
+            .Where(x => x.Id == id)
+            .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetEvaluationIdFromSubmissionCategory(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.SubmissionCategories
+            .Where(x => x.Id == id)
+            .Select(x => x.Submission.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetEvaluationIdFromSubmissionOption(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.SubmissionOptions
+            .Where(x => x.Id == id)
+            .Select(x => x.SubmissionCategory.Submission.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetEvaluationIdFromSubmissionComment(Guid id, CancellationToken cancellationToken)
+    {
+        return (Guid)await dbContext.SubmissionComments
+            .Where(x => x.Id == id)
+            .Select(x => x.SubmissionOption.SubmissionCategory.Submission.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
     }
 

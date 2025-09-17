@@ -9,7 +9,7 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class Submission : Base
+    public class Submission : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -26,4 +26,3 @@ namespace Cite.Api.ViewModels
         public virtual ICollection<SubmissionCategory> SubmissionCategories { get; set; } = new HashSet<SubmissionCategory>();
     }
 }
-

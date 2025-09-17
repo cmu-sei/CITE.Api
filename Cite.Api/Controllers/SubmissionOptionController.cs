@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.QueryParameters;
@@ -21,9 +22,9 @@ namespace Cite.Api.Controllers
     {
         private readonly ISubmissionOptionService _submissionOptionService;
         private readonly ISubmissionService _submissionService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public SubmissionOptionController(ISubmissionOptionService submissionOptionService, ISubmissionService submissionService, IAuthorizationService authorizationService)
+        public SubmissionOptionController(ISubmissionOptionService submissionOptionService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
         {
             _submissionOptionService = submissionOptionService;
             _submissionService = submissionService;
@@ -31,38 +32,24 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
-        /// Gets SubmissionOptions
+        /// Gets SubmissionOptions for the designated SubmissionCategory
         /// </summary>
         /// <remarks>
-        /// Returns a list of SubmissionOptions.
+        /// Returns a list of SubmissionOptions for the SubmissionCategory.
         /// </remarks>
-        /// <param name="queryParameters">Result filtering criteria</param>
+        /// <param name="submissionCategoryId">The ID of the SubmissionCategory</param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        [HttpGet("submissionOptions")]
+        [HttpGet("submissionCategory/{submissionCategoryId}/submissionOptions")]
         [ProducesResponseType(typeof(IEnumerable<SubmissionOption>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getSubmissionOptions")]
-        public async Task<IActionResult> Get([FromQuery] SubmissionOptionGet queryParameters, CancellationToken ct)
+        [SwaggerOperation(OperationId = "getSubmissionOptionsBySubmissionCategoryId")]
+        public async Task<IActionResult> GetForSubmissionCategory(Guid submissionCategoryId, CancellationToken ct)
         {
-            var list = await _submissionOptionService.GetAsync(queryParameters, ct);
-            return Ok(list);
-        }
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(submissionCategoryId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<SubmissionCategory>(submissionCategoryId, SpecificPermission.View, ct))
+                throw new ForbiddenException();
 
-        /// <summary>
-        /// Gets SubmissionOptions for the designated ScoringCategory
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of SubmissionOptions for the ScoringCategory.
-        /// </remarks>
-        /// <param name="scoringCategoryId">The ID of the ScoringCategory</param>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("scoringCategory/{scoringCategoryId}/submissionOptions")]
-        [ProducesResponseType(typeof(IEnumerable<SubmissionOption>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getSubmissionOptionsByScoringCategoryId")]
-        public async Task<IActionResult> GetForScoringCategory(Guid scoringCategoryId, CancellationToken ct)
-        {
-            var list = await _submissionOptionService.GetForSubmissionCategoryAsync(scoringCategoryId, ct);
+            var list = await _submissionOptionService.GetForSubmissionCategoryAsync(submissionCategoryId, ct);
             return Ok(list);
         }
 
@@ -80,6 +67,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissionOption")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<SubmissionOption>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<SubmissionOption>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             var submissionOption = await _submissionOptionService.GetAsync(id, ct);
 
             if (submissionOption == null)
@@ -103,7 +94,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createSubmissionOption")]
         public async Task<IActionResult> Create([FromBody] SubmissionOption submissionOption, CancellationToken ct)
         {
-            submissionOption.CreatedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(submissionOption.SubmissionCategoryId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             var createdSubmissionOption = await _submissionOptionService.CreateAsync(submissionOption, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdSubmissionOption.Id }, createdSubmissionOption);
         }
@@ -125,6 +118,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateSubmissionOption")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] SubmissionOption submissionOption, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(submissionOption.SubmissionCategoryId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             submissionOption.ModifiedBy = User.GetId();
             var updatedSubmissionOption = await _submissionOptionService.UpdateAsync(id, submissionOption, ct);
             return Ok(updatedSubmissionOption);
@@ -143,6 +139,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "selectSubmissionOption")]
         public async Task<IActionResult> SetOptionTrue([FromRoute] Guid id, CancellationToken ct)
         {
+            if (!await _submissionService.HasSpecificPermission<SubmissionOption>(id, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
             var updatedSubmission = await _submissionService.SetOptionAsync(id, true, ct);
             return Ok(updatedSubmission);
         }
@@ -160,6 +159,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deselectSubmissionOption")]
         public async Task<IActionResult> SetOptionFalse([FromRoute] Guid id, CancellationToken ct)
         {
+            if (!await _submissionService.HasSpecificPermission<SubmissionOption>(id, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
             var updatedSubmission = await _submissionService.SetOptionAsync(id, false, ct);
             return Ok(updatedSubmission);
         }
@@ -179,10 +181,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteSubmissionOption")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<SubmissionOption>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             await _submissionOptionService.DeleteAsync(id, ct);
             return NoContent();
         }
 
     }
 }
-

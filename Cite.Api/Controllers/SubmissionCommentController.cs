@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
-using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
@@ -21,30 +21,13 @@ namespace Cite.Api.Controllers
     {
         private readonly ISubmissionCommentService _submissionCommentService;
         private readonly ISubmissionService _submissionService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public SubmissionCommentController(ISubmissionCommentService submissionCommentService, ISubmissionService submissionService, IAuthorizationService authorizationService)
+        public SubmissionCommentController(ISubmissionCommentService submissionCommentService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
         {
             _submissionCommentService = submissionCommentService;
             _submissionService = submissionService;
             _authorizationService = authorizationService;
-        }
-
-        /// <summary>
-        /// Gets SubmissionComments
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of SubmissionComments.
-        /// </remarks>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("submissionComments")]
-        [ProducesResponseType(typeof(IEnumerable<SubmissionComment>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getSubmissionComments")]
-        public async Task<IActionResult> Get(CancellationToken ct)
-        {
-            var list = await _submissionCommentService.GetAsync(ct);
-            return Ok(list);
         }
 
         /// <summary>
@@ -61,6 +44,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissionCommentsBySubmissionOptionId")]
         public async Task<IActionResult> GetForSubmissionOption(Guid submissionOptionId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<SubmissionOption>(submissionOptionId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<SubmissionOption>(submissionOptionId, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             var list = await _submissionCommentService.GetForSubmissionOptionAsync(submissionOptionId, ct);
             return Ok(list);
         }
@@ -79,8 +66,11 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissionComment")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var submissionComment = await _submissionCommentService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync<SubmissionComment>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
 
+            var submissionComment = await _submissionCommentService.GetAsync(id, ct);
             if (submissionComment == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
@@ -102,7 +92,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createSubmissionComment")]
         public async Task<IActionResult> Create([FromBody] SubmissionComment submissionComment, CancellationToken ct)
         {
-            submissionComment.CreatedBy = User.GetId();
+            if (!await _submissionService.HasSpecificPermission<SubmissionOption>(submissionComment.SubmissionOptionId, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             var createdSubmissionComment = await _submissionCommentService.CreateAsync(submissionComment, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdSubmissionComment.Id }, createdSubmissionComment);
         }
@@ -124,7 +116,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateSubmissionComment")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
         {
-            submissionComment.ModifiedBy = User.GetId();
+            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             var updatedSubmissionComment = await _submissionCommentService.UpdateAsync(id, submissionComment, ct);
             return Ok(updatedSubmissionComment);
         }
@@ -144,10 +138,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteSubmissionComment")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             await _submissionCommentService.DeleteAsync(id, ct);
             return NoContent();
         }
 
     }
 }
-

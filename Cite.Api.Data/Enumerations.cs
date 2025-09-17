@@ -71,7 +71,10 @@ namespace Cite.Api.Data.Enumerations
         ViewTeam,
         EditTeamScore,
         SubmitTeamScore,
-        ManageTeam
+        ManageTeam,
+        ViewPastOfficialScore,
+        ViewCurrentOfficialScore,
+        EditOfficialScore
     }
 
 }
