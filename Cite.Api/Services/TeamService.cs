@@ -24,14 +24,14 @@ namespace Cite.Api.Services
 {
     public interface ITeamService
     {
-        Task<IEnumerable<ViewModels.Team>> GetAsync(CancellationToken ct);
-        Task<ViewModels.Team> GetAsync(Guid id, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetByUserAsync(Guid userId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetByTypeAsync(Guid groupId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
-        Task<ViewModels.Team> CreateAsync(ViewModels.Team team, CancellationToken ct);
-        Task<ViewModels.Team> UpdateAsync(Guid id, ViewModels.Team team, CancellationToken ct);
+        Task<IEnumerable<Team>> GetAsync(CancellationToken ct);
+        Task<Team> GetAsync(Guid id, CancellationToken ct);
+        Task<IEnumerable<Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
+        Task<IEnumerable<Team>> GetByUserAsync(Guid userId, CancellationToken ct);
+        Task<IEnumerable<Team>> GetByTypeAsync(Guid groupId, CancellationToken ct);
+        Task<IEnumerable<Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
+        Task<Team> CreateAsync(Team team, CancellationToken ct);
+        Task<Team> UpdateAsync(Guid id, Team team, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -57,62 +57,38 @@ namespace Cite.Api.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetAsync(CancellationToken ct)
+        public async Task<IEnumerable<Team>> GetAsync(CancellationToken ct)
         {
-            if(!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var items = await _context.Teams
-                .ProjectTo<ViewModels.Team>(_mapper.ConfigurationProvider)
+                .ProjectTo<Team>(_mapper.ConfigurationProvider)
                 .ToArrayAsync(ct);
             return items;
         }
 
-        public async Task<ViewModels.Team> GetAsync(Guid id, CancellationToken ct)
+        public async Task<Team> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.Teams
-                .ProjectTo<ViewModels.Team>(_mapper.ConfigurationProvider, dest => dest.Users)
+                .ProjectTo<Team>(_mapper.ConfigurationProvider, dest => dest.Users)
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
             return item;
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
+        public async Task<IEnumerable<Team>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
             var userId = _user.GetId();
-            var items = await _context.Teams
-                .Where(w => w.EvaluationId == evaluationId)
-                .Include(t => t.TeamUsers)
-                .ThenInclude(tu => tu.User)
+            var items = await _context.TeamMemberships
+                .Where(w => w.UserId == userId && w.Team.EvaluationId == evaluationId)
+                .Include(m => m.Team)
+                .ThenInclude(t => t.Memberships)
+                .Select(w => w.Team)
                 .ToListAsync(ct);
-
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationObserverRequirement(evaluationId, _context))).Succeeded)
-            {
-                var myTeamUser = await _context.TeamUsers
-                    .SingleOrDefaultAsync(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId, ct);
-                if (myTeamUser != null)
-                {
-                    items = items
-                        .Where(team => team.Id == myTeamUser.Team.Id)
-                        .ToList();
-                }
-                else
-                {
-                    throw new ForbiddenException();
-                }
-            }
 
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetByUserAsync(Guid userId, CancellationToken ct)
+        public async Task<IEnumerable<Team>> GetByUserAsync(Guid userId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var items = await _context.TeamUsers
+            var items = await _context.TeamMemberships
                 .Where(w => w.UserId == userId)
                 .Select(x => x.Team)
                 .ToListAsync(ct);
@@ -120,11 +96,8 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetByTypeAsync(Guid teamTypeId, CancellationToken ct)
+        public async Task<IEnumerable<Team>> GetByTypeAsync(Guid teamTypeId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var items = await _context.Teams
                 .Where(w => w.TeamTypeId == teamTypeId)
                 .ToListAsync(ct);
@@ -132,26 +105,19 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<IEnumerable<ViewModels.Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
+        public async Task<IEnumerable<Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new EvaluationUserRequirement(evaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var items = await _context.Teams
                 .Where(t => t.EvaluationId == evaluationId)
-                .Include(t => t.TeamUsers)
+                .Include(t => t.Memberships)
                 .ThenInclude(tu => tu.User)
                 .ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<ViewModels.Team> CreateAsync(ViewModels.Team team, CancellationToken ct)
+        public async Task<Team> CreateAsync(Team team, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
-
             team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
             team.DateCreated = DateTime.UtcNow;
             team.CreatedBy = _user.GetId();
@@ -165,20 +131,9 @@ namespace Cite.Api.Services
             return await GetAsync(teamEntity.Id, ct);
         }
 
-        public async Task<ViewModels.Team> UpdateAsync(Guid id, ViewModels.Team team, CancellationToken ct)
+        public async Task<Team> UpdateAsync(Guid id, Team team, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
-
-            // Don't allow changing your own Id
-            if (id == _user.GetId() && id != team.Id)
-            {
-                throw new ForbiddenException("You cannot change your own Id");
-            }
-
             var teamToUpdate = await _context.Teams.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (teamToUpdate == null)
                 throw new EntityNotFoundException<Team>();
 
@@ -205,13 +160,8 @@ namespace Cite.Api.Services
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
             var teamToDelete = await _context.Teams.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (teamToDelete == null)
                 throw new EntityNotFoundException<Team>();
-
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)teamToDelete.EvaluationId, _context))).Succeeded)
-                throw new ForbiddenException();
 
             _context.Teams.Remove(teamToDelete);
             await _context.SaveChangesAsync(ct);

@@ -186,7 +186,6 @@ public class Startup
         services.AddScoped<IIdentityResolver, IdentityResolver>();
         services.AddScoped<IMoveService, MoveService>();
         services.AddScoped<IXApiService, XApiService>();
-        services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IScoringCategoryService, ScoringCategoryService>();
         services.AddScoped<IScoringModelService, ScoringModelService>();
         services.AddScoped<IScoringModelMembershipService, ScoringModelMembershipService>();
@@ -199,7 +198,6 @@ public class Startup
         services.AddScoped<ISystemRoleService, SystemRoleService>();
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<ITeamTypeService, TeamTypeService>();
-        services.AddScoped<ITeamUserService, TeamUserService>();
         services.AddScoped<IUserService, UserService>();
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddScoped<IPrincipal>(p => p.GetService<IHttpContextAccessor>().HttpContext.User);

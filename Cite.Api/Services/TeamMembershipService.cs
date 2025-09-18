@@ -20,10 +20,10 @@ namespace Cite.Api.Services
 {
     public interface ITeamMembershipService
     {
-        STT.Task<ViewModels.TeamMembership> GetAsync(Guid id, CancellationToken ct);
-        STT.Task<IEnumerable<ViewModels.TeamMembership>> GetByTeamAsync(Guid teamId, CancellationToken ct);
-        STT.Task<ViewModels.TeamMembership> CreateAsync(ViewModels.TeamMembership teamMembership, CancellationToken ct);
-        STT.Task<ViewModels.TeamMembership> UpdateAsync(Guid id, ViewModels.TeamMembership teamMembership, CancellationToken ct);
+        STT.Task<TeamMembership> GetAsync(Guid id, CancellationToken ct);
+        STT.Task<IEnumerable<TeamMembership>> GetByTeamAsync(Guid teamId, CancellationToken ct);
+        STT.Task<TeamMembership> CreateAsync(TeamMembership teamMembership, CancellationToken ct);
+        STT.Task<TeamMembership> UpdateAsync(Guid id, TeamMembership teamMembership, CancellationToken ct);
         STT.Task DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -40,7 +40,7 @@ namespace Cite.Api.Services
             _mapper = mapper;
         }
 
-        public async STT.Task<ViewModels.TeamMembership> GetAsync(Guid id, CancellationToken ct)
+        public async STT.Task<TeamMembership> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.TeamMemberships
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
@@ -51,7 +51,7 @@ namespace Cite.Api.Services
             return _mapper.Map<SAVM.TeamMembership>(item);
         }
 
-        public async STT.Task<IEnumerable<ViewModels.TeamMembership>> GetByTeamAsync(Guid teamId, CancellationToken ct)
+        public async STT.Task<IEnumerable<TeamMembership>> GetByTeamAsync(Guid teamId, CancellationToken ct)
         {
             var items = await _context.TeamMemberships
                 .Where(m => m.TeamId == teamId)
@@ -60,7 +60,7 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<SAVM.TeamMembership>>(items);
         }
 
-        public async STT.Task<ViewModels.TeamMembership> CreateAsync(ViewModels.TeamMembership teamMembership, CancellationToken ct)
+        public async STT.Task<TeamMembership> CreateAsync(TeamMembership teamMembership, CancellationToken ct)
         {
             var teamMembershipEntity = _mapper.Map<TeamMembershipEntity>(teamMembership);
 
@@ -70,7 +70,7 @@ namespace Cite.Api.Services
 
             return team;
         }
-        public async STT.Task<ViewModels.TeamMembership> UpdateAsync(Guid id, ViewModels.TeamMembership teamMembership, CancellationToken ct)
+        public async STT.Task<TeamMembership> UpdateAsync(Guid id, TeamMembership teamMembership, CancellationToken ct)
         {
             var teamMembershipToUpdate = await _context.TeamMemberships.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (teamMembershipToUpdate == null)

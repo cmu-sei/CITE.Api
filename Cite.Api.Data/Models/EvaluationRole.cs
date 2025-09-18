@@ -33,7 +33,7 @@ public static class EvaluationRoleDefaults
     public static Guid EvaluationViewerRoleId = new("4af74a62-596c-4767-a43a-b74aa8e48526");
     public static Guid EvaluationMemberRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e4");
     public static Guid EvaluationObserverRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c6f");
-    public static Guid EvaluationAdvancerRoleId = new("7c366199-f795-4a04-b360-e8705e77a052");
+    public static Guid EvaluationFacilitatorRoleId = new("7c366199-f795-4a04-b360-e8705e77a052");
 }
 
 public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRoleEntity>
@@ -55,7 +55,8 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                 Name = "Editor",
                 AllPermissions = false,
                 Permissions = [
-
+                    EvaluationPermission.ViewEvaluation,
+                    EvaluationPermission.EditEvaluation
                 ],
                 Description = "Can edit the Evaluation in administration"
             },
@@ -65,7 +66,7 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                 Name = "Viewer",
                 AllPermissions = false,
                 Permissions = [
-
+                    EvaluationPermission.ViewEvaluation
                 ],
                 Description = "Can view the Evaluation in administration"
             },
@@ -75,8 +76,7 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                 Name = "Member",
                 AllPermissions = false,
                 Permissions = [
-                    EvaluationPermission.ViewEvaluation,
-                    EvaluationPermission.EditEvaluation
+                    EvaluationPermission.ParticipateInEvaluation
                 ],
                 Description = "Has read only access to the Evaluation up to the current move"
             },
@@ -85,19 +85,19 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
                 Id = EvaluationRoleDefaults.EvaluationObserverRoleId,
                 Name = "Observer",
                 AllPermissions = false,
-                Permissions = [EvaluationPermission.ViewEvaluation],
+                Permissions = [EvaluationPermission.ObserveEvaluation],
                 Description = "Has read only access to all teams in the Evaluation up to the current move"
             },
             new EvaluationRoleEntity
             {
-                Id = EvaluationRoleDefaults.EvaluationAdvancerRoleId,
-                Name = "Advancer",
+                Id = EvaluationRoleDefaults.EvaluationFacilitatorRoleId,
+                Name = "Facilitator",
                 AllPermissions = false,
                 Permissions = [
-                    EvaluationPermission.ViewEvaluation,
+                    EvaluationPermission.ObserveEvaluation,
                     EvaluationPermission.ExecuteEvaluation
                 ],
-                Description = "Can advance moves for the Evaluation"
+                Description = "Can observe all teams and advance moves for the Evaluation"
             }
         );
     }

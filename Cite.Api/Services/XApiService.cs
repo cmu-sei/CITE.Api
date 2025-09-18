@@ -12,8 +12,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Extensions;
-using Cite.Api.Infrastructure.Authorization;
-using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Options;
 using TinCan;
 
@@ -105,9 +103,6 @@ namespace Cite.Api.Services
             {
                 return false;
             };
-
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
 
             var verb = new Verb();
             verb.id = verbUri;
@@ -259,4 +254,3 @@ namespace Cite.Api.Services
 
     }
 }
-

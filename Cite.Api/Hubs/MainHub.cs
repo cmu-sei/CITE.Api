@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Services;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Options;
@@ -149,7 +150,7 @@ namespace Cite.Api.Hubs
             var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
             idList.Add(userId);
             // content developer or system admin
-            if ((await _authorizationService.AuthorizeAsync(Context.User, null, new ContentDeveloperRequirement())).Succeeded)
+            if (await _authorizationService.AuthorizeAsync([SystemPermission.ViewEvaluations], new CancellationToken()))
             {
                 idList.Add(ADMIN_DATA_GROUP);
             }
