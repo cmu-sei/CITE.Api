@@ -25,7 +25,7 @@ public class ScoringModelMembershipEntity
     public Guid? GroupId { get; set; }
     public virtual GroupEntity Group { get; set; }
 
-    public Guid RoleId { get; set; } = ScoringModelRoleEntityDefaults.ScoringModelMemberRoleId;
+    public Guid RoleId { get; set; } = ScoringModelRoleEntityDefaults.ScoringModelEditorRoleId;
     public ScoringModelRoleEntity Role { get; set; }
 
 
@@ -44,7 +44,7 @@ public class ScoringModelMembershipEntity
         {
             builder.HasIndex(e => new { e.ScoringModelId, e.UserId, e.GroupId }).IsUnique();
 
-            builder.Property(x => x.RoleId).HasDefaultValue(ScoringModelRoleEntityDefaults.ScoringModelMemberRoleId);
+            builder.Property(x => x.RoleId).HasDefaultValue(ScoringModelRoleEntityDefaults.ScoringModelEditorRoleId);
 
             builder
                 .HasOne(x => x.ScoringModel)

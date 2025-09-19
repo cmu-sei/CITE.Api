@@ -29,7 +29,7 @@ public static class SystemRoleEntityDefaults
 {
     public static Guid AdministratorRoleId = new("f35e8fff-f996-4cba-b303-3ba515ad8d2f");
     public static Guid ContentDeveloperRoleId = new("d80b73c3-95d7-4468-8650-c62bbd082507");
-    public static Guid ObserverRoleId = new("1da3027e-725d-4753-9455-a836ed9bdb1e");
+    public static Guid ViewerRoleId = new("1da3027e-725d-4753-9455-a836ed9bdb1e");
 }
 
 public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRoleEntity>
@@ -58,18 +58,18 @@ public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRole
                     SystemPermission.CreateScoringModels,
                     SystemPermission.CreateEvaluations
                 ],
-                Description = "Can create and manage their own Evaluation Templates and Evaluations."
+                Description = "Can create and manage their own Evaluations and Scoring Models."
             },
             new SystemRoleEntity
             {
-                Id = SystemRoleEntityDefaults.ObserverRoleId,
-                Name = "Observer",
+                Id = SystemRoleEntityDefaults.ViewerRoleId,
+                Name = "Viewer",
                 AllPermissions = false,
                 Immutable = false,
                 Permissions = Enum.GetValues<SystemPermission>()
                     .Where(x => x.ToString().StartsWith("View"))
                     .ToList(),
-                Description = "Can View all Evaluation Templates and Evaluations, but cannot make any changes."
+                Description = "Can View all Evaluations and Scoring Models, but cannot make any changes."
             }
         );
     }

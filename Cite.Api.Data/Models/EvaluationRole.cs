@@ -28,12 +28,13 @@ public class EvaluationRoleEntity
 
 public static class EvaluationRoleDefaults
 {
-    public static Guid EvaluationCreatorRoleId = new("1a3f26cd-9d99-4b98-b914-12931e786198");
-    public static Guid EvaluationEditorRoleId = new("8aaa0d30-bdbe-4f2b-a6b8-f1a5466b2560");
-    public static Guid EvaluationViewerRoleId = new("4af74a62-596c-4767-a43a-b74aa8e48526");
-    public static Guid EvaluationMemberRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e4");
-    public static Guid EvaluationObserverRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c6f");
-    public static Guid EvaluationFacilitatorRoleId = new("7c366199-f795-4a04-b360-e8705e77a052");
+    public static Guid EvaluationOwnerRoleId = new("1a3f26cd-9d99-4b98-b914-12931e78619a");
+    public static Guid EvaluationEditorRoleId = new("8aaa0d30-bdbe-4f2b-a6b8-f1a5466b2561");
+    public static Guid EvaluationViewerRoleId = new("4af74a62-596c-4767-a43a-b74aa8e48527");
+    public static Guid EvaluationFacilitatorRoleId = new("7c366199-f795-4a04-b360-e8705e77a053");
+    public static Guid EvaluationAdvancerRoleId = new("c1e1731c-d44a-4b6b-abc1-2e3626798304");
+    public static Guid EvaluationObserverRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c61");
+    public static Guid EvaluationMemberRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e6");
 }
 
 public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRoleEntity>
@@ -43,8 +44,8 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
         builder.HasData(
             new EvaluationRoleEntity
             {
-                Id = EvaluationRoleDefaults.EvaluationCreatorRoleId,
-                Name = "Manager",
+                Id = EvaluationRoleDefaults.EvaluationOwnerRoleId,
+                Name = "Owner",
                 AllPermissions = true,
                 Permissions = [],
                 Description = "Can perform all actions on the Evaluation in administration"
@@ -72,13 +73,24 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
             },
             new EvaluationRoleEntity
             {
-                Id = EvaluationRoleDefaults.EvaluationMemberRoleId,
-                Name = "Member",
+                Id = EvaluationRoleDefaults.EvaluationFacilitatorRoleId,
+                Name = "Facilitator",
                 AllPermissions = false,
                 Permissions = [
-                    EvaluationPermission.ParticipateInEvaluation
+                    EvaluationPermission.ObserveEvaluation,
+                    EvaluationPermission.ExecuteEvaluation
                 ],
-                Description = "Has read only access to the Evaluation up to the current move"
+                Description = "Can observe all teams and advance moves for the Evaluation"
+            },
+            new EvaluationRoleEntity
+            {
+                Id = EvaluationRoleDefaults.EvaluationAdvancerRoleId,
+                Name = "Advancer",
+                AllPermissions = false,
+                Permissions = [
+                    EvaluationPermission.ExecuteEvaluation
+                ],
+                Description = "Can advance moves for the Evaluation"
             },
             new EvaluationRoleEntity
             {
@@ -90,14 +102,13 @@ public class EvaluationRoleConfiguration : IEntityTypeConfiguration<EvaluationRo
             },
             new EvaluationRoleEntity
             {
-                Id = EvaluationRoleDefaults.EvaluationFacilitatorRoleId,
-                Name = "Facilitator",
+                Id = EvaluationRoleDefaults.EvaluationMemberRoleId,
+                Name = "Member",
                 AllPermissions = false,
                 Permissions = [
-                    EvaluationPermission.ObserveEvaluation,
-                    EvaluationPermission.ExecuteEvaluation
+                    EvaluationPermission.ParticipateInEvaluation
                 ],
-                Description = "Can observe all teams and advance moves for the Evaluation"
+                Description = "Has read only access to the Evaluation up to the current move"
             }
         );
     }

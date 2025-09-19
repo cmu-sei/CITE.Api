@@ -202,7 +202,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateEvaluationSituation")]
         public async Task<IActionResult> UpdateSituation([FromRoute] Guid id, [FromBody] EvaluationSituation evaluationSituation, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.EditEvaluation, EvaluationPermission.ExecuteEvaluation], ct))
                 throw new ForbiddenException();
 
             var updatedEvaluation = await _evaluationService.UpdateSituationAsync(id, evaluationSituation, ct);
@@ -225,7 +225,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "setEvaluationCurrentMove")]
         public async Task<IActionResult> SetCurrentMove([FromRoute] Guid id, int move, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.EditEvaluation, EvaluationPermission.ExecuteEvaluation], ct))
                 throw new ForbiddenException();
 
             var updatedEvaluation = await _evaluationService.SetCurrentMoveAsync(id, move, ct);

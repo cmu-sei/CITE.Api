@@ -3,6 +3,7 @@ using System;
 using Cite.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cite.Api.Migrations.PostgreSQL.Migrations
 {
     [DbContext(typeof(CiteContext))]
-    partial class CiteContextModelSnapshot : ModelSnapshot
+    [Migration("20250919164403_roles-and-groups")]
+    partial class rolesandgroups
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -746,7 +749,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                             Id = new Guid("39aa296e-05ba-4fb0-8d74-c92cf3354c60"),
                             AllPermissions = false,
                             Description = "Can view the ScoringModel",
-                            Name = "Viewer",
+                            Name = "Observer",
                             Permissions = new[] { 0 }
                         });
                 });
@@ -1048,7 +1051,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         {
                             Id = new Guid("d80b73c3-95d7-4468-8650-c62bbd082507"),
                             AllPermissions = false,
-                            Description = "Can create and manage their own Evaluations and Scoring Models.",
+                            Description = "Can create and manage their own Evaluation Templates and Evaluations.",
                             Immutable = false,
                             Name = "Content Developer",
                             Permissions = new[] { 0, 4 }
@@ -1057,9 +1060,9 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         {
                             Id = new Guid("1da3027e-725d-4753-9455-a836ed9bdb1e"),
                             AllPermissions = false,
-                            Description = "Can View all Evaluations and Scoring Models, but cannot make any changes.",
+                            Description = "Can View all Evaluation Templates and Evaluations, but cannot make any changes.",
                             Immutable = false,
-                            Name = "Viewer",
+                            Name = "Observer",
                             Permissions = new[] { 1, 5, 10, 12, 14 }
                         });
                 });

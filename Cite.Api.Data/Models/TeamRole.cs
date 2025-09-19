@@ -23,10 +23,10 @@ namespace Cite.Api.Data.Models
 
 public static class TeamRoleDefaults
 {
-    public static Guid TeamMemberRoleId = new("b52ef031-65ee-4597-b768-b73480e6de66");
-    public static Guid TeamContributorRoleId = new("c442cf49-e26e-45c5-be7c-00e710d2e054");
-    public static Guid TeamSubmitterRoleId = new("1cfce79f-f344-4cb1-b33a-55de8dc1ccb2");
-    public static Guid TeamManagerRoleId = new("a2cc11c1-9fd1-402b-9937-0f6ede1066c2");
+    public static Guid TeamOwnerRoleId = new("a2cc11c1-9fd1-402b-9937-0f6ede1066c3");
+    public static Guid TeamSubmitterRoleId = new("1cfce79f-f344-4cb1-b33a-55de8dc1ccb3");
+    public static Guid TeamContributorRoleId = new("c442cf49-e26e-45c5-be7c-00e710d2e055");
+    public static Guid TeamMemberRoleId = new("b52ef031-65ee-4597-b768-b73480e6de67");
 }
 
 public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
@@ -36,8 +36,8 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
         builder.HasData(
             new TeamRoleEntity
             {
-                Id = TeamRoleDefaults.TeamManagerRoleId,
-                Name = "Manager",
+                Id = TeamRoleDefaults.TeamOwnerRoleId,
+                Name = "Owner",
                 Permissions = [
                     TeamPermission.ViewTeam,
                     TeamPermission.EditTeamScore,

@@ -62,8 +62,7 @@ namespace Cite.Api.Data.Enumerations
     {
         ViewScoringModel,
         EditScoringModel,
-        ManageScoringModel,
-        UseScoringModel
+        ManageScoringModel
     }
 
     public enum TeamPermission

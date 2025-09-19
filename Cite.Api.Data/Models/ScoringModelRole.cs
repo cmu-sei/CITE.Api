@@ -28,9 +28,9 @@ public class ScoringModelRoleEntity
 
 public static class ScoringModelRoleEntityDefaults
 {
-    public static Guid ScoringModelCreatorRoleId = new("1a3f26cd-9d99-4b98-b914-12931e786198");
-    public static Guid ScoringModelReadOnlyRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c6f");
-    public static Guid ScoringModelMemberRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e4");
+    public static Guid ScoringModelOwnerRoleId = new("1a3f26cd-9d99-4b98-b914-12931e786199");
+    public static Guid ScoringModelEditorRoleId = new("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e5");
+    public static Guid ScoringModelObserverRoleId = new("39aa296e-05ba-4fb0-8d74-c92cf3354c60");
 }
 
 public class ScoringModelRoleEntityConfiguration : IEntityTypeConfiguration<ScoringModelRoleEntity>
@@ -40,30 +40,30 @@ public class ScoringModelRoleEntityConfiguration : IEntityTypeConfiguration<Scor
         builder.HasData(
             new ScoringModelRoleEntity
             {
-                Id = ScoringModelRoleEntityDefaults.ScoringModelCreatorRoleId,
-                Name = "Manager",
+                Id = ScoringModelRoleEntityDefaults.ScoringModelOwnerRoleId,
+                Name = "Owner",
                 AllPermissions = true,
                 Permissions = [],
-                Description = "Can perform all actions on the ScoringModel"
+                Description = "Can view, edit, and delete the ScoringModel"
             },
             new ScoringModelRoleEntity
             {
-                Id = ScoringModelRoleEntityDefaults.ScoringModelReadOnlyRoleId,
-                Name = "Observer",
-                AllPermissions = false,
-                Permissions = [ScoringModelPermission.ViewScoringModel],
-                Description = "Has read only access to the ScoringModel"
-            },
-            new ScoringModelRoleEntity
-            {
-                Id = ScoringModelRoleEntityDefaults.ScoringModelMemberRoleId,
-                Name = "Member",
+                Id = ScoringModelRoleEntityDefaults.ScoringModelEditorRoleId,
+                Name = "Editor",
                 AllPermissions = false,
                 Permissions = [
                     ScoringModelPermission.ViewScoringModel,
                     ScoringModelPermission.EditScoringModel
                 ],
-                Description = "Has read only access to the ScoringModel"
+                Description = "Can view and edit the ScoringModel"
+            },
+            new ScoringModelRoleEntity
+            {
+                Id = ScoringModelRoleEntityDefaults.ScoringModelObserverRoleId,
+                Name = "Viewer",
+                AllPermissions = false,
+                Permissions = [ScoringModelPermission.ViewScoringModel],
+                Description = "Can view the ScoringModel"
             }
         );
     }
