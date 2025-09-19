@@ -9,7 +9,7 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class Role : Base
+    public class Role : Base, IAuthorizationType
     {
         public Guid Id { get; set; }
         public Guid EvaluationId { get; set; }
@@ -20,4 +20,3 @@ namespace Cite.Api.ViewModels
         public ICollection<User> Users { get; set; } = new List<User>();
    }
 }
-

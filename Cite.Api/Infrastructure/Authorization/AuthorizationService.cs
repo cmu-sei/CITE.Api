@@ -222,6 +222,7 @@ public class AuthorizationService(
             var t when t == typeof(Evaluation) => resourceId,
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
+            var t when t == typeof(Role) => await GetEvaluationIdFromRole(resourceId, cancellationToken),
             var t when t == typeof(Submission) => await GetEvaluationIdFromSubmission(resourceId, cancellationToken),
             var t when t == typeof(SubmissionCategory) => await GetEvaluationIdFromSubmissionCategory(resourceId, cancellationToken),
             var t when t == typeof(SubmissionOption) => await GetEvaluationIdFromSubmissionOption(resourceId, cancellationToken),
@@ -254,6 +255,14 @@ public class AuthorizationService(
     private async Task<Guid> GetEvaluationIdFromAction(Guid id, CancellationToken cancellationToken)
     {
         return await dbContext.Actions
+            .Where(x => x.Id == id)
+            .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetEvaluationIdFromRole(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Roles
             .Where(x => x.Id == id)
             .Select(x => x.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -330,6 +339,7 @@ public class AuthorizationService(
             var t when t == typeof(Team) => resourceId,
             var t when t == typeof(TeamMembership) => await GetTeamIdFromTeamMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetTeamIdFromAction(resourceId, cancellationToken),
+            var t when t == typeof(Role) => await GetTeamIdFromRole(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -345,6 +355,14 @@ public class AuthorizationService(
     private async Task<Guid> GetTeamIdFromAction(Guid id, CancellationToken cancellationToken)
     {
         return await dbContext.Actions
+            .Where(x => x.Id == id)
+            .Select(x => x.TeamId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid> GetTeamIdFromRole(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Roles
             .Where(x => x.Id == id)
             .Select(x => x.TeamId)
             .FirstOrDefaultAsync(cancellationToken);
