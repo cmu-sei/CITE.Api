@@ -9,14 +9,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Cite.Api.Data.Models
 {
-    public class RoleUserEntity
+    public class DutyUserEntity
     {
-        public RoleUserEntity() { }
+        public DutyUserEntity() { }
 
-        public RoleUserEntity(Guid userId, Guid roleId)
+        public DutyUserEntity(Guid userId, Guid dutyId)
         {
             UserId = userId;
-            RoleId = roleId;
+            DutyId = dutyId;
         }
 
         [Key]
@@ -26,25 +26,24 @@ namespace Cite.Api.Data.Models
         public Guid UserId { get; set; }
         public UserEntity User { get; set; }
 
-        public Guid RoleId { get; set; }
-        public RoleEntity Role { get; set; }
+        public Guid DutyId { get; set; }
+        public DutyEntity Duty { get; set; }
     }
 
-    public class RoleUserConfiguration : IEntityTypeConfiguration<RoleUserEntity>
+    public class DutyUserConfiguration : IEntityTypeConfiguration<DutyUserEntity>
     {
-        public void Configure(EntityTypeBuilder<RoleUserEntity> builder)
+        public void Configure(EntityTypeBuilder<DutyUserEntity> builder)
         {
-            builder.HasIndex(x => new { x.UserId, x.RoleId }).IsUnique();
+            builder.HasIndex(x => new { x.UserId, x.DutyId }).IsUnique();
 
             builder
                 .HasOne(u => u.User)
-                .WithMany(p => p.RoleUsers)
+                .WithMany(p => p.DutyUsers)
                 .HasForeignKey(x => x.UserId);
             builder
-                .HasOne(u => u.Role)
-                .WithMany(p => p.RoleUsers)
-                .HasForeignKey(x => x.RoleId);
+                .HasOne(u => u.Duty)
+                .WithMany(p => p.DutyUsers)
+                .HasForeignKey(x => x.DutyId);
         }
     }
 }
-

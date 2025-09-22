@@ -7,19 +7,17 @@ using System.Linq;
 
 namespace Cite.Api.Infrastructure.Mappings
 {
-    public class RoleProfile : AutoMapper.Profile
+    public class DutyProfile : AutoMapper.Profile
     {
-        public RoleProfile()
+        public DutyProfile()
         {
-            CreateMap<RoleEntity, Role>()
-                .ForMember(m => m.Users, opt => opt.MapFrom(x => x.RoleUsers.Select(y => y.User)))
+            CreateMap<DutyEntity, Duty>()
+                .ForMember(m => m.Users, opt => opt.MapFrom(x => x.DutyUsers.Select(y => y.User)))
                 .ForMember(m => m.Users, opt => opt.ExplicitExpansion());
 
-            CreateMap<Role, RoleEntity>()
-                .ForMember(m => m.RoleUsers, opt => opt.Ignore());
+            CreateMap<Duty, DutyEntity>()
+                .ForMember(m => m.DutyUsers, opt => opt.Ignore());
 
         }
     }
 }
-
-

@@ -19,21 +19,21 @@ using Cite.Api.Infrastructure.Options;
 
 namespace Cite.Api.Services
 {
-    public interface IRoleService
+    public interface IDutyService
     {
-        Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Role>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
-        Task<ViewModels.Role> GetAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.Role> CreateAsync(ViewModels.Role role, CancellationToken ct);
-        Task<ViewModels.Role> UpdateAsync(Guid id, ViewModels.Role role, CancellationToken ct);
-        Task<ViewModels.Role> AddUserAsync(Guid roleId, Guid userId, CancellationToken ct);
-        Task<ViewModels.Role> RemoveUserAsync(Guid roleId, Guid userId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Duty>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Duty>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
+        Task<ViewModels.Duty> GetAsync(Guid id, CancellationToken ct);
+        Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct);
+        Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.Duty duty, CancellationToken ct);
+        Task<ViewModels.Duty> AddUserAsync(Guid dutyId, Guid userId, CancellationToken ct);
+        Task<ViewModels.Duty> RemoveUserAsync(Guid dutyId, Guid userId, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
-        Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, DutyEntity duty, UserEntity user, CancellationToken ct);
 
     }
 
-    public class RoleService : IRoleService
+    public class DutyService : IDutyService
     {
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
@@ -42,7 +42,7 @@ namespace Cite.Api.Services
          private readonly DatabaseOptions _options;
         private readonly IXApiService _xApiService;
 
-        public RoleService(
+        public DutyService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
@@ -58,119 +58,119 @@ namespace Cite.Api.Services
             _xApiService = xApiService;
         }
 
-        public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.Duty>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
-            var roleEntities = await _context.Roles
+            var dutyEntities = await _context.Duties
                 .Where(r => r.EvaluationId == evaluationId)
-                .Include(r => r.RoleUsers)
+                .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
                 .OrderBy(r => r.Name)
                 .ThenBy(r => r.Team.Name)
                 .ToListAsync(ct);
-            var roles = _mapper.Map<IEnumerable<ViewModels.Role>>(roleEntities).ToList();
+            var duties = _mapper.Map<IEnumerable<ViewModels.Duty>>(dutyEntities).ToList();
 
-            return roles;
+            return duties;
         }
 
-        public async Task<IEnumerable<ViewModels.Role>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.Duty>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            var roleEntities = await _context.Roles
+            var dutyEntities = await _context.Duties
                 .Where(r => r.EvaluationId == evaluationId &&
                             r.TeamId == teamId)
-                .Include(r => r.RoleUsers)
+                .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
                 .OrderBy(r => r.Name)
                 .ToListAsync(ct);
-            var roles = _mapper.Map<IEnumerable<ViewModels.Role>>(roleEntities).ToList();
+            var duties = _mapper.Map<IEnumerable<ViewModels.Duty>>(dutyEntities).ToList();
 
-            return roles;
+            return duties;
         }
 
-        public async Task<ViewModels.Role> GetAsync(Guid id, CancellationToken ct)
+        public async Task<ViewModels.Duty> GetAsync(Guid id, CancellationToken ct)
         {
-            var item = await _context.Roles
+            var item = await _context.Duties
                 .SingleAsync(a => a.Id == id, ct);
             if (item == null)
-                throw new EntityNotFoundException<RoleEntity>();
+                throw new EntityNotFoundException<DutyEntity>();
 
-            return _mapper.Map<ViewModels.Role>(item);
+            return _mapper.Map<ViewModels.Duty>(item);
         }
 
-        public async Task<ViewModels.Role> CreateAsync(ViewModels.Role role, CancellationToken ct)
+        public async Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct)
         {
-            role.Id = role.Id != Guid.Empty ? role.Id : Guid.NewGuid();
-            role.DateCreated = DateTime.UtcNow;
-            role.CreatedBy = _user.GetId();
-            role.DateModified = null;
-            role.ModifiedBy = null;
-            var roleEntity = _mapper.Map<RoleEntity>(role);
-            _context.Roles.Add(roleEntity);
+            duty.Id = duty.Id != Guid.Empty ? duty.Id : Guid.NewGuid();
+            duty.DateCreated = DateTime.UtcNow;
+            duty.CreatedBy = _user.GetId();
+            duty.DateModified = null;
+            duty.ModifiedBy = null;
+            var dutyEntity = _mapper.Map<DutyEntity>(duty);
+            _context.Duties.Add(dutyEntity);
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<ViewModels.Role>(roleEntity);
+            return _mapper.Map<ViewModels.Duty>(dutyEntity);
         }
 
-        public async Task<ViewModels.Role> UpdateAsync(Guid id, ViewModels.Role role, CancellationToken ct)
+        public async Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.Duty duty, CancellationToken ct)
         {
-            var roleToUpdate = await _context.Roles
-                .Include(r => r.RoleUsers)
+            var dutyToUpdate = await _context.Duties
+                .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
                 .SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (roleToUpdate == null)
-                throw new EntityNotFoundException<RoleEntity>();
+            if (dutyToUpdate == null)
+                throw new EntityNotFoundException<DutyEntity>();
 
-            roleToUpdate.ModifiedBy = _user.GetId();
-            roleToUpdate.DateModified = DateTime.UtcNow;
-            roleToUpdate.Name = role.Name;
-            _context.Roles.Update(roleToUpdate);
+            dutyToUpdate.ModifiedBy = _user.GetId();
+            dutyToUpdate.DateModified = DateTime.UtcNow;
+            dutyToUpdate.Name = duty.Name;
+            _context.Duties.Update(dutyToUpdate);
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<ViewModels.Role>(roleToUpdate);
+            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
         }
 
-        public async Task<ViewModels.Role> AddUserAsync(Guid roleId, Guid userId, CancellationToken ct)
+        public async Task<ViewModels.Duty> AddUserAsync(Guid dutyId, Guid userId, CancellationToken ct)
         {
-            var roleToUpdate = await _context.Roles
-                .Include(r => r.RoleUsers)
+            var dutyToUpdate = await _context.Duties
+                .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
-                .SingleOrDefaultAsync(v => v.Id == roleId, ct);
-            if (roleToUpdate == null)
-                throw new EntityNotFoundException<RoleEntity>();
+                .SingleOrDefaultAsync(v => v.Id == dutyId, ct);
+            if (dutyToUpdate == null)
+                throw new EntityNotFoundException<DutyEntity>();
 
             var userToAdd = await _context.Users.SingleOrDefaultAsync(v => v.Id == userId, ct);
             if (userToAdd == null)
                 throw new EntityNotFoundException<UserEntity>();
 
-            var roleUserEntity = new RoleUserEntity()
+            var dutyUserEntity = new DutyUserEntity()
                 {
                     Id = Guid.NewGuid(),
-                    RoleId = roleId,
+                    DutyId = dutyId,
                     UserId = userId
                 };
-            _context.RoleUsers.Add(roleUserEntity);
+            _context.DutyUsers.Add(dutyUserEntity);
             await _context.SaveChangesAsync(ct);
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/assigned");
             // object could be the user being added
-            await LogXApiAsync(verb, roleToUpdate, userToAdd, ct);
+            await LogXApiAsync(verb, dutyToUpdate, userToAdd, ct);
 
-            return _mapper.Map<ViewModels.Role>(roleToUpdate);
+            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
         }
 
-        public async Task<ViewModels.Role> RemoveUserAsync(Guid roleId, Guid userId, CancellationToken ct)
+        public async Task<ViewModels.Duty> RemoveUserAsync(Guid dutyId, Guid userId, CancellationToken ct)
         {
-            var roleToUpdate = await _context.Roles
-                .Include(r => r.RoleUsers)
+            var dutyToUpdate = await _context.Duties
+                .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
-                .SingleOrDefaultAsync(v => v.Id == roleId, ct);
-            if (roleToUpdate == null)
-                throw new EntityNotFoundException<RoleEntity>();
+                .SingleOrDefaultAsync(v => v.Id == dutyId, ct);
+            if (dutyToUpdate == null)
+                throw new EntityNotFoundException<DutyEntity>();
 
-            var roleUserToRemove = await _context.RoleUsers.SingleOrDefaultAsync(v => v.RoleId == roleId && v.UserId == userId, ct);
-            if (roleUserToRemove == null)
+            var dutyUserToRemove = await _context.DutyUsers.SingleOrDefaultAsync(v => v.DutyId == dutyId && v.UserId == userId, ct);
+            if (dutyUserToRemove == null)
                 throw new EntityNotFoundException<UserEntity>();
 
-            _context.RoleUsers.Remove(roleUserToRemove);
+            _context.DutyUsers.Remove(dutyUserToRemove);
             await _context.SaveChangesAsync(ct);
             // create and send xapi statement
             var verb = new Uri ("https://w3id.org/xapi/dod-isd/verbs/removed");
@@ -178,38 +178,38 @@ namespace Cite.Api.Services
             if (userToRemove == null)
                 throw new EntityNotFoundException<UserEntity>();
             // object could be the user being removed
-            await LogXApiAsync(verb, roleToUpdate, userToRemove, ct);
+            await LogXApiAsync(verb, dutyToUpdate, userToRemove, ct);
 
-            return _mapper.Map<ViewModels.Role>(roleToUpdate);
+            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            var roleToDelete = await _context.Roles.SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (roleToDelete == null)
-                throw new EntityNotFoundException<RoleEntity>();
+            var dutyToDelete = await _context.Duties.SingleOrDefaultAsync(v => v.Id == id, ct);
+            if (dutyToDelete == null)
+                throw new EntityNotFoundException<DutyEntity>();
 
-            _context.Roles.Remove(roleToDelete);
+            _context.Duties.Remove(dutyToDelete);
             await _context.SaveChangesAsync(ct);
 
             return true;
         }
-        public async Task<bool> LogXApiAsync(Uri verb, RoleEntity role, UserEntity user, CancellationToken ct)
+        public async Task<bool> LogXApiAsync(Uri verb, DutyEntity duty, UserEntity user, CancellationToken ct)
         {
 
             if (_xApiService.IsConfigured())
             {
-                var evaluation = await _context.Evaluations.Where(e => e.Id == role.EvaluationId).FirstAsync();
+                var evaluation = await _context.Evaluations.Where(e => e.Id == duty.EvaluationId).FirstAsync();
                 var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
 
                 var teamId = (await _context.TeamUsers
-                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == role.EvaluationId)).TeamId;
+                    .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == duty.EvaluationId)).TeamId;
 
                 var activity = new Dictionary<String,String>();
-                activity.Add("id", role.Id.ToString());
-                activity.Add("name", role.Name);
-                activity.Add("description", "Team-defined role.");
-                activity.Add("type", "roles");
+                activity.Add("id", duty.Id.ToString());
+                activity.Add("name", duty.Name);
+                activity.Add("description", "Team-defined duty.");
+                activity.Add("type", "duties");
                 activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
 
                 var parent = new Dictionary<String,String>();
@@ -232,7 +232,7 @@ namespace Cite.Api.Services
                 var other = new Dictionary<String,String>();
                 other.Add("id", user.Id.ToString());
                 other.Add("name", user.Name);
-                other.Add("description", "The user assigned or removed from the role.");
+                other.Add("description", "The user assigned or removed from the duty.");
                 other.Add("type", "users");
                 other.Add("activityType", "http://id.tincanapi.com/activitytype/user-profile");
 

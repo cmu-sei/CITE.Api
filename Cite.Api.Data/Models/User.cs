@@ -18,7 +18,7 @@ namespace Cite.Api.Data.Models
 
         public ICollection<UserPermissionEntity> UserPermissions { get; set; } = new List<UserPermissionEntity>();
         public ICollection<TeamUserEntity> TeamUsers { get; set; } = new List<TeamUserEntity>();
-        public ICollection<RoleUserEntity> RoleUsers { get; set; } = new HashSet<RoleUserEntity>();
+        public ICollection<DutyUserEntity> DutyUsers { get; set; } = new HashSet<DutyUserEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
         public Guid? RoleId { get; set; }
         public virtual SystemRoleEntity Role { get; set; }

@@ -210,30 +210,30 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            // roles
-            if (options.Roles != null && options.Roles.Any())
+            // duties
+            if (options.Duties != null && options.Duties.Any())
             {
-                var dbRoles = context.Roles.ToList();
+                var dbDuties = context.Duties.ToList();
 
-                foreach (RoleEntity role in options.Roles)
+                foreach (DutyEntity duty in options.Duties)
                 {
-                    if (!dbRoles.Where(x => x.Id == role.Id).Any())
+                    if (!dbDuties.Where(x => x.Id == duty.Id).Any())
                     {
-                        context.Roles.Add(role);
+                        context.Duties.Add(duty);
                     }
                 }
                 context.SaveChanges();
             }
-            // role users
-            if (options.RoleUsers != null && options.RoleUsers.Any())
+            // duty users
+            if (options.DutyUsers != null && options.DutyUsers.Any())
             {
-                var dbRoleUsers = context.RoleUsers.ToList();
+                var dbDutyUsers = context.DutyUsers.ToList();
 
-                foreach (RoleUserEntity roleUser in options.RoleUsers)
+                foreach (DutyUserEntity dutyUser in options.DutyUsers)
                 {
-                    if (!dbRoleUsers.Where(x => x.Id == roleUser.Id).Any())
+                    if (!dbDutyUsers.Where(x => x.Id == dutyUser.Id).Any())
                     {
-                        context.RoleUsers.Add(roleUser);
+                        context.DutyUsers.Add(dutyUser);
                     }
                 }
                 context.SaveChanges();

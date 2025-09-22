@@ -222,7 +222,7 @@ public class AuthorizationService(
             var t when t == typeof(Evaluation) => resourceId,
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
-            var t when t == typeof(Role) => await GetEvaluationIdFromRole(resourceId, cancellationToken),
+            var t when t == typeof(Duty) => await GetEvaluationIdFromDuty(resourceId, cancellationToken),
             var t when t == typeof(Submission) => await GetEvaluationIdFromSubmission(resourceId, cancellationToken),
             var t when t == typeof(SubmissionCategory) => await GetEvaluationIdFromSubmissionCategory(resourceId, cancellationToken),
             var t when t == typeof(SubmissionOption) => await GetEvaluationIdFromSubmissionOption(resourceId, cancellationToken),
@@ -260,9 +260,9 @@ public class AuthorizationService(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private async Task<Guid> GetEvaluationIdFromRole(Guid id, CancellationToken cancellationToken)
+    private async Task<Guid> GetEvaluationIdFromDuty(Guid id, CancellationToken cancellationToken)
     {
-        return await dbContext.Roles
+        return await dbContext.Duties
             .Where(x => x.Id == id)
             .Select(x => x.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -339,7 +339,7 @@ public class AuthorizationService(
             var t when t == typeof(Team) => resourceId,
             var t when t == typeof(TeamMembership) => await GetTeamIdFromTeamMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetTeamIdFromAction(resourceId, cancellationToken),
-            var t when t == typeof(Role) => await GetTeamIdFromRole(resourceId, cancellationToken),
+            var t when t == typeof(Duty) => await GetTeamIdFromDuty(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -360,9 +360,9 @@ public class AuthorizationService(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private async Task<Guid> GetTeamIdFromRole(Guid id, CancellationToken cancellationToken)
+    private async Task<Guid> GetTeamIdFromDuty(Guid id, CancellationToken cancellationToken)
     {
-        return await dbContext.Roles
+        return await dbContext.Duties
             .Where(x => x.Id == id)
             .Select(x => x.TeamId)
             .FirstOrDefaultAsync(cancellationToken);

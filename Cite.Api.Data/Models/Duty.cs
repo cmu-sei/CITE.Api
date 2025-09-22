@@ -5,18 +5,20 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Cite.Api.Data.Enumerations;
 
-namespace Cite.Api.ViewModels
+namespace Cite.Api.Data.Models
 {
-    public class Role : Base, IAuthorizationType
+    public class DutyEntity : BaseEntity
     {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
         public Guid EvaluationId { get; set; }
-        public virtual Evaluation Evaluation { get; set; }
+        public virtual EvaluationEntity Evaluation { get; set; }
         public Guid TeamId { get; set; }
-        public virtual Team Team { get; set; }
+        public virtual TeamEntity Team { get; set; }
         public string Name { get; set; }
-        public ICollection<User> Users { get; set; } = new List<User>();
-   }
+        public ICollection<DutyUserEntity> DutyUsers { get; set; } = new HashSet<DutyUserEntity>();
+    }
+
 }

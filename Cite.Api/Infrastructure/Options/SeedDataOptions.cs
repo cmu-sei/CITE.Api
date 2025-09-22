@@ -18,7 +18,7 @@ namespace Cite.Api.Infrastructure.Options
         public List<EvaluationEntity> Evaluations { get; set; }
         public List<MoveEntity> Moves { get; set; }
         public List<ActionEntity> Actions { get; set; }
-        public List<RoleEntity> Roles { get; set; }
-        public List<RoleUserEntity> RoleUsers { get; set; }
+        public List<DutyEntity> Duties { get; set; }
+        public List<DutyUserEntity> DutyUsers { get; set; }
     }
 }
