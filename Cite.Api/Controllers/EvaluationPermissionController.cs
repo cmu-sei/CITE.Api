@@ -27,7 +27,7 @@ public class EvaluationPermissionsController : BaseController
     [HttpGet("evaluations/{id}/me/permissions")]
     [ProducesResponseType(typeof(IEnumerable<EvaluationPermissionClaim>), (int)HttpStatusCode.OK)]
     [SwaggerOperation(OperationId = "GetMyEvaluationPermissions")]
-    public async Task<IActionResult> GetMine(Guid id)
+    public async Task<IActionResult> GetMine()
     {
         var result = _authorizationService.GetEvaluationPermissions();
         return Ok(result);

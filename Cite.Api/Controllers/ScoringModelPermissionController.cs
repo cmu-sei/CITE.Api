@@ -27,7 +27,7 @@ public class ScoringModelPermissionsController : BaseController
     [HttpGet("scoringModels/{id}/me/permissions")]
     [ProducesResponseType(typeof(IEnumerable<ScoringModelPermissionClaim>), (int)HttpStatusCode.OK)]
     [SwaggerOperation(OperationId = "GetMyScoringModelPermissions")]
-    public async Task<IActionResult> GetMine(Guid id)
+    public async Task<IActionResult> GetMine()
     {
         var result = _authorizationService.GetScoringModelPermissions();
         return Ok(result);
