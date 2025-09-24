@@ -43,6 +43,7 @@ public interface ICiteAuthorizationService
     IEnumerable<SystemPermission> GetSystemPermissions();
     IEnumerable<EvaluationPermissionClaim> GetEvaluationPermissions(Guid? evaluationId = null);
     IEnumerable<ScoringModelPermissionClaim> GetScoringModelPermissions(Guid? scoringModelId = null);
+    IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? evaluationId = null);
 }
 
 public class AuthorizationService(
@@ -185,6 +186,20 @@ public class AuthorizationService(
         if (scoringModelId.HasValue)
         {
             permissions = permissions.Where(x => x.ScoringModelId == scoringModelId.Value);
+        }
+
+        return permissions;
+    }
+
+    public IEnumerable<TeamPermissionClaim> GetTeamPermissions(Guid? teamId = null)
+    {
+        var permissions = identityResolver.GetClaimsPrincipal().Claims
+           .Where(x => x.Type == AuthorizationConstants.TeamPermissionClaimType)
+           .Select(x => TeamPermissionClaim.FromString(x.Value));
+
+        if (teamId.HasValue)
+        {
+            permissions = permissions.Where(x => x.TeamId == teamId.Value);
         }
 
         return permissions;

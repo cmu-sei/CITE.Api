@@ -1,4 +1,4 @@
-// Copyright 2024 Carnegie Mellon University. All Rights Reserved.
+// Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 using System.Collections.Generic;
@@ -11,11 +11,11 @@ using System;
 
 namespace Cite.Api.Controllers;
 
-public class ScoringModelPermissionsController : BaseController
+public class TeamPermissionsController : BaseController
 {
     private readonly ICiteAuthorizationService _authorizationService;
 
-    public ScoringModelPermissionsController(ICiteAuthorizationService authorizationService)
+    public TeamPermissionsController(ICiteAuthorizationService authorizationService)
     {
         _authorizationService = authorizationService;
     }
@@ -24,12 +24,12 @@ public class ScoringModelPermissionsController : BaseController
     /// Get all SystemPermissions for the calling User.
     /// </summary>
     /// <returns></returns>
-    [HttpGet("scoringModels-permissions")]
-    [ProducesResponseType(typeof(IEnumerable<ScoringModelPermissionClaim>), (int)HttpStatusCode.OK)]
-    [SwaggerOperation(OperationId = "GetMyScoringModelPermissions")]
+    [HttpGet("team-permissions")]
+    [ProducesResponseType(typeof(IEnumerable<TeamPermissionClaim>), (int)HttpStatusCode.OK)]
+    [SwaggerOperation(OperationId = "GetMyTeamPermissions")]
     public async Task<IActionResult> GetMine()
     {
-        var result = _authorizationService.GetScoringModelPermissions();
+        var result = _authorizationService.GetTeamPermissions();
         return Ok(result);
     }
 }

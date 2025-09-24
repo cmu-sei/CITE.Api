@@ -24,7 +24,7 @@ public class EvaluationPermissionsController : BaseController
     /// Get all SystemPermissions for the calling User.
     /// </summary>
     /// <returns></returns>
-    [HttpGet("evaluations/{id}/me/permissions")]
+    [HttpGet("evaluation-permissions")]
     [ProducesResponseType(typeof(IEnumerable<EvaluationPermissionClaim>), (int)HttpStatusCode.OK)]
     [SwaggerOperation(OperationId = "GetMyEvaluationPermissions")]
     public async Task<IActionResult> GetMine()
