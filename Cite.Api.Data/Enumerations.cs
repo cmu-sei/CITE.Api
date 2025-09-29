@@ -45,7 +45,9 @@ namespace Cite.Api.Data.Enumerations
         ViewRoles,
         ManageRoles,
         ViewGroups,
-        ManageGroups
+        ManageGroups,
+        ViewTeamTypes,
+        ManageTeamTypes,
     }
 
     public enum EvaluationPermission

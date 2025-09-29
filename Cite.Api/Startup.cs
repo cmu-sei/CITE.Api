@@ -24,7 +24,6 @@ using System;
 using Cite.Api.Infrastructure;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Filters;
-using Cite.Api.ViewModels;
 using System.Linq;
 using System.Security.Principal;
 using System.Text.Json.Serialization;
@@ -178,6 +177,7 @@ public class Startup
 
         services.AddScoped<IActionService, ActionService>();
         services.AddScoped<ICiteAuthorizationService, AuthorizationService>();
+        services.AddScoped<IDutyService, DutyService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IEvaluationMembershipService, EvaluationMembershipService>();
         services.AddScoped<IEvaluationRoleService, EvaluationRoleService>();

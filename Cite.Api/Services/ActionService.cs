@@ -23,6 +23,7 @@ namespace Cite.Api.Services
 {
     public interface IActionService
     {
+        Task<IEnumerable<ViewModels.Action>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Action>> GetByEvaluationMoveAsync(Guid evaluationId, int moveNumber, CancellationToken ct);
         Task<IEnumerable<ViewModels.Action>> GetByEvaluationMoveTeamAsync(Guid evaluationId, int moveNumber, Guid teamId, CancellationToken ct);
@@ -57,6 +58,19 @@ namespace Cite.Api.Services
             _mapper = mapper;
             _options = options;
             _xApiService = xApiService;
+        }
+
+        public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
+        {
+            var actionEntities = await _context.Actions
+                .Where(a => a.EvaluationId == evaluationId)
+                .OrderBy(a => a.MoveNumber)
+                .ThenBy(a => a.Team.ShortName)
+                .ThenBy(a => a.ActionNumber)
+                .ToListAsync(ct);
+            var actions = _mapper.Map<IEnumerable<ViewModels.Action>>(actionEntities).ToList();
+
+            return actions;
         }
 
         public async Task<IEnumerable<ViewModels.Action>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)

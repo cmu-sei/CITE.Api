@@ -29,6 +29,27 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets Actions for the specified evaluation
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of the Actions.
+        /// <para />
+        /// Accessible to a User who can view the evaluation
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/actions")]
+        [ProducesResponseType(typeof(IEnumerable<ViewModels.Action>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getActionsByEvaluation")]
+        public async Task<IActionResult> GetByEvaluation([FromRoute] Guid evaluationId, CancellationToken ct)
+        {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
+            var list = await _actionService.GetByEvaluationAsync(evaluationId, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets Actions for the specified evaluation team
         /// for the current move
         /// </summary>
