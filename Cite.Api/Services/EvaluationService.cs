@@ -13,7 +13,6 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
@@ -45,7 +44,6 @@ namespace Cite.Api.Services
     public class EvaluationService : IEvaluationService
     {
         private readonly CiteContext _context;
-        private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
@@ -53,26 +51,27 @@ namespace Cite.Api.Services
         private readonly IMoveService _moveService;
         private readonly IScoringModelService _scoringModelService;
         private readonly ITeamTypeService _teamTypeService;
+        private readonly IUserClaimsService _userClaimsService;
 
         public EvaluationService(
             CiteContext context,
-            IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
             ISubmissionService submissionService,
             IMoveService moveService,
             IScoringModelService scoringModelService,
             ITeamTypeService teamTypeService,
+            IUserClaimsService userClaimsService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
-            _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _submissionService = submissionService;
             _moveService = moveService;
             _scoringModelService = scoringModelService;
             _teamTypeService = teamTypeService;
+            _userClaimsService = userClaimsService;
             _logger = logger;
         }
 
@@ -180,6 +179,14 @@ namespace Cite.Api.Services
                 move.EvaluationId = evaluation.Id;
                 await _moveService.CreateAsync(move, ct);
             }
+            var createOwnerMembership = new EvaluationMembershipEntity() {
+                UserId = _user.GetId(),
+                EvaluationId = evaluationEntity.Id,
+                RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
+            };
+            await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
+            await _context.SaveChangesAsync(ct);
+            await _userClaimsService.RefreshClaims(_user.GetId());
 
             return await GetAsync(evaluation.Id, ct);
         }

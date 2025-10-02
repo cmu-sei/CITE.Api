@@ -10,7 +10,7 @@ namespace Cite.Api.ViewModels
         public Guid Id { get; set; }
         public Guid TeamId { get; set; }
         public Guid? UserId { get; set; }
-        public Guid RoleId { get; set; }
+        public Guid? RoleId { get; set; }
         public virtual TeamRole Role { get; set; }
     }
 }

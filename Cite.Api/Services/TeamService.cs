@@ -68,7 +68,7 @@ namespace Cite.Api.Services
         public async Task<Team> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.Teams
-                .ProjectTo<Team>(_mapper.ConfigurationProvider, dest => dest.Users)
+                .ProjectTo<Team>(_mapper.ConfigurationProvider, dest => dest.Memberships)
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
             return item;
         }

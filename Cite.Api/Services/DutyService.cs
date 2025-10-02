@@ -64,8 +64,8 @@ namespace Cite.Api.Services
                 .Where(r => r.EvaluationId == evaluationId)
                 .Include(r => r.DutyUsers)
                 .ThenInclude(ru => ru.User)
-                .OrderBy(r => r.Name)
-                .ThenBy(r => r.Team.Name)
+                .OrderBy(r => r.Team.Name)
+                .ThenBy(r => r.Name)
                 .ToListAsync(ct);
             var duties = _mapper.Map<IEnumerable<ViewModels.Duty>>(dutyEntities).ToList();
 
