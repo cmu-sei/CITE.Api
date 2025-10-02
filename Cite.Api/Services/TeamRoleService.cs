@@ -13,6 +13,7 @@ using Cite.Api.Data;
 using Cite.Api.Infrastructure.Exceptions;
 using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
+using System.Linq;
 
 namespace Cite.Api.Services
 {
@@ -37,8 +38,7 @@ namespace Cite.Api.Services
 
         public async STT.Task<IEnumerable<ViewModels.TeamRole>> GetAsync(CancellationToken ct)
         {
-            var items = await _context.TeamRoles
-                .ToListAsync(ct);
+            var items = await _context.TeamRoles.ToListAsync(ct);
 
             return _mapper.Map<IEnumerable<SAVM.TeamRole>>(items);
         }

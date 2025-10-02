@@ -18,7 +18,7 @@ namespace Cite.Api.Data.Models
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public virtual ICollection<TeamPermission> Permissions { get; set; } = new List<TeamPermission>();
+        public virtual List<TeamPermission> Permissions { get; set; }
     }
 
 public static class TeamRoleDefaults

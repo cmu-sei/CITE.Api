@@ -197,6 +197,8 @@ public class Startup
         services.AddScoped<ISubmissionOptionService, SubmissionOptionService>();
         services.AddScoped<ISystemRoleService, SystemRoleService>();
         services.AddScoped<ITeamService, TeamService>();
+        services.AddScoped<ITeamMembershipService, TeamMembershipService>();
+        services.AddScoped<ITeamRoleService, TeamRoleService>();
         services.AddScoped<ITeamTypeService, TeamTypeService>();
         services.AddScoped<IUserService, UserService>();
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
