@@ -135,6 +135,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 {
                     if (!dbEvaluations.Where(x => x.Id == evaluation.Id).Any())
                     {
+                        evaluation.SituationTime = evaluation.SituationTime.ToUniversalTime();
                         context.Evaluations.Add(evaluation);
                     }
                 }
@@ -168,16 +169,16 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            // team users
-            if (options.TeamUsers != null && options.TeamUsers.Any())
+            // team memberships
+            if (options.TeamMemberships != null && options.TeamMemberships.Any())
             {
-                var dbTeamUsers = context.TeamUsers.ToList();
+                var dbTeamMemberships = context.TeamMemberships.ToList();
 
-                foreach (TeamUserEntity teamUser in options.TeamUsers)
+                foreach (TeamMembershipEntity teamMembership in options.TeamMemberships)
                 {
-                    if (!dbTeamUsers.Where(x => (x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId) || x.Id == teamUser.Id).Any())
+                    if (!dbTeamMemberships.Where(x => (x.UserId == teamMembership.UserId && x.TeamId == teamMembership.TeamId) || x.Id == teamMembership.Id).Any())
                     {
-                        context.TeamUsers.Add(teamUser);
+                        context.TeamMemberships.Add(teamMembership);
                     }
                 }
                 context.SaveChanges();
@@ -191,6 +192,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 {
                     if (!dbMoves.Where(x => x.Id == move.Id || (x.EvaluationId == move.EvaluationId && x.MoveNumber == move.MoveNumber)).Any())
                     {
+                        move.SituationTime = move.SituationTime.ToUniversalTime();
                         context.Moves.Add(move);
                     }
                 }

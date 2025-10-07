@@ -81,7 +81,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createTeamType")]
         public async Task<IActionResult> Create([FromBody] TeamType teamType, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync([SystemPermission.EditEvaluations], ct))
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
                 throw new ForbiddenException();
 
             var createdTeamType = await _teamTypeService.CreateAsync(teamType, ct);
@@ -105,7 +105,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateTeamType")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] TeamType teamType, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync([SystemPermission.EditEvaluations], ct))
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
                 throw new ForbiddenException();
 
             var updatedTeamType = await _teamTypeService.UpdateAsync(id, teamType, ct);
@@ -127,7 +127,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteTeamType")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync([SystemPermission.EditEvaluations], ct))
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
                 throw new ForbiddenException();
 
             await _teamTypeService.DeleteAsync(id, ct);

@@ -128,7 +128,6 @@ namespace Cite.Api.Controllers
             if (!await _authorizationService.AuthorizeAsync([SystemPermission.CreateEvaluations], ct))
                 throw new ForbiddenException();
 
-            evaluation.CreatedBy = User.GetId();
             var createdEvaluation = await _evaluationService.CreateAsync(evaluation, ct);
             AddPermissions(createdEvaluation);
 
@@ -180,7 +179,6 @@ namespace Cite.Api.Controllers
             if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();
 
-            evaluation.ModifiedBy = User.GetId();
             var updatedEvaluation = await _evaluationService.UpdateAsync(id, evaluation, ct);
             AddPermissions(updatedEvaluation);
 

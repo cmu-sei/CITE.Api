@@ -46,7 +46,7 @@ namespace Cite.Api.Services
         Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct);
         Task CreateMoveSubmissions(MoveEntity moveEntity, CiteContext citeContext, CancellationToken ct);
         Task CreateTeamSubmissions(TeamEntity teamEntity, CiteContext citeContext, CancellationToken ct);
-        Task CreateUserSubmissions(TeamUserEntity teamUserEntity, CiteContext citeContext, CancellationToken ct);
+        Task CreateUserSubmissions(TeamMembershipEntity teamMembershipEntity, CiteContext citeContext, CancellationToken ct);
         Task<bool> HasSpecificPermission<T>(Guid submissionId, SpecificPermission specificPermission, CancellationToken ct);
     }
 
@@ -144,7 +144,7 @@ namespace Cite.Api.Services
         public async Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct)
         {
             var userId = _user.GetId();
-            var team = await _context.TeamUsers
+            var team = await _context.TeamMemberships
                 .Where(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId)
                 .Include(tu => tu.Team.TeamType)
                 .Select(tu => tu.Team).FirstAsync();
@@ -294,12 +294,12 @@ namespace Cite.Api.Services
             }
             var move = submission.MoveNumber;
             // calculate the average of users on the team
-            var teamUserSubmissions = await _context.Submissions
+            var teamMembershipSubmissions = await _context.Submissions
                 .Where(sm => (sm.UserId != null && sm.TeamId == submission.TeamId && sm.EvaluationId == submission.EvaluationId && sm.MoveNumber == move))
                 .Include(s => s.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ToListAsync(ct);
-            var teamAverageSubmission = CreateAverageSubmission(teamUserSubmissions);
+            var teamAverageSubmission = CreateAverageSubmission(teamMembershipSubmissions);
             if (teamAverageSubmission != null)
             {
                 teamAverageSubmission.Id = Guid.NewGuid();
@@ -429,7 +429,7 @@ namespace Cite.Api.Services
 
             var submissionCategoryEntity = await _context.SubmissionCategories.FindAsync(submissionOptionToUpdate.SubmissionCategoryId);
             var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
+            var isOnTeam = await _context.TeamMemberships.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
             var evaluationId = (Guid)submissionEntity.EvaluationId;
 
             // get modified date/time
@@ -564,7 +564,7 @@ namespace Cite.Api.Services
             if (submissionToClear == null)
                 throw new EntityNotFoundException<Submission>();
 
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionToClear.TeamId);
+            var isOnTeam = await _context.TeamMemberships.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionToClear.TeamId);
             var evaluationId = (Guid)submissionToClear.EvaluationId;
             if (submissionToClear.Status != ItemStatus.Active)
                 throw new Exception($"Cannot clear selections of a submission ({submissionToClear.Id}) that is not currently active.");
@@ -612,7 +612,7 @@ namespace Cite.Api.Services
             if (targetSubmission == null)
                 throw new EntityNotFoundException<Submission>();
 
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == targetSubmission.TeamId);
+            var isOnTeam = await _context.TeamMemberships.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == targetSubmission.TeamId);
             var evaluationId = (Guid)targetSubmission.EvaluationId;
             if (targetSubmission.Status != ItemStatus.Active)
                 throw new Exception($"Cannot preset selections of a submission ({targetSubmission.Id}) that is not currently active.");
@@ -1027,7 +1027,7 @@ namespace Cite.Api.Services
                 }
                 var move = _mapper.Map<Move>(_context.Moves.Where(m => m.MoveNumber == submission.MoveNumber).First());
 
-                var teamId = (await _context.TeamUsers
+                var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
 
                 var evaluation = await _context.Evaluations.Where(e => e.Id == submission.EvaluationId).FirstAsync();
@@ -1099,7 +1099,7 @@ namespace Cite.Api.Services
             var evaluation = await citeContext.Evaluations.AsNoTracking().FirstOrDefaultAsync(m => m.Id == move.EvaluationId);
             var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
             var teams = await citeContext.Teams.AsNoTracking().Where(m => m.EvaluationId == evaluation.Id).ToListAsync(ct);
-            var teamUsers = await citeContext.TeamUsers.AsNoTracking().Where(m => m.Team.EvaluationId == evaluation.Id).ToListAsync(ct);
+            var teamMemberships = await citeContext.TeamMemberships.AsNoTracking().Where(m => m.Team.EvaluationId == evaluation.Id).ToListAsync(ct);
             var officialSubmission = new SubmissionEntity()
             {
                 Id = Guid.NewGuid(),
@@ -1131,14 +1131,14 @@ namespace Cite.Api.Services
                 CreateSubmissionCategories(teamSubmission, scoringModel, ct);
                 citeContext.Submissions.Add(teamSubmission);
             }
-            foreach (var teamUser in teamUsers)
+            foreach (var teamMembership in teamMemberships)
             {
                 var userSubmission = new SubmissionEntity()
                 {
                     Id = Guid.NewGuid(),
                     EvaluationId = evaluation.Id,
-                    TeamId = teamUser.TeamId,
-                    UserId = teamUser.UserId,
+                    TeamId = teamMembership.TeamId,
+                    UserId = teamMembership.UserId,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
                     Status = Data.Enumerations.ItemStatus.Active,
@@ -1177,21 +1177,21 @@ namespace Cite.Api.Services
             await citeContext.SaveChangesAsync(ct);
         }
 
-        public async Task CreateUserSubmissions(TeamUserEntity teamUser, CiteContext citeContext, CancellationToken ct)
+        public async Task CreateUserSubmissions(TeamMembershipEntity teamMembership, CiteContext citeContext, CancellationToken ct)
         {
             var dateCreated = DateTime.UtcNow;
             var userId = _user.GetId();
-            var evaluation = await citeContext.Teams.AsNoTracking().Where(m => m.Id == teamUser.TeamId).Select(m => m.Evaluation).FirstOrDefaultAsync(ct);
+            var evaluation = await citeContext.Teams.AsNoTracking().Where(m => m.Id == teamMembership.TeamId).Select(m => m.Evaluation).FirstOrDefaultAsync(ct);
             var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
-            var moves = await citeContext.Moves.AsNoTracking().Where(m => m.EvaluationId == teamUser.Team.EvaluationId).ToListAsync(ct);
+            var moves = await citeContext.Moves.AsNoTracking().Where(m => m.EvaluationId == evaluation.Id).ToListAsync(ct);
             foreach (var move in moves)
             {
                 var submission = new SubmissionEntity()
                 {
                     Id = Guid.NewGuid(),
                     EvaluationId = move.EvaluationId,
-                    TeamId = teamUser.TeamId,
-                    UserId = teamUser.UserId,
+                    TeamId = teamMembership.TeamId,
+                    UserId = teamMembership.UserId,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
                     Status = Data.Enumerations.ItemStatus.Active,

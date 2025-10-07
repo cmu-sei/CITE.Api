@@ -14,6 +14,7 @@ using Cite.Api.Data.Enumerations;
 using Cite.Api.Services;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Options;
+using Cite.Api.ViewModels;
 
 namespace Cite.Api.Hubs
 {
@@ -129,10 +130,16 @@ namespace Cite.Api.Hubs
             idList.Add(userId);
             // make sure that the user has access to the requested team
             var team = await _context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
+            var isObserver = await _context.EvaluationMemberships
+                .Where(er =>
+                    er.EvaluationId == team.EvaluationId &&
+                    er.UserId == Guid.Parse(userId) &&
+                    (er.Role.AllPermissions || er.Role.Permissions.Contains(EvaluationPermission.ObserveEvaluation)))
+                .AnyAsync();
             if (team != null)
             {
-                var teamUser = await _context.TeamUsers.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
-                if (teamUser != null && (teamUser.TeamId == teamId || teamUser.IsObserver))
+                var teamMembership = await _context.TeamMemberships.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
+                if (teamMembership != null && (teamMembership.TeamId == teamId || isObserver))
                 {
                     idList.Add(teamId.ToString());
                     idList.Add(team.EvaluationId.ToString());
@@ -189,9 +196,9 @@ namespace Cite.Api.Hubs
         public const string TeamCreated = "TeamCreated";
         public const string TeamUpdated = "TeamUpdated";
         public const string TeamDeleted = "TeamDeleted";
-        public const string TeamUserCreated = "TeamUserCreated";
-        public const string TeamUserUpdated = "TeamUserUpdated";
-        public const string TeamUserDeleted = "TeamUserDeleted";
+        public const string TeamMembershipCreated = "TeamMembershipCreated";
+        public const string TeamMembershipUpdated = "TeamMembershipUpdated";
+        public const string TeamMembershipDeleted = "TeamMembershipDeleted";
         public const string UserCreated = "UserCreated";
         public const string UserUpdated = "UserUpdated";
         public const string UserDeleted = "UserDeleted";

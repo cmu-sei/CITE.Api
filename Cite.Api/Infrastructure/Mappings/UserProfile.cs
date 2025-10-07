@@ -16,7 +16,7 @@ namespace Cite.Api.Infrastructure.Mappings
                 .ForMember(m => m.Submissions, opt => opt.ExplicitExpansion());
             CreateMap<User, UserEntity>()
                 .ForMember(m => m.Submissions, opt => opt.Ignore())
-                .ForMember(m => m.TeamUsers, opt => opt.Ignore());
+                .ForMember(m => m.TeamMemberships, opt => opt.Ignore());
         }
     }
 }

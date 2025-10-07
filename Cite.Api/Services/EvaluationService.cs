@@ -135,7 +135,7 @@ namespace Cite.Api.Services
         private async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            var evaluationIdList = await _context.TeamUsers
+            var evaluationIdList = await _context.TeamMemberships
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
@@ -163,12 +163,17 @@ namespace Cite.Api.Services
             evaluation.CreatedBy = _user.GetId();
             evaluation.DateModified = null;
             evaluation.ModifiedBy = null;
-
+            // create a scoring model copy
+            var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
+            evaluation.ScoringModelId = newScoringModel.Id;
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
             evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+            // update the scoring model evaluation ID
+            newScoringModel.EvaluationId = evaluation.Id;
+            await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
             // create a default move, if necessary
             if (evaluation.Moves.Count() == 0)
             {
@@ -340,40 +345,40 @@ namespace Cite.Api.Services
             {
                 // get the teams for this evaluation
                 var evaluationTeamList = await _context.Teams
-                    .Include(t => t.TeamUsers)
+                    .Include(t => t.Memberships)
                     .ThenInclude(tu => tu.User)
                     .Where(t => t.EvaluationId == evaluation.Id)
                     .AsNoTracking()
                     .ToListAsync();
                 if (evaluationTeamList.Any())
                 {
-                    var evaluationTeamUsers = new List<TeamUserEntity>();
+                    var evaluationTeamMemberships = new List<TeamMembershipEntity>();
                     foreach (var team in evaluationTeamList)
                     {
-                        evaluationTeamUsers.AddRange(team.TeamUsers);
+                        evaluationTeamMemberships.AddRange(team.Memberships);
                     }
-                    var duplicateUserIds = evaluationTeamUsers
+                    var duplicateUserIds = evaluationTeamMemberships
                         .GroupBy(tu => tu.UserId)
                         .Where(g => g.Count() > 1)
                         .Select(g => g.Key);
-                    var duplicateTeamUsers = evaluationTeamUsers
+                    var duplicateTeamMemberships = evaluationTeamMemberships
                         .Where(tu => duplicateUserIds.Contains(tu.UserId))
                         .OrderBy(tu => tu.UserId)
                         .ThenBy(tu => tu.TeamId);
-                    if (duplicateTeamUsers.Any())
+                    if (duplicateTeamMemberships.Any())
                     {
                         var message = "This evaluation cannot be set Active, because a user can only be on one team, which is violated by the following:\n";
                         Guid userId = Guid.Empty;
-                        foreach (var teamUser in duplicateTeamUsers)
+                        foreach (var teamMembership in duplicateTeamMemberships)
                         {
-                            if (teamUser.UserId != userId)
+                            if (teamMembership.UserId != userId)
                             {
-                                message = message + "\nUser " + teamUser.User.Name + " is on team " + evaluationTeamList.Find(t => t.Id == teamUser.TeamId).Name;
-                                userId = teamUser.UserId;
+                                message = message + "\nUser " + teamMembership.User.Name + " is on team " + evaluationTeamList.Find(t => t.Id == teamMembership.TeamId).Name;
+                                userId = teamMembership.UserId;
                             }
                             else
                             {
-                                message = message + "\n    and is on team " + evaluationTeamList.Find(t => t.Id == teamUser.TeamId).Name;
+                                message = message + "\n    and is on team " + evaluationTeamList.Find(t => t.Id == teamMembership.TeamId).Name;
                             }
                         }
                         throw new ArgumentException(message);

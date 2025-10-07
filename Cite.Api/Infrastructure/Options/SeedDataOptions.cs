@@ -11,7 +11,7 @@ namespace Cite.Api.Infrastructure.Options
         public List<UserEntity> Users { get; set; }
         public List<TeamTypeEntity> TeamTypes { get; set; }
         public List<TeamEntity> Teams { get; set; }
-        public List<TeamUserEntity> TeamUsers { get; set; }
+        public List<TeamMembershipEntity> TeamMemberships { get; set; }
         public List<ScoringModelEntity> ScoringModels { get; set; }
         public List<ScoringCategoryEntity> ScoringCategories { get; set; }
         public List<ScoringOptionEntity> ScoringOptions { get; set; }

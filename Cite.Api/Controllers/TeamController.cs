@@ -40,9 +40,6 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getMyEvaluationTeams")]
         public async Task<IActionResult> GetMineByEvaluation(Guid evaluationId, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ParticipateInEvaluation], ct))
-                throw new ForbiddenException();
-
             var list = await _teamService.GetMineByEvaluationAsync(evaluationId, ct);
             return Ok(list);
         }

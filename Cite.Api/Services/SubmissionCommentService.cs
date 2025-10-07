@@ -143,7 +143,7 @@ namespace Cite.Api.Services
                 var scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
                 var scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
 
-                var teamId = (await _context.TeamUsers
+                var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
 
                 // create and send xapi statement

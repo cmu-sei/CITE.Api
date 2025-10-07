@@ -202,7 +202,7 @@ namespace Cite.Api.Services
                 var evaluation = await _context.Evaluations.Where(e => e.Id == duty.EvaluationId).FirstAsync();
                 var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
 
-                var teamId = (await _context.TeamUsers
+                var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == duty.EvaluationId)).TeamId;
 
                 var activity = new Dictionary<String,String>();
