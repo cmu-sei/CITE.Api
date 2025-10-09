@@ -53,11 +53,6 @@ namespace Cite.Api.Services
 
         public async Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid evaluationId, CancellationToken ct)
         {
-            return await GetUnreadArticleCountAsync(evaluationId, _user.GetId(), ct);
-        }
-
-        private async Task<GAC.UnreadArticles> GetUnreadArticleCountAsync(Guid evaluationId, Guid userId, CancellationToken ct)
-        {
             // get the evaluation
             var evaluation = await _context.Evaluations.FindAsync(evaluationId);
             if (evaluation == null)
@@ -75,7 +70,7 @@ namespace Cite.Api.Services
                 var galleryApiClient = new GAC.GalleryApiClient(client);
                 try
                 {
-                    unreadArticles = await galleryApiClient.GetUnreadCountAsync((Guid)galleryExhibitId, userId);
+                    unreadArticles = await galleryApiClient.GetUnreadCountAsync((Guid)galleryExhibitId, _user.GetId());
                 }
                 catch (System.Exception ex)
                 {

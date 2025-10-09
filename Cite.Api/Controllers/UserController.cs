@@ -50,6 +50,23 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Gets all Users in the evaluation
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of all of the Users in the evaluation.
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/users")]
+        [ProducesResponseType(typeof(IEnumerable<UserIdentity>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getEvaluationUsers")]
+        public async Task<IActionResult> GetEvaluationUsers(Guid evaluationId, CancellationToken ct)
+        {
+            var hasSystemPermission = await _authorizationService.AuthorizeAsync([SystemPermission.ObserveEvaluations], ct);
+            var list = await _userService.GetByEvaluationAsync(evaluationId, hasSystemPermission, ct);
+            return Ok(list);
+        }
+
+        /// <summary>
         /// Gets a specific User by id
         /// </summary>
         /// <remarks>

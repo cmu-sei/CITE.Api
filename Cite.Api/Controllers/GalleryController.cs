@@ -41,9 +41,6 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getEvaluationUnreadArticleCount")]
         public async Task<IActionResult> GetEvaluationUnreadArticleCount(Guid evaluationId, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct))
-                throw new ForbiddenException();
-
             var unreadArticles = await _moveService.GetMyUnreadArticleCountAsync(evaluationId, ct);
             return Ok(unreadArticles);
         }

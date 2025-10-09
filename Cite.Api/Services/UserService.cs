@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
@@ -21,10 +22,11 @@ namespace Cite.Api.Services
 {
     public interface IUserService
     {
-        Task<IEnumerable<ViewModels.User>> GetAsync(CancellationToken ct);
-        Task<ViewModels.User> GetAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.User> CreateAsync(ViewModels.User user, CancellationToken ct);
-        Task<ViewModels.User> UpdateAsync(Guid id, ViewModels.User user, CancellationToken ct);
+        Task<IEnumerable<User>> GetAsync(CancellationToken ct);
+        Task<IEnumerable<UserIdentity>> GetByEvaluationAsync(Guid evaluationId, bool hasSystemPermission, CancellationToken ct);
+        Task<User> GetAsync(Guid id, CancellationToken ct);
+        Task<User> CreateAsync(User user, CancellationToken ct);
+        Task<User> UpdateAsync(Guid id, User user, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -47,21 +49,38 @@ namespace Cite.Api.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<ViewModels.User>> GetAsync(CancellationToken ct)
+        public async Task<IEnumerable<User>> GetAsync(CancellationToken ct)
         {
             var items = await _context.Users
                 .ToArrayAsync(ct);
             return _mapper.Map<IEnumerable<User>>(items);
         }
 
-        public async Task<ViewModels.User> GetAsync(Guid id, CancellationToken ct)
+        public async Task<IEnumerable<UserIdentity>> GetByEvaluationAsync(Guid evaluationId, bool hasSystemPermission, CancellationToken ct)
+        {
+            var items = await _context.TeamMemberships
+                .Where(em => em.Team.EvaluationId == evaluationId)
+                .Select(em => new UserIdentity
+                {
+                    Id = em.User.Id,
+                    Name = em.User.Name,
+                })
+                .ToArrayAsync(ct);
+            var userId = _user.GetId();
+            if (!hasSystemPermission && !items.Any(m => m.Id == userId))
+                throw new ForbiddenException();
+
+            return _mapper.Map<IEnumerable<UserIdentity>>(items);
+        }
+
+        public async Task<User> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.Users
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
             return _mapper.Map<User>(item);
         }
 
-        public async Task<ViewModels.User> CreateAsync(ViewModels.User user, CancellationToken ct)
+        public async Task<User> CreateAsync(User user, CancellationToken ct)
         {
             var userEntity = _mapper.Map<UserEntity>(user);
 
@@ -71,7 +90,7 @@ namespace Cite.Api.Services
             return await GetAsync(user.Id, ct);
         }
 
-        public async Task<ViewModels.User> UpdateAsync(Guid id, ViewModels.User user, CancellationToken ct)
+        public async Task<User> UpdateAsync(Guid id, User user, CancellationToken ct)
         {
             // Don't allow changing your own Id
             if (id == _user.GetId() && id != user.Id)
@@ -111,4 +130,10 @@ namespace Cite.Api.Services
         }
 
     }
+}
+
+public class UserIdentity
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
 }

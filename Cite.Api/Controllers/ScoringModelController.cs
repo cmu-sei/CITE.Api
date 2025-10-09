@@ -80,11 +80,9 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
             var viewAsAdmin = await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct);
-            if (!viewAsAdmin &&
-                !await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ParticipateInEvaluation, EvaluationPermission.ObserveEvaluation], ct))
-                throw new ForbiddenException();
+            var hasPermission = await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.ViewScoringModels, SystemPermission.ObserveEvaluations], [ScoringModelPermission.ViewScoringModel], ct);
 
-            var scoringModel = await _scoringModelService.GetAsync(id, viewAsAdmin, ct);
+            var scoringModel = await _scoringModelService.GetAsync(id, hasPermission, viewAsAdmin, ct);
             if (scoringModel == null)
                 throw new EntityNotFoundException<ScoringModel>();
 

@@ -37,9 +37,6 @@ public class TeamRolesController : BaseController
     [SwaggerOperation(OperationId = "GetTeamRole")]
     public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewRoles], ct))
-            throw new ForbiddenException();
-
         var result = await _teamRoleService.GetAsync(id, ct);
         return Ok(result);
     }
@@ -53,9 +50,6 @@ public class TeamRolesController : BaseController
     [SwaggerOperation(OperationId = "GetAllTeamRoles")]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewRoles], ct))
-            throw new ForbiddenException();
-
         var result = await _teamRoleService.GetAsync(ct);
         return Ok(result);
     }
