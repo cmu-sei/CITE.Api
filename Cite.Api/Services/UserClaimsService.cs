@@ -280,6 +280,31 @@ namespace Cite.Api.Services
                 claims.Add(new Claim(AuthorizationConstants.ScoringModelPermissionClaimType, permissionsClaim.ToString()));
             }
 
+            // Get Team Permissions
+            var teamMemberships = await _context.TeamMemberships
+                .Where(x => x.UserId == userId)
+                .Include(x => x.Role)
+                .GroupBy(x => x.TeamId)
+                .ToListAsync();
+
+            foreach (var group in teamMemberships)
+            {
+                var teamPermissions = new List<TeamPermission>();
+
+                foreach (var membership in group)
+                {
+                    teamPermissions.AddRange(membership.Role.Permissions);
+                }
+
+                var permissionsClaim = new TeamPermissionClaim
+                {
+                    TeamId = group.Key,
+                    Permissions = teamPermissions.Distinct().ToArray()
+                };
+
+                claims.Add(new Claim(AuthorizationConstants.TeamPermissionClaimType, permissionsClaim.ToString()));
+            }
+
             return claims;
         }
 

@@ -14,6 +14,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Linq;
 
 namespace Cite.Api.Controllers
 {
@@ -40,7 +41,16 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getMyEvaluationTeams")]
         public async Task<IActionResult> GetMineByEvaluation(Guid evaluationId, CancellationToken ct)
         {
-            var list = await _teamService.GetMineByEvaluationAsync(evaluationId, ct);
+            var list = new List<Team>();
+            var isObserver = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct);
+            if (isObserver)
+            {
+                list = (await _teamService.GetByEvaluationAsync(evaluationId, ct)).ToList();
+            }
+            else
+            {
+                list = (await _teamService.GetMineByEvaluationAsync(evaluationId, ct)).ToList();
+            }
             return Ok(list);
         }
 

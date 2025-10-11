@@ -51,15 +51,13 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct)
         {
-            var currentMove = int.MaxValue;
             if (!hasPermission)
             {
                 if (!await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == evaluationId))
                     throw new ForbiddenException();
-                currentMove = await _context.Evaluations.Where(m => m.Id == evaluationId).Select(m => m.CurrentMoveNumber).SingleAsync(ct);
             }
             var moveEntities = await _context.Moves
-                .Where(move => move.EvaluationId == evaluationId && move.MoveNumber <= currentMove)
+                .Where(move => move.EvaluationId == evaluationId)
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();;
