@@ -34,6 +34,7 @@ namespace Cite.Api.Hubs
         public const string GROUP_GROUP = "AdminGroupGroup";
         public const string ROLE_GROUP = "AdminRoleGroup";
         public const string USER_GROUP = "AdminUserGroup";
+        public const string OFFICIAL_SCORE_POSTFIX = "OfficialScore";
 
         public MainHub(
             ITeamService teamService,
@@ -145,6 +146,10 @@ namespace Cite.Api.Hubs
                     idList.Add(team.EvaluationId.ToString());
                     var scoringModelId = (await _context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
                     idList.Add(scoringModelId.ToString());
+                    if (teamMembership.Team.TeamType.IsOfficialScoreContributor)
+                    {
+                        idList.Add(team.EvaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
+                    }
                 }
             }
 
