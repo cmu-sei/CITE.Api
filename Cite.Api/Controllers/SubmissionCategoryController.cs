@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.QueryParameters;
@@ -20,30 +21,14 @@ namespace Cite.Api.Controllers
     public class SubmissionCategoryController : BaseController
     {
         private readonly ISubmissionCategoryService _submissionCategoryService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
+        private readonly ISubmissionService _submissionService;
 
-        public SubmissionCategoryController(ISubmissionCategoryService submissionCategoryService, IAuthorizationService authorizationService)
+        public SubmissionCategoryController(ISubmissionCategoryService submissionCategoryService, ICiteAuthorizationService authorizationService, ISubmissionService submissionService)
         {
             _submissionCategoryService = submissionCategoryService;
             _authorizationService = authorizationService;
-        }
-
-        /// <summary>
-        /// Gets SubmissionCategories
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of SubmissionCategories.
-        /// </remarks>
-        /// <param name="queryParameters">Result filtering criteria</param>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("submissionCategories")]
-        [ProducesResponseType(typeof(IEnumerable<SubmissionCategory>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getSubmissionCategories")]
-        public async Task<IActionResult> Get([FromQuery] SubmissionCategoryGet queryParameters, CancellationToken ct)
-        {
-            var list = await _submissionCategoryService.GetAsync(queryParameters, ct);
-            return Ok(list);
+            _submissionService = submissionService;
         }
 
         /// <summary>
@@ -60,6 +45,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissionCategoriesBySubmissionId")]
         public async Task<IActionResult> GetForSubmission(Guid submissionId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Submission>(submissionId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<Submission>(submissionId, SpecificPermission.View, ct))
+                throw new ForbiddenException();
+
             var list = await _submissionCategoryService.GetForSubmissionAsync(submissionId, ct);
             return Ok(list);
         }
@@ -78,8 +67,11 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissionCategory")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var submissionCategory = await _submissionCategoryService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<SubmissionCategory>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
 
+            var submissionCategory = await _submissionCategoryService.GetAsync(id, ct);
             if (submissionCategory == null)
                 throw new EntityNotFoundException<SubmissionCategory>();
 
@@ -101,7 +93,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createSubmissionCategory")]
         public async Task<IActionResult> Create([FromBody] SubmissionCategory submissionCategory, CancellationToken ct)
         {
-            submissionCategory.CreatedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<Submission>(submissionCategory.SubmissionId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var createdSubmissionCategory = await _submissionCategoryService.CreateAsync(submissionCategory, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdSubmissionCategory.Id }, createdSubmissionCategory);
         }
@@ -123,7 +117,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateSubmissionCategory")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] SubmissionCategory submissionCategory, CancellationToken ct)
         {
-            submissionCategory.ModifiedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(submissionCategory.Id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var updatedSubmissionCategory = await _submissionCategoryService.UpdateAsync(id, submissionCategory, ct);
             return Ok(updatedSubmissionCategory);
         }
@@ -143,10 +139,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteSubmissionCategory")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             await _submissionCategoryService.DeleteAsync(id, ct);
             return NoContent();
         }
 
     }
 }
-

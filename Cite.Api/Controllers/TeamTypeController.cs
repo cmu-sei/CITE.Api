@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
-using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
@@ -20,9 +20,9 @@ namespace Cite.Api.Controllers
     public class TeamTypeController : BaseController
     {
         private readonly ITeamTypeService _teamTypeService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public TeamTypeController(ITeamTypeService teamTypeService, IAuthorizationService authorizationService)
+        public TeamTypeController(ITeamTypeService teamTypeService, ICiteAuthorizationService authorizationService)
         {
             _teamTypeService = teamTypeService;
             _authorizationService = authorizationService;
@@ -60,7 +60,6 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
             var teamType = await _teamTypeService.GetAsync(id, ct);
-
             if (teamType == null)
                 throw new EntityNotFoundException<TeamType>();
 
@@ -82,7 +81,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createTeamType")]
         public async Task<IActionResult> Create([FromBody] TeamType teamType, CancellationToken ct)
         {
-            teamType.CreatedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
+                throw new ForbiddenException();
+
             var createdTeamType = await _teamTypeService.CreateAsync(teamType, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdTeamType.Id }, createdTeamType);
         }
@@ -104,7 +105,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateTeamType")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] TeamType teamType, CancellationToken ct)
         {
-            teamType.ModifiedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
+                throw new ForbiddenException();
+
             var updatedTeamType = await _teamTypeService.UpdateAsync(id, teamType, ct);
             return Ok(updatedTeamType);
         }
@@ -124,10 +127,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteTeamType")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageTeamTypes], ct))
+                throw new ForbiddenException();
+
             await _teamTypeService.DeleteAsync(id, ct);
             return NoContent();
         }
 
     }
 }
-

@@ -9,15 +9,15 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class Evaluation : Base
+    public class Evaluation : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-         public Guid Id { get; set; }
+        public Guid Id { get; set; }
         public string Description { get; set; }
         public ItemStatus Status { get; set; }
-        public int CurrentMoveNumber { get; set;}
-        public DateTime SituationTime { get; set;}
+        public int CurrentMoveNumber { get; set; }
+        public DateTime SituationTime { get; set; }
         public string SituationDescription { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModel ScoringModel { get; set; }
@@ -25,6 +25,6 @@ namespace Cite.Api.ViewModels
         public virtual ICollection<Team> Teams { get; set; } = new HashSet<Team>();
         public virtual ICollection<Move> Moves { get; set; } = new HashSet<Move>();
         public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+        public IEnumerable<string> EvaluationPermissions { get; set; }
    }
 }
-

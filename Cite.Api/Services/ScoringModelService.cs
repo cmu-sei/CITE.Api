@@ -23,13 +23,14 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Microsoft.CodeAnalysis.Elfie.Model.Map;
 
 namespace Cite.Api.Services
 {
     public interface IScoringModelService
     {
         Task<IEnumerable<ViewModels.ScoringModel>> GetAsync(ScoringModelGet queryParameters, CancellationToken ct);
-        Task<ViewModels.ScoringModel> GetAsync(Guid id, CancellationToken ct);
+        Task<ViewModels.ScoringModel> GetAsync(Guid id, bool hasPermission, bool viewAsAdmin, CancellationToken ct);
         Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct);
         Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct);
         Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct);
@@ -60,10 +61,6 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.ScoringModel>> GetAsync(ScoringModelGet queryParameters, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-
             // filter based on user
             var userId = Guid.Empty;
             var hasUserId = !String.IsNullOrEmpty(queryParameters.UserId);
@@ -85,24 +82,38 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<ScoringModel>>(scoringModelList);
         }
 
-        public async Task<ViewModels.ScoringModel> GetAsync(Guid id, CancellationToken ct)
+        public async Task<ViewModels.ScoringModel> GetAsync(Guid id, bool hasPermission, bool viewAsAdmin, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.ScoringModels
                 .Include(sm => sm.ScoringCategories)
                 .ThenInclude(sc => sc.ScoringOptions)
+                .AsNoTracking()
                 .SingleOrDefaultAsync(sm => sm.Id == id, ct);
+            if (item.EvaluationId == null && !viewAsAdmin)
+                throw new ForbiddenException();
+            // make sure the user has permission
+            if (!hasPermission && !viewAsAdmin)
+            {
+                var userId = _user.GetId();
+                hasPermission = await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == item.EvaluationId && m.UserId == userId, ct);
+                if (!hasPermission)
+                    throw new ForbiddenException();
+            }
+            // only show scoring model calculations to those who can view as Admins
+            if (!viewAsAdmin)
+            {
+                foreach (var scoringCategory in item.ScoringCategories)
+                {
+                    scoringCategory.CalculationEquation = "Redacted";
+                    scoringCategory.ScoringWeight = 0.0;
+                }
+            }
 
             return _mapper.Map<ScoringModel>(item);
         }
 
         public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             scoringModel.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
             scoringModel.DateCreated = DateTime.UtcNow;
             scoringModel.CreatedBy = _user.GetId();
@@ -112,16 +123,13 @@ namespace Cite.Api.Services
 
             _context.ScoringModels.Add(scoringModelEntity);
             await _context.SaveChangesAsync(ct);
-            scoringModel = await GetAsync(scoringModelEntity.Id, ct);
+            scoringModel = await GetAsync(scoringModelEntity.Id, true, true, ct);
 
             return scoringModel;
         }
 
         public async Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringModelEntity = await _context.ScoringModels
                 .AsNoTracking()
                 .Include(m => m.ScoringCategories)
@@ -183,10 +191,6 @@ namespace Cite.Api.Services
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid scoringModelId, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringModel = await _context.ScoringModels
                 .Include(m => m.ScoringCategories)
                 .ThenInclude(sc => sc.ScoringOptions)
@@ -213,10 +217,6 @@ namespace Cite.Api.Services
 
         public async Task<ScoringModel> UploadJsonAsync(FileForm form, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var uploadItem = form.ToUpload;
             var scoringModelJson = "";
             using (StreamReader reader = new StreamReader(uploadItem.OpenReadStream()))
@@ -237,11 +237,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.ScoringModel scoringModel, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringModelToUpdate = await _context.ScoringModels.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringModelToUpdate == null)
                 throw new EntityNotFoundException<ScoringModel>();
 
@@ -254,18 +250,14 @@ namespace Cite.Api.Services
             _context.ScoringModels.Update(scoringModelToUpdate);
             await _context.SaveChangesAsync(ct);
 
-            scoringModel = await GetAsync(scoringModelToUpdate.Id, ct);
+            scoringModel = await GetAsync(scoringModelToUpdate.Id, true, true, ct);
 
             return scoringModel;
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var scoringModelToDelete = await _context.ScoringModels.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (scoringModelToDelete == null)
                 throw new EntityNotFoundException<ScoringModel>();
 

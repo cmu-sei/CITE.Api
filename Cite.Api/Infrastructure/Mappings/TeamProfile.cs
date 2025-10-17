@@ -13,17 +13,16 @@ namespace Cite.Api.Infrastructure.Mappings
         {
             CreateMap<TeamEntity, Team>()
                 .ForMember(m => m.Submissions, opt => opt.ExplicitExpansion())
-                .ForMember(m => m.Users, opt => opt.MapFrom(x => x.TeamUsers.Select(y => y.User)))
-                .ForMember(m => m.Users, opt => opt.ExplicitExpansion());
+                .ForMember(m => m.Memberships, opt => opt.ExplicitExpansion());
 
             CreateMap<Team, TeamEntity>()
                 .ForMember(m => m.Submissions, opt => opt.Ignore())
-                .ForMember(m => m.TeamUsers, opt => opt.Ignore());
+                .ForMember(m => m.Memberships, opt => opt.Ignore());
 
             CreateMap<TeamEntity, TeamEntity>()
                 .ForMember(m => m.Id, opt => opt.Ignore())
                 .ForMember(m => m.Submissions, opt => opt.Ignore())
-                .ForMember(m => m.TeamUsers, opt => opt.Ignore());
+                .ForMember(m => m.Memberships, opt => opt.Ignore());
         }
     }
 }

@@ -9,10 +9,14 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Options;
+using System.Text.Json;
+using Microsoft.IdentityModel.JsonWebTokens;
+using System.Text.RegularExpressions;
 
 namespace Cite.Api.Services
 {
@@ -42,17 +46,36 @@ namespace Cite.Api.Services
         public async Task<ClaimsPrincipal> AddUserClaims(ClaimsPrincipal principal, bool update)
         {
             List<Claim> claims;
-            var identity = ((ClaimsIdentity)principal.Identity);
+            var identity = (ClaimsIdentity)principal.Identity;
             var userId = principal.GetId();
 
-            if (!_cache.TryGetValue(userId, out claims))
+            // Don't use cached claims if given a new token and we are using roles or groups from the token
+            if (_cache.TryGetValue(userId, out claims) && (_options.UseGroupsFromIdP || _options.UseRolesFromIdP))
             {
-                claims = new List<Claim>();
+                var cachedTokenId = claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+                var newTokenId = identity.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+
+                if (newTokenId != cachedTokenId)
+                {
+                    claims = null;
+                }
+            }
+
+            if (claims == null)
+            {
+                claims = [];
                 var user = await ValidateUser(userId, principal.FindFirst("name")?.Value, update);
 
-                if(user != null)
+                if (user != null)
                 {
-                    claims.AddRange(await GetUserClaims(userId));
+                    var jtiClaim = identity.Claims.Where(x => x.Type == JwtRegisteredClaimNames.Jti).FirstOrDefault();
+
+                    if (jtiClaim is not null)
+                    {
+                        claims.Add(new Claim(jtiClaim.Type, jtiClaim.Value));
+                    }
+
+                    claims.AddRange(await GetPermissionClaims(userId, principal));
 
                     if (_options.EnableCaching)
                     {
@@ -60,6 +83,7 @@ namespace Cite.Api.Services
                     }
                 }
             }
+
             addNewClaims(identity, claims);
             return principal;
         }
@@ -104,7 +128,7 @@ namespace Cite.Api.Services
 
             var anyUsers = await _context.Users.AnyAsync();
 
-            if(update)
+            if (update)
             {
                 if (user == null)
                 {
@@ -114,19 +138,7 @@ namespace Cite.Api.Services
                         Name = nameClaim ?? "Anonymous"
                     };
 
-                    // First user is default SystemAdmin
-                    if (!anyUsers)
-                    {
-                        var systemAdminPermission = await _context.Permissions.Where(p => p.Key == CiteClaimTypes.SystemAdmin.ToString()).FirstOrDefaultAsync();
-
-                        if (systemAdminPermission != null)
-                        {
-                            user.UserPermissions.Add(new UserPermissionEntity(user.Id, systemAdminPermission.Id));
-                        }
-                    }
-
                     _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
                 }
                 else
                 {
@@ -134,94 +146,235 @@ namespace Cite.Api.Services
                     {
                         user.Name = nameClaim;
                         _context.Update(user);
-                        await _context.SaveChangesAsync();
                     }
                 }
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception) { }
             }
 
             return user;
         }
 
-        private async Task<IEnumerable<Claim>> GetUserClaims(Guid userId)
+        private async Task<IEnumerable<Claim>> GetPermissionClaims(Guid userId, ClaimsPrincipal principal)
         {
-            List<Claim> claims = new List<Claim>();
-            // User level permissions
-            var userPermissions = await _context.UserPermissions
-                .Where(u => u.UserId == userId)
-                .Include(x => x.Permission)
-                .ToArrayAsync();
+            List<Claim> claims = new();
 
-            foreach (var userPermission in userPermissions)
+            var tokenRoleNames = _options.UseRolesFromIdP ?
+                this.GetClaimsFromToken(principal, _options.RolesClaimPath).Select(x => x.ToLower()) :
+                [];
+
+            var roles = await _context.SystemRoles
+                .Where(x => tokenRoleNames.Contains(x.Name.ToLower()))
+                .ToListAsync();
+
+            var userRole = await _context.Users
+                .Where(x => x.Id == userId)
+                .Select(x => x.Role)
+                .FirstOrDefaultAsync();
+
+            if (userRole != null)
             {
-                CiteClaimTypes citeClaim;
-                if (Enum.TryParse<CiteClaimTypes>(userPermission.Permission.Key, out citeClaim))
+                roles.Add(userRole);
+            }
+
+            roles = roles.Distinct().ToList();
+
+            foreach (var role in roles)
+            {
+                List<string> permissions;
+
+                if (role.AllPermissions)
                 {
-                    claims.Add(new Claim(citeClaim.ToString(), "true"));
+                    permissions = Enum.GetValues<SystemPermission>().Select(x => x.ToString()).ToList();
+                }
+                else
+                {
+                    permissions = role.Permissions.Select(x => x.ToString()).ToList();
+                }
+
+                foreach (var permission in permissions)
+                {
+                    if (!claims.Any(x => x.Type == AuthorizationConstants.PermissionClaimType &&
+                        x.Value == permission))
+                    {
+                        claims.Add(new Claim(AuthorizationConstants.PermissionClaimType, permission));
+                    }
+                    ;
                 }
             }
-            // Object Permissions
-            var teamUserList = await _context.TeamUsers
-                .Include(tu => tu.Team)
-                .Where(x => x.UserId == userId)
+
+            var groupNames = _options.UseGroupsFromIdP ?
+                this.GetClaimsFromToken(principal, _options.GroupsClaimPath).Select(x => x.ToLower()) :
+                [];
+
+            var groupIds = await _context.Groups
+                .Where(x => x.Memberships.Any(y => y.UserId == userId) || groupNames.Contains(x.Name.ToLower()))
+                .Select(x => x.Id)
                 .ToListAsync();
-            var teamIdList = new List<string>();
-            var evaluationIdList = new List<string>();
-            var observerEvaluationIdList = new List<string>();
-            var incrementerEvaluationIdList = new List<string>();
-            var modifierEvaluationIdList = new List<string>();
-            var submitterEvaluationIdList = new List<string>();
-            // add IDs of allowed teams
-            foreach (var teamUser in teamUserList)
+
+            // Get Evaluation Permissions
+            var evaluationMemberships = await _context.EvaluationMemberships
+                .Where(x => x.UserId == userId || (x.GroupId.HasValue && groupIds.Contains(x.GroupId.Value)))
+                .Include(x => x.Role)
+                .GroupBy(x => x.EvaluationId)
+                .ToListAsync();
+
+            foreach (var group in evaluationMemberships)
             {
-                teamIdList.Add(teamUser.TeamId.ToString());
-                var teamEvaluationIdList = await _context.Teams
-                    .Where(x => x.Id == teamUser.TeamId)
-                    .Select(x => x.EvaluationId)
-                    .ToListAsync();
-                foreach (var id in teamEvaluationIdList)
+                var evaluationPermissions = new List<EvaluationPermission>();
+
+                foreach (var membership in group)
                 {
-                    if (!evaluationIdList.Contains(id.ToString()))
+                    if (membership.Role.AllPermissions)
                     {
-                        evaluationIdList.Add(id.ToString());
+                        evaluationPermissions.AddRange(Enum.GetValues<EvaluationPermission>());
+                    }
+                    else
+                    {
+                        evaluationPermissions.AddRange(membership.Role.Permissions);
                     }
                 }
-                if (teamUser.IsObserver)
+
+                var permissionsClaim = new EvaluationPermissionClaim
                 {
-                    observerEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
-                }
-                if (teamUser.CanIncrementMove)
-                {
-                    incrementerEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
-                }
-                if (teamUser.CanModify)
-                {
-                    modifierEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
-                }
-                if (teamUser.CanSubmit)
-                {
-                    submitterEvaluationIdList.Add(teamUser.Team.EvaluationId.ToString());
-                }
+                    EvaluationId = group.Key,
+                    Permissions = evaluationPermissions.Distinct().ToArray()
+                };
+
+                claims.Add(new Claim(AuthorizationConstants.EvaluationPermissionClaimType, permissionsClaim.ToString()));
             }
-            // add IDs of allowed teams
-            claims.Add(new Claim(CiteClaimTypes.TeamUser.ToString(), String.Join(",", teamIdList.ToArray())));
-            // add IDs of allowed evaluations
-            claims.Add(new Claim(CiteClaimTypes.EvaluationUser.ToString(), String.Join(",", evaluationIdList.ToArray())));
-            // add IDs of observer evaluations
-            claims.Add(new Claim(CiteClaimTypes.EvaluationObserver.ToString(), String.Join(",", observerEvaluationIdList.ToArray())));
-            // add IDs of incrementer evaluations
-            claims.Add(new Claim(CiteClaimTypes.CanIncrementMove.ToString(), String.Join(",", incrementerEvaluationIdList.ToArray())));
-            // add IDs of modifier evaluations
-            claims.Add(new Claim(CiteClaimTypes.CanModify.ToString(), String.Join(",", modifierEvaluationIdList.ToArray())));
-            // add IDs of submitter evaluations
-            claims.Add(new Claim(CiteClaimTypes.CanSubmit.ToString(), String.Join(",", submitterEvaluationIdList.ToArray())));
+
+            // Get ScoringModel Permissions
+            var scoringModelMemberships = await _context.ScoringModelMemberships
+                .Where(x => x.UserId == userId || (x.GroupId.HasValue && groupIds.Contains(x.GroupId.Value)))
+                .Include(x => x.Role)
+                .GroupBy(x => x.ScoringModelId)
+                .ToListAsync();
+
+            foreach (var group in scoringModelMemberships)
+            {
+                var scoringModelPermissions = new List<ScoringModelPermission>();
+
+                foreach (var membership in group)
+                {
+                    if (membership.Role.AllPermissions)
+                    {
+                        scoringModelPermissions.AddRange(Enum.GetValues<ScoringModelPermission>());
+                    }
+                    else
+                    {
+                        scoringModelPermissions.AddRange(membership.Role.Permissions);
+                    }
+                }
+
+                var permissionsClaim = new ScoringModelPermissionClaim
+                {
+                    ScoringModelId = group.Key,
+                    Permissions = scoringModelPermissions.Distinct().ToArray()
+                };
+
+                claims.Add(new Claim(AuthorizationConstants.ScoringModelPermissionClaimType, permissionsClaim.ToString()));
+            }
+
+            // Get Team Permissions
+            var teamMemberships = await _context.TeamMemberships
+                .Where(x => x.UserId == userId)
+                .Include(x => x.Role)
+                .GroupBy(x => x.TeamId)
+                .ToListAsync();
+
+            foreach (var group in teamMemberships)
+            {
+                var teamPermissions = new List<TeamPermission>();
+
+                foreach (var membership in group)
+                {
+                    teamPermissions.AddRange(membership.Role.Permissions);
+                }
+
+                var permissionsClaim = new TeamPermissionClaim
+                {
+                    TeamId = group.Key,
+                    Permissions = teamPermissions.Distinct().ToArray()
+                };
+
+                claims.Add(new Claim(AuthorizationConstants.TeamPermissionClaimType, permissionsClaim.ToString()));
+            }
 
             return claims;
+        }
+
+        private string[] GetClaimsFromToken(ClaimsPrincipal principal, string claimPath)
+        {
+            if (string.IsNullOrEmpty(claimPath))
+            {
+                return [];
+            }
+
+            // Name of the claim to insert into the token. This can be a fully qualified name like 'address.street'.
+            // In this case, a nested json object will be created. To prevent nesting and use dot literally, escape the dot with backslash (\.).
+            var pathSegments = Regex.Split(claimPath, @"(?<!\\)\.").Select(s => s.Replace("\\.", ".")).ToArray();
+
+            var tokenClaim = principal.Claims.Where(x => x.Type == pathSegments.First()).FirstOrDefault();
+
+            if (tokenClaim == null)
+            {
+                return [];
+            }
+
+            return tokenClaim.ValueType switch
+            {
+                ClaimValueTypes.String => [tokenClaim.Value],
+                JsonClaimValueTypes.Json => ExtractJsonClaimValues(tokenClaim.Value, pathSegments.Skip(1)),
+                _ => []
+            };
+        }
+
+        private string[] ExtractJsonClaimValues(string json, IEnumerable<string> pathSegments)
+        {
+            List<string> values = new();
+            try
+            {
+                using JsonDocument doc = JsonDocument.Parse(json);
+                JsonElement currentElement = doc.RootElement;
+
+                foreach (var segment in pathSegments)
+                {
+                    if (!currentElement.TryGetProperty(segment, out JsonElement propertyElement))
+                    {
+                        return [];
+                    }
+
+                    currentElement = propertyElement;
+                }
+
+                if (currentElement.ValueKind == JsonValueKind.Array)
+                {
+                    values.AddRange(currentElement.EnumerateArray()
+                        .Where(item => item.ValueKind == JsonValueKind.String)
+                        .Select(item => item.GetString()));
+                }
+                else if (currentElement.ValueKind == JsonValueKind.String)
+                {
+                    values.Add(currentElement.GetString());
+                }
+            }
+            catch (JsonException)
+            {
+                // Handle invalid JSON format
+            }
+
+            return values.ToArray();
         }
 
         private void addNewClaims(ClaimsIdentity identity, List<Claim> claims)
         {
             var newClaims = new List<Claim>();
-            claims.ForEach(delegate(Claim claim)
+            claims.ForEach(delegate (Claim claim)
             {
                 if (!identity.Claims.Any(identityClaim => identityClaim.Type == claim.Type))
                 {
@@ -232,4 +385,3 @@ namespace Cite.Api.Services
         }
     }
 }
-

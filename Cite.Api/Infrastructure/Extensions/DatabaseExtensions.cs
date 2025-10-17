@@ -70,20 +70,6 @@ namespace Cite.Api.Infrastructure.Extensions
 
         private static void ProcessSeedDataOptions(SeedDataOptions options, CiteContext context)
         {
-            // permissions
-            if (options.Permissions != null && options.Permissions.Any())
-            {
-                var dbPermissions = context.Permissions.ToList();
-
-                foreach (PermissionEntity permission in options.Permissions)
-                {
-                    if (!dbPermissions.Where(x => x.Key == permission.Key && x.Value == permission.Value).Any())
-                    {
-                        context.Permissions.Add(permission);
-                    }
-                }
-                context.SaveChanges();
-            }
             // users
             if (options.Users != null && options.Users.Any())
             {
@@ -94,20 +80,6 @@ namespace Cite.Api.Infrastructure.Extensions
                     if (!dbUsers.Where(x => x.Id == user.Id).Any())
                     {
                         context.Users.Add(user);
-                    }
-                }
-                context.SaveChanges();
-            }
-            // user permissions
-            if (options.UserPermissions != null && options.UserPermissions.Any())
-            {
-                var dbUserPermissions = context.UserPermissions.ToList();
-
-                foreach (UserPermissionEntity userPermission in options.UserPermissions)
-                {
-                    if (!dbUserPermissions.Where(x => x.UserId == userPermission.UserId && x.PermissionId == userPermission.PermissionId).Any())
-                    {
-                        context.UserPermissions.Add(userPermission);
                     }
                 }
                 context.SaveChanges();
@@ -163,6 +135,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 {
                     if (!dbEvaluations.Where(x => x.Id == evaluation.Id).Any())
                     {
+                        evaluation.SituationTime = evaluation.SituationTime.ToUniversalTime();
                         context.Evaluations.Add(evaluation);
                     }
                 }
@@ -196,16 +169,16 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            // team users
-            if (options.TeamUsers != null && options.TeamUsers.Any())
+            // team memberships
+            if (options.TeamMemberships != null && options.TeamMemberships.Any())
             {
-                var dbTeamUsers = context.TeamUsers.ToList();
+                var dbTeamMemberships = context.TeamMemberships.ToList();
 
-                foreach (TeamUserEntity teamUser in options.TeamUsers)
+                foreach (TeamMembershipEntity teamMembership in options.TeamMemberships)
                 {
-                    if (!dbTeamUsers.Where(x => (x.UserId == teamUser.UserId && x.TeamId == teamUser.TeamId) || x.Id == teamUser.Id).Any())
+                    if (!dbTeamMemberships.Where(x => (x.UserId == teamMembership.UserId && x.TeamId == teamMembership.TeamId) || x.Id == teamMembership.Id).Any())
                     {
-                        context.TeamUsers.Add(teamUser);
+                        context.TeamMemberships.Add(teamMembership);
                     }
                 }
                 context.SaveChanges();
@@ -219,6 +192,7 @@ namespace Cite.Api.Infrastructure.Extensions
                 {
                     if (!dbMoves.Where(x => x.Id == move.Id || (x.EvaluationId == move.EvaluationId && x.MoveNumber == move.MoveNumber)).Any())
                     {
+                        move.SituationTime = move.SituationTime.ToUniversalTime();
                         context.Moves.Add(move);
                     }
                 }
@@ -238,30 +212,30 @@ namespace Cite.Api.Infrastructure.Extensions
                 }
                 context.SaveChanges();
             }
-            // roles
-            if (options.Roles != null && options.Roles.Any())
+            // duties
+            if (options.Duties != null && options.Duties.Any())
             {
-                var dbRoles = context.Roles.ToList();
+                var dbDuties = context.Duties.ToList();
 
-                foreach (RoleEntity role in options.Roles)
+                foreach (DutyEntity duty in options.Duties)
                 {
-                    if (!dbRoles.Where(x => x.Id == role.Id).Any())
+                    if (!dbDuties.Where(x => x.Id == duty.Id).Any())
                     {
-                        context.Roles.Add(role);
+                        context.Duties.Add(duty);
                     }
                 }
                 context.SaveChanges();
             }
-            // role users
-            if (options.RoleUsers != null && options.RoleUsers.Any())
+            // duty users
+            if (options.DutyUsers != null && options.DutyUsers.Any())
             {
-                var dbRoleUsers = context.RoleUsers.ToList();
+                var dbDutyUsers = context.DutyUsers.ToList();
 
-                foreach (RoleUserEntity roleUser in options.RoleUsers)
+                foreach (DutyUserEntity dutyUser in options.DutyUsers)
                 {
-                    if (!dbRoleUsers.Where(x => x.Id == roleUser.Id).Any())
+                    if (!dbDutyUsers.Where(x => x.Id == dutyUser.Id).Any())
                     {
-                        context.RoleUsers.Add(roleUser);
+                        context.DutyUsers.Add(dutyUser);
                     }
                 }
                 context.SaveChanges();

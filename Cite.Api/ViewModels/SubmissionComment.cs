@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Cite.Api.ViewModels
 {
-    public class SubmissionComment : Base
+    public class SubmissionComment : Base, IAuthorizationType
     {
         public Guid Id { get; set; }
         public string Comment { get; set; }

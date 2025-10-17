@@ -6,43 +6,27 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Linq;
 
 namespace Cite.Api.Controllers
 {
     public class TeamController : BaseController
     {
         private readonly ITeamService _teamService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public TeamController(ITeamService teamService, IAuthorizationService authorizationService)
+        public TeamController(ITeamService teamService, ICiteAuthorizationService authorizationService)
         {
             _teamService = teamService;
             _authorizationService = authorizationService;
-        }
-
-        /// <summary>
-        /// Gets all Team in the system
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of all of the Teams in the system.
-        /// <para />
-        /// Only accessible to a SuperUser
-        /// </remarks>
-        /// <returns></returns>
-        [HttpGet("teams")]
-        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getTeams")]
-        public async Task<IActionResult> Get(CancellationToken ct)
-        {
-            var list = await _teamService.GetAsync(ct);
-            return Ok(list);
         }
 
         /// <summary>
@@ -57,43 +41,16 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getMyEvaluationTeams")]
         public async Task<IActionResult> GetMineByEvaluation(Guid evaluationId, CancellationToken ct)
         {
-            var list = await _teamService.GetMineByEvaluationAsync(evaluationId, ct);
-            return Ok(list);
-        }
-
-        /// <summary>
-        /// Gets Teams for the specified user
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of the specified user's Teams.
-        /// <para />
-        /// Only accessible to a SuperUser
-        /// </remarks>
-        /// <returns></returns>
-        [HttpGet("users/{userId}/teams")]
-        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getTeamsByUser")]
-        public async Task<IActionResult> GetByUser([FromRoute] Guid userId, CancellationToken ct)
-        {
-            var list = await _teamService.GetByUserAsync(userId, ct);
-            return Ok(list);
-        }
-
-        /// <summary>
-        /// Gets Teams for the specified group
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of the specified group's Teams.
-        /// <para />
-        /// Only accessible to a SuperUser
-        /// </remarks>
-        /// <returns></returns>
-        [HttpGet("groups/{groupId}/teams")]
-        [ProducesResponseType(typeof(IEnumerable<Team>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getGroupTeams")]
-        public async Task<IActionResult> GetByGroup([FromRoute] Guid groupId, CancellationToken ct)
-        {
-            var list = await _teamService.GetByTypeAsync(groupId, ct);
+            var list = new List<Team>();
+            var isObserver = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct);
+            if (isObserver)
+            {
+                list = (await _teamService.GetByEvaluationAsync(evaluationId, ct)).ToList();
+            }
+            else
+            {
+                list = (await _teamService.GetMineByEvaluationAsync(evaluationId, ct)).ToList();
+            }
             return Ok(list);
         }
 
@@ -111,6 +68,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getEvaluationTeams")]
         public async Task<IActionResult> GetByEvaluation([FromRoute] Guid evaluationId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ViewEvaluation, EvaluationPermission.ObserveEvaluation, EvaluationPermission.ParticipateInEvaluation], ct))
+                throw new ForbiddenException();
+
             var list = await _teamService.GetByEvaluationAsync(evaluationId, ct);
             return Ok(list);
         }
@@ -131,8 +91,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getTeam")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var team = await _teamService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync<Team>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [TeamPermission.ViewTeam], ct))
+                throw new ForbiddenException();
 
+            var team = await _teamService.GetAsync(id, ct);
             if (team == null)
                 throw new EntityNotFoundException<Team>();
 
@@ -154,7 +116,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createTeam")]
         public async Task<IActionResult> Create([FromBody] Team team, CancellationToken ct)
         {
-            team.CreatedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(team.EvaluationId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var createdTeam = await _teamService.CreateAsync(team, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdTeam.Id }, createdTeam);
         }
@@ -175,7 +139,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateTeam")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Team team, CancellationToken ct)
         {
-            team.ModifiedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(team.EvaluationId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             var updatedTeam = await _teamService.UpdateAsync(id, team, ct);
             return Ok(updatedTeam);
         }
@@ -195,6 +161,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteTeam")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Team>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+                throw new ForbiddenException();
+
             await _teamService.DeleteAsync(id, ct);
             return NoContent();
         }

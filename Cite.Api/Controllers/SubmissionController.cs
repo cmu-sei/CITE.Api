@@ -3,13 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
+using Cite.Api.Infrastructure.Identity;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.Services;
 using Cite.Api.ViewModels;
@@ -20,9 +23,10 @@ namespace Cite.Api.Controllers
     public class SubmissionController : BaseController
     {
         private readonly ISubmissionService _submissionService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IIdentityResolver _identityResolver;
 
-        public SubmissionController(ISubmissionService submissionService, IAuthorizationService authorizationService)
+        public SubmissionController(ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
         {
             _submissionService = submissionService;
             _authorizationService = authorizationService;
@@ -42,7 +46,11 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmissions")]
         public async Task<IActionResult> Get([FromQuery] SubmissionGet queryParameters, CancellationToken ct)
         {
-            var list = await _submissionService.GetAsync(queryParameters, ct);
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageEvaluations], ct))
+                throw new ForbiddenException();
+
+            var list = (await _submissionService.GetAsync(queryParameters, ct)).ToList();
+
             return Ok(list);
         }
 
@@ -60,6 +68,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getByEvaluation")]
         public async Task<IActionResult> GetByEvaluation(Guid evaluationId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             var list = await _submissionService.GetByEvaluationAsync(evaluationId, ct);
             return Ok(list);
         }
@@ -97,6 +108,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getByEvaluationTeam")]
         public async Task<IActionResult> GetByEvaluationTeam(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct))
+                throw new ForbiddenException();
+
             var list = await _submissionService.GetByEvaluationTeamAsync(evaluationId, teamId, ct);
             return Ok(list);
         }
@@ -115,8 +130,11 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getSubmission")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var submission = await _submissionService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync<Submission>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ViewEvaluation, EvaluationPermission.ObserveEvaluation], ct) &&
+                !await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.View, ct))
+                throw new ForbiddenException();
 
+            var submission = await _submissionService.GetAsync(id, ct);
             if (submission == null)
                 throw new EntityNotFoundException<Submission>();
 
@@ -138,7 +156,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createSubmission")]
         public async Task<IActionResult> Create([FromBody] Submission submission, CancellationToken ct)
         {
-            submission.CreatedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(submission.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             var createdSubmission = await _submissionService.CreateAsync(submission, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdSubmission.Id }, createdSubmission);
         }
@@ -160,78 +180,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateSubmission")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Submission submission, CancellationToken ct)
         {
-            submission.ModifiedBy = User.GetId();
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(submission.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             var updatedSubmission = await _submissionService.UpdateAsync(id, submission, ct);
-            return Ok(updatedSubmission);
-        }
-
-        /// <summary>
-        /// Clears Submission Selections
-        /// </summary>
-        /// <remarks>
-        /// Updates a Submission to no selections.
-        /// <para />
-        /// </remarks>
-        /// <param name="id">The Id of the Submission to update</param>
-        /// <param name="ct"></param>
-        [HttpPut("submissions/{id}/clear")]
-        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "clearSubmission")]
-        public async Task<IActionResult> ClearSubmission([FromRoute] Guid id, CancellationToken ct)
-        {
-            var clearedSubmission = await _submissionService.ClearSelectionsAsync(id, ct);
-            return Ok(clearedSubmission);
-        }
-
-        /// <summary>
-        /// Presets Submission Selections to previous move values
-        /// </summary>
-        /// <remarks>
-        /// Updates a Submission to previous move submission selections.
-        /// <para />
-        /// </remarks>
-        /// <param name="id">The Id of the Submission to update</param>
-        /// <param name="ct"></param>
-        [HttpPut("submissions/{id}/preset")]
-        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "presetSubmission")]
-        public async Task<IActionResult> PresetSubmission([FromRoute] Guid id, CancellationToken ct)
-        {
-            var updatedSubmission = await _submissionService.PresetSelectionsAsync(id, ct);
-            return Ok(updatedSubmission);
-        }
-
-        /// <summary>
-        /// Fills in the details for a team average submission
-        /// </summary>
-        /// <remarks>
-        /// Fills in the categories, options and comments for the team average submission
-        /// </remarks>
-        /// <param name="submission">The team average Submission needing details</param>
-        /// <param name="ct"></param>
-        [HttpPut("submissions/teamavg")]
-        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "fillTeamAverageSubmission")]
-        public async Task<IActionResult> FillTeamAverageSubmission([FromBody] Submission submission, CancellationToken ct)
-        {
-            var updatedSubmission = await _submissionService.FillTeamAverageAsync(submission, ct);
-            return Ok(updatedSubmission);
-        }
-
-        /// <summary>
-        /// Fills in the details for a teamType average submission
-        /// </summary>
-        /// <remarks>
-        /// Fills in the categories, options and comments for the teamType average submission
-        /// </remarks>
-        /// <param name="submission">The teamType average Submission needing details</param>
-        /// <param name="ct"></param>
-        [HttpPut("submissions/teamtypeavg")]
-        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "fillTeamTypeAverageSubmission")]
-        public async Task<IActionResult> FillTeamTypeAverageSubmission([FromBody] Submission submission, CancellationToken ct)
-        {
-            var updatedSubmission = await _submissionService.FillTeamTypeAverageAsync(submission, ct);
             return Ok(updatedSubmission);
         }
 
@@ -250,8 +202,53 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteSubmission")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Submission>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+                throw new ForbiddenException();
+
             await _submissionService.DeleteAsync(id, ct);
             return NoContent();
+        }
+
+        /// <summary>
+        /// Clears Submission Selections
+        /// </summary>
+        /// <remarks>
+        /// Updates a Submission to no selections.
+        /// <para />
+        /// </remarks>
+        /// <param name="id">The Id of the Submission to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("submissions/{id}/clear")]
+        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "clearSubmission")]
+        public async Task<IActionResult> ClearSubmission([FromRoute] Guid id, CancellationToken ct)
+        {
+            if (!await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
+            var clearedSubmission = await _submissionService.ClearSelectionsAsync(id, ct);
+            return Ok(clearedSubmission);
+        }
+
+        /// <summary>
+        /// Presets Submission Selections to previous move values
+        /// </summary>
+        /// <remarks>
+        /// Updates a Submission to previous move submission selections.
+        /// <para />
+        /// </remarks>
+        /// <param name="id">The Id of the Submission to update</param>
+        /// <param name="ct"></param>
+        [HttpPut("submissions/{id}/preset")]
+        [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "presetSubmission")]
+        public async Task<IActionResult> PresetSubmission([FromRoute] Guid id, CancellationToken ct)
+        {
+            if (!await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
+            var updatedSubmission = await _submissionService.PresetSelectionsAsync(id, ct);
+            return Ok(updatedSubmission);
         }
 
         /// <summary>
@@ -268,6 +265,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "addSubmissionComment")]
         public async Task<IActionResult> AddSubmissionComment([FromRoute] Guid submissionId, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
         {
+            if (!await _submissionService.HasSpecificPermission<Submission>(submissionId, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
             var submission = await _submissionService.AddCommentAsync(submissionId, submissionComment, ct);
             return Ok(submission);
         }
@@ -288,7 +288,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "changeSubmissionComment")]
         public async Task<IActionResult> ChangeSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
         {
-            submissionComment.ModifiedBy = User.GetId();
+            if (!await _submissionService.HasSpecificPermission<Submission>(submissionId, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
             var submission = await _submissionService.UpdateCommentAsync(submissionId, submissionCommentId, submissionComment, ct);
             return Ok(submission);
         }
@@ -307,6 +309,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "removeSubmissionComment")]
         public async Task<IActionResult> RemoveSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, CancellationToken ct)
         {
+            if (!await _submissionService.HasSpecificPermission<Submission>(submissionId, SpecificPermission.Score, ct))
+                throw new ForbiddenException();
+
             var submission = await _submissionService.DeleteCommentAsync(submissionId, submissionCommentId, ct);
             return Ok(submission);
         }

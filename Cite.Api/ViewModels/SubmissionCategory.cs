@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Cite.Api.ViewModels
 {
-    public class SubmissionCategory : Base
+    public class SubmissionCategory : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

@@ -65,8 +65,11 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 {
                     signalrGroupIds.Add(submissionEntity.EvaluationId.ToString());
                 }
-                // also send to evaluation official score contributors
-                signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + "OfficialScore");
+                else
+                {
+                    // send to evaluation official score contributors
+                    signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX);
+                }
             }
             // the admin data group gets everything
             signalrGroupIds.Add(MainHub.ADMIN_DATA_GROUP);

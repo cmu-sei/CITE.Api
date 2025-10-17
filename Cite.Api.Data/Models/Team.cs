@@ -20,6 +20,7 @@ namespace Cite.Api.Data.Models
         public Guid TeamTypeId { get; set; }
         public virtual TeamTypeEntity TeamType { get; set; }
         public ICollection<TeamUserEntity> TeamUsers { get; set; } = new List<TeamUserEntity>();
+        public ICollection<TeamMembershipEntity> Memberships { get; set; } = new List<TeamMembershipEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
         public bool HideScoresheet { get; set; }
     }

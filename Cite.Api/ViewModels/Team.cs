@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Cite.Api.ViewModels
 {
-    public class Team : Base
+    public class Team : Base, IAuthorizationType
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
@@ -14,9 +14,9 @@ namespace Cite.Api.ViewModels
         public Guid? EvaluationId { get; set; }
         public Guid TeamTypeId { get; set; }
         public TeamType TeamType { get; set; }
-        public ICollection<User> Users { get; set; } = new List<User>();
         public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
         public bool HideScoresheet { get; set; }
+        public ICollection<TeamMembership> Memberships { get; set; } = new List<TeamMembership>();
     }
 
 }

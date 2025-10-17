@@ -31,8 +31,17 @@ namespace Cite.Api.Data
         public DbSet<EvaluationEntity> Evaluations { get; set; }
         public DbSet<MoveEntity> Moves { get; set; }
         public DbSet<ActionEntity> Actions { get; set; }
-        public DbSet<RoleEntity> Roles { get; set; }
-        public DbSet<RoleUserEntity> RoleUsers { get; set; }
+        public DbSet<DutyEntity> Duties { get; set; }
+        public DbSet<DutyUserEntity> DutyUsers { get; set; }
+        public DbSet<SystemRoleEntity> SystemRoles { get; set; }
+        public DbSet<EvaluationRoleEntity> EvaluationRoles { get; set; }
+        public DbSet<EvaluationMembershipEntity> EvaluationMemberships { get; set; }
+        public DbSet<ScoringModelRoleEntity> ScoringModelRoles { get; set; }
+        public DbSet<ScoringModelMembershipEntity> ScoringModelMemberships { get; set; }
+        public DbSet<TeamRoleEntity> TeamRoles { get; set; }
+        public DbSet<TeamMembershipEntity> TeamMemberships { get; set; }
+        public DbSet<GroupEntity> Groups { get; set; }
+        public DbSet<GroupMembershipEntity> GroupMemberships { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,5 +1,5 @@
 /*
- Copyright 2025 Carnegie Mellon University. All Rights Reserved.
+ Copyright 2025 Carnegie Mellon University. All Rights Reserved. 
  Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 */
 
@@ -93,6 +93,77 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.ToTable("actions");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.DutyEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created");
+
+                    b.Property<DateTime?>("DateModified")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_modified");
+
+                    b.Property<Guid>("EvaluationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluation_id");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluationId");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("duties");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.DutyUserEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("DutyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("duty_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DutyId");
+
+                    b.HasIndex("UserId", "DutyId")
+                        .IsUnique();
+
+                    b.ToTable("duty_users");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -150,6 +221,180 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("ScoringModelId");
 
                     b.ToTable("evaluations");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationMembershipEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("EvaluationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluation_id");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("RoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e6"))
+                        .HasColumnName("role_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EvaluationId", "UserId", "GroupId")
+                        .IsUnique();
+
+                    b.ToTable("evaluation_memberships");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationRoleEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<bool>("AllPermissions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("all_permissions");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int[]>("Permissions")
+                        .HasColumnType("integer[]")
+                        .HasColumnName("permissions");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("evaluation_roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("1a3f26cd-9d99-4b98-b914-12931e78619a"),
+                            AllPermissions = true,
+                            Description = "Can perform all actions on the Evaluation in administration",
+                            Name = "Owner",
+                            Permissions = new int[0]
+                        },
+                        new
+                        {
+                            Id = new Guid("8aaa0d30-bdbe-4f2b-a6b8-f1a5466b2561"),
+                            AllPermissions = false,
+                            Description = "Can edit the Evaluation in administration",
+                            Name = "Editor",
+                            Permissions = new[] { 0, 1 }
+                        },
+                        new
+                        {
+                            Id = new Guid("4af74a62-596c-4767-a43a-b74aa8e48527"),
+                            AllPermissions = false,
+                            Description = "Can view the Evaluation in administration",
+                            Name = "Viewer",
+                            Permissions = new[] { 0 }
+                        },
+                        new
+                        {
+                            Id = new Guid("7c366199-f795-4a04-b360-e8705e77a053"),
+                            AllPermissions = false,
+                            Description = "Can observe all teams and advance moves for the Evaluation",
+                            Name = "Facilitator",
+                            Permissions = new[] { 4, 3 }
+                        },
+                        new
+                        {
+                            Id = new Guid("c1e1731c-d44a-4b6b-abc1-2e3626798304"),
+                            AllPermissions = false,
+                            Description = "Can advance moves for the Evaluation",
+                            Name = "Advancer",
+                            Permissions = new[] { 3 }
+                        },
+                        new
+                        {
+                            Id = new Guid("39aa296e-05ba-4fb0-8d74-c92cf3354c61"),
+                            AllPermissions = false,
+                            Description = "Has read only access to all teams in the Evaluation up to the current move",
+                            Name = "Observer",
+                            Permissions = new[] { 4 }
+                        },
+                        new
+                        {
+                            Id = new Guid("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e6"),
+                            AllPermissions = false,
+                            Description = "Has read only access to the Evaluation up to the current move",
+                            Name = "Member",
+                            Permissions = new[] { 5 }
+                        });
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("groups");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupMembershipEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("GroupId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("group_memberships");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
@@ -250,77 +495,6 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .IsUnique();
 
                     b.ToTable("permissions");
-                });
-
-            modelBuilder.Entity("Cite.Api.Data.Models.RoleEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuid_generate_v4()");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime>("DateCreated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_created");
-
-                    b.Property<DateTime?>("DateModified")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_modified");
-
-                    b.Property<Guid>("EvaluationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("evaluation_id");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("modified_by");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<Guid>("TeamId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("team_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EvaluationId");
-
-                    b.HasIndex("TeamId");
-
-                    b.ToTable("roles");
-                });
-
-            modelBuilder.Entity("Cite.Api.Data.Models.RoleUserEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuid_generate_v4()");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("role_id");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.HasIndex("UserId", "RoleId")
-                        .IsUnique();
-
-                    b.ToTable("role_users");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringCategoryEntity", b =>
@@ -485,6 +659,101 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("scoring_models");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelMembershipEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("RoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e5"))
+                        .HasColumnName("role_id");
+
+                    b.Property<Guid>("ScoringModelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scoring_model_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ScoringModelId", "UserId", "GroupId")
+                        .IsUnique();
+
+                    b.ToTable("scoring_model_memberships");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelRoleEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<bool>("AllPermissions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("all_permissions");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int[]>("Permissions")
+                        .HasColumnType("integer[]")
+                        .HasColumnName("permissions");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("scoring_model_roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("1a3f26cd-9d99-4b98-b914-12931e786199"),
+                            AllPermissions = true,
+                            Description = "Can view, edit, and delete the ScoringModel",
+                            Name = "Owner",
+                            Permissions = new int[0]
+                        },
+                        new
+                        {
+                            Id = new Guid("f870d8ee-7332-4f7f-8ee0-63bd07cfd7e5"),
+                            AllPermissions = false,
+                            Description = "Can view and edit the ScoringModel",
+                            Name = "Editor",
+                            Permissions = new[] { 0, 1 }
+                        },
+                        new
+                        {
+                            Id = new Guid("39aa296e-05ba-4fb0-8d74-c92cf3354c60"),
+                            AllPermissions = false,
+                            Description = "Can view the ScoringModel",
+                            Name = "Viewer",
+                            Permissions = new[] { 0 }
+                        });
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringOptionEntity", b =>
@@ -735,6 +1004,71 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.ToTable("submission_options");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.SystemRoleEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<bool>("AllPermissions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("all_permissions");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("Immutable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("immutable");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int[]>("Permissions")
+                        .HasColumnType("integer[]")
+                        .HasColumnName("permissions");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("system_roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("f35e8fff-f996-4cba-b303-3ba515ad8d2f"),
+                            AllPermissions = true,
+                            Description = "Can perform all actions",
+                            Immutable = true,
+                            Name = "Administrator",
+                            Permissions = new int[0]
+                        },
+                        new
+                        {
+                            Id = new Guid("d80b73c3-95d7-4468-8650-c62bbd082507"),
+                            AllPermissions = false,
+                            Description = "Can create and manage their own Evaluations and Scoring Models.",
+                            Immutable = false,
+                            Name = "Content Developer",
+                            Permissions = new[] { 0, 4 }
+                        },
+                        new
+                        {
+                            Id = new Guid("1da3027e-725d-4753-9455-a836ed9bdb1e"),
+                            AllPermissions = false,
+                            Description = "Can View all Evaluations and Scoring Models, but cannot make any changes.",
+                            Immutable = false,
+                            Name = "Viewer",
+                            Permissions = new[] { 1, 5, 10, 12, 14, 16 }
+                        });
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.TeamEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -789,6 +1123,93 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasIndex("TeamTypeId");
 
                     b.ToTable("teams");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.TeamMembershipEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TeamId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("team_memberships");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.TeamRoleEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int[]>("Permissions")
+                        .HasColumnType("integer[]")
+                        .HasColumnName("permissions");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("team_roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("a2cc11c1-9fd1-402b-9937-0f6ede1066c3"),
+                            Description = "Can perform all actions for the Team",
+                            Name = "Owner",
+                            Permissions = new[] { 0, 1, 2, 3 }
+                        },
+                        new
+                        {
+                            Id = new Guid("1cfce79f-f344-4cb1-b33a-55de8dc1ccb3"),
+                            Description = "Can contribute to and submit the answers for the Team",
+                            Name = "Submitter",
+                            Permissions = new[] { 0, 1, 2 }
+                        },
+                        new
+                        {
+                            Id = new Guid("c442cf49-e26e-45c5-be7c-00e710d2e055"),
+                            Description = "Can contribute answers for the Team",
+                            Name = "Contributor",
+                            Permissions = new[] { 0, 1 }
+                        },
+                        new
+                        {
+                            Id = new Guid("b52ef031-65ee-4597-b768-b73480e6de67"),
+                            Description = "Has read only access to the Team",
+                            Name = "Member",
+                            Permissions = new[] { 0 }
+                        });
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamTypeEntity", b =>
@@ -906,10 +1327,16 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Id")
                         .IsUnique();
+
+                    b.HasIndex("RoleId");
 
                     b.ToTable("users");
                 });
@@ -959,29 +1386,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>
-                {
-                    b.HasOne("Cite.Api.Data.Models.ScoringModelEntity", "ScoringModel")
-                        .WithMany()
-                        .HasForeignKey("ScoringModelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ScoringModel");
-                });
-
-            modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
-                {
-                    b.HasOne("Cite.Api.Data.Models.EvaluationEntity", "Evaluation")
-                        .WithMany("Moves")
-                        .HasForeignKey("EvaluationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Evaluation");
-                });
-
-            modelBuilder.Entity("Cite.Api.Data.Models.RoleEntity", b =>
+            modelBuilder.Entity("Cite.Api.Data.Models.DutyEntity", b =>
                 {
                     b.HasOne("Cite.Api.Data.Models.EvaluationEntity", "Evaluation")
                         .WithMany()
@@ -1000,23 +1405,95 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Cite.Api.Data.Models.RoleUserEntity", b =>
+            modelBuilder.Entity("Cite.Api.Data.Models.DutyUserEntity", b =>
                 {
-                    b.HasOne("Cite.Api.Data.Models.RoleEntity", "Role")
-                        .WithMany("RoleUsers")
+                    b.HasOne("Cite.Api.Data.Models.DutyEntity", "Duty")
+                        .WithMany("DutyUsers")
+                        .HasForeignKey("DutyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.UserEntity", "User")
+                        .WithMany("DutyUsers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Duty");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.ScoringModelEntity", "ScoringModel")
+                        .WithMany()
+                        .HasForeignKey("ScoringModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScoringModel");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.EvaluationMembershipEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.EvaluationEntity", "Evaluation")
+                        .WithMany("Memberships")
+                        .HasForeignKey("EvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.GroupEntity", "Group")
+                        .WithMany("EvaluationMemberships")
+                        .HasForeignKey("GroupId");
+
+                    b.HasOne("Cite.Api.Data.Models.EvaluationRoleEntity", "Role")
+                        .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Cite.Api.Data.Models.UserEntity", "User")
-                        .WithMany("RoleUsers")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .WithMany("EvaluationMemberships")
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Evaluation");
+
+                    b.Navigation("Group");
 
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupMembershipEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.GroupEntity", "Group")
+                        .WithMany("Memberships")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.UserEntity", "User")
+                        .WithMany("GroupMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.MoveEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.EvaluationEntity", "Evaluation")
+                        .WithMany("Moves")
+                        .HasForeignKey("EvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Evaluation");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringCategoryEntity", b =>
@@ -1028,6 +1505,37 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .IsRequired();
 
                     b.Navigation("ScoringModel");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelMembershipEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.GroupEntity", "Group")
+                        .WithMany("ScoringModelMemberships")
+                        .HasForeignKey("GroupId");
+
+                    b.HasOne("Cite.Api.Data.Models.ScoringModelRoleEntity", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.ScoringModelEntity", "ScoringModel")
+                        .WithMany("Memberships")
+                        .HasForeignKey("ScoringModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.UserEntity", "User")
+                        .WithMany("ScoringModelMemberships")
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Role");
+
+                    b.Navigation("ScoringModel");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringOptionEntity", b =>
@@ -1139,6 +1647,31 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("TeamType");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.TeamMembershipEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.TeamRoleEntity", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId");
+
+                    b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")
+                        .WithMany("Memberships")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cite.Api.Data.Models.UserEntity", "User")
+                        .WithMany("TeamMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.TeamUserEntity", b =>
                 {
                     b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")
@@ -1156,6 +1689,15 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Team");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Cite.Api.Data.Models.UserEntity", b =>
+                {
+                    b.HasOne("Cite.Api.Data.Models.SystemRoleEntity", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId");
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserPermissionEntity", b =>
@@ -1177,8 +1719,15 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.DutyEntity", b =>
+                {
+                    b.Navigation("DutyUsers");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.EvaluationEntity", b =>
                 {
+                    b.Navigation("Memberships");
+
                     b.Navigation("Moves");
 
                     b.Navigation("Submissions");
@@ -1186,14 +1735,18 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.Navigation("Teams");
                 });
 
+            modelBuilder.Entity("Cite.Api.Data.Models.GroupEntity", b =>
+                {
+                    b.Navigation("EvaluationMemberships");
+
+                    b.Navigation("Memberships");
+
+                    b.Navigation("ScoringModelMemberships");
+                });
+
             modelBuilder.Entity("Cite.Api.Data.Models.PermissionEntity", b =>
                 {
                     b.Navigation("UserPermissions");
-                });
-
-            modelBuilder.Entity("Cite.Api.Data.Models.RoleEntity", b =>
-                {
-                    b.Navigation("RoleUsers");
                 });
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringCategoryEntity", b =>
@@ -1203,6 +1756,8 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
             modelBuilder.Entity("Cite.Api.Data.Models.ScoringModelEntity", b =>
                 {
+                    b.Navigation("Memberships");
+
                     b.Navigation("ScoringCategories");
                 });
 
@@ -1223,6 +1778,8 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
             modelBuilder.Entity("Cite.Api.Data.Models.TeamEntity", b =>
                 {
+                    b.Navigation("Memberships");
+
                     b.Navigation("Submissions");
 
                     b.Navigation("TeamUsers");
@@ -1230,9 +1787,17 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
 
             modelBuilder.Entity("Cite.Api.Data.Models.UserEntity", b =>
                 {
-                    b.Navigation("RoleUsers");
+                    b.Navigation("DutyUsers");
+
+                    b.Navigation("EvaluationMemberships");
+
+                    b.Navigation("GroupMemberships");
+
+                    b.Navigation("ScoringModelMemberships");
 
                     b.Navigation("Submissions");
+
+                    b.Navigation("TeamMemberships");
 
                     b.Navigation("TeamUsers");
 

@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
-using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
@@ -24,11 +23,10 @@ namespace Cite.Api.Services
 {
     public interface ISubmissionOptionService
     {
-        Task<IEnumerable<ViewModels.SubmissionOption>> GetAsync(SubmissionOptionGet queryParameters, CancellationToken ct);
-        Task<IEnumerable<ViewModels.SubmissionOption>> GetForSubmissionCategoryAsync(Guid submissionCategoryId, CancellationToken ct);
-        Task<ViewModels.SubmissionOption> GetAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.SubmissionOption> CreateAsync(ViewModels.SubmissionOption submissionOption, CancellationToken ct);
-        Task<ViewModels.SubmissionOption> UpdateAsync(Guid id, ViewModels.SubmissionOption submissionOption, CancellationToken ct);
+        Task<IEnumerable<SubmissionOption>> GetForSubmissionCategoryAsync(Guid submissionCategoryId, CancellationToken ct);
+        Task<SubmissionOption> GetAsync(Guid id, CancellationToken ct);
+        Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct);
+        Task<SubmissionOption> UpdateAsync(Guid id, SubmissionOption submissionOption, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -57,31 +55,15 @@ namespace Cite.Api.Services
             _options = options;
         }
 
-        public async Task<IEnumerable<ViewModels.SubmissionOption>> GetAsync(SubmissionOptionGet queryParameters, CancellationToken ct)
+        public async Task<IEnumerable<SubmissionOption>> GetForSubmissionCategoryAsync(Guid submissionCategoryId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var submissionOptions = _context.SubmissionOptions;
-
-            return _mapper.Map<IEnumerable<SubmissionOption>>(await submissionOptions.ToListAsync());
-        }
-
-        public async Task<IEnumerable<ViewModels.SubmissionOption>> GetForSubmissionCategoryAsync(Guid submissionCategoryId, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionOptions = _context.SubmissionOptions.Where(sc => sc.SubmissionCategoryId == submissionCategoryId).Include(so => so.SubmissionComments);
 
             return _mapper.Map<IEnumerable<SubmissionOption>>(await submissionOptions.ToListAsync());
         }
 
-        public async Task<ViewModels.SubmissionOption> GetAsync(Guid id, CancellationToken ct)
+        public async Task<SubmissionOption> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.SubmissionOptions
                 .Include(so => so.SubmissionComments)
                 .SingleOrDefaultAsync(sc => sc.Id == id, ct);
@@ -89,11 +71,8 @@ namespace Cite.Api.Services
             return _mapper.Map<SubmissionOption>(item);
         }
 
-        public async Task<ViewModels.SubmissionOption> CreateAsync(ViewModels.SubmissionOption submissionOption, CancellationToken ct)
+        public async Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             submissionOption.Id = submissionOption.Id != Guid.Empty ? submissionOption.Id : Guid.NewGuid();
             submissionOption.DateCreated = DateTime.UtcNow;
             submissionOption.CreatedBy = _user.GetId();
@@ -108,39 +87,19 @@ namespace Cite.Api.Services
             return submissionOption;
         }
 
-        public async Task<ViewModels.SubmissionOption> UpdateAsync(Guid id, ViewModels.SubmissionOption submissionOption, CancellationToken ct)
+        public async Task<SubmissionOption> UpdateAsync(Guid id, SubmissionOption submissionOption, CancellationToken ct)
         {
             var submissionOptionToUpdate = await _context.SubmissionOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (submissionOptionToUpdate == null)
                 throw new EntityNotFoundException<SubmissionOption>();
-
-            var item = (await _context.SubmissionCategories.FirstAsync(s => s.Id == submissionOption.SubmissionCategoryId)).Submission;
-            var userId = _user.GetId();
-            var team = await _context.TeamUsers
-                .Where(tu => tu.UserId == userId)
-                .Include(tu => tu.Team.TeamType)
-                .Select(tu => tu.Team).FirstAsync();
-            var teamId = team.Id;
-            var isCollaborator = team.TeamType.IsOfficialScoreContributor;
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(item.EvaluationId)).CurrentMoveNumber;
-            var isIncrementer = (await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement((Guid)team.EvaluationId, _context))).Succeeded;
-            var hasAccess =
-                (item.UserId == userId && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
-                (item.UserId == null && item.TeamId == teamId && item.EvaluationId == item.EvaluationId) ||
-                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber < currentMoveNumber) ||
-                (item.UserId == null && item.TeamId == null && item.EvaluationId == item.EvaluationId && item.MoveNumber == currentMoveNumber && (isCollaborator || isIncrementer));
-            if (!hasAccess)
-                throw new ForbiddenException();
 
             submissionOption.CreatedBy = submissionOptionToUpdate.CreatedBy;
             submissionOption.DateCreated = submissionOptionToUpdate.DateCreated;
             submissionOption.ModifiedBy = _user.GetId();
             submissionOption.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionOption, submissionOptionToUpdate);
-
             _context.SubmissionOptions.Update(submissionOptionToUpdate);
             await _context.SaveChangesAsync(ct);
-
             submissionOption = await GetAsync(submissionOptionToUpdate.Id, ct);
 
             return submissionOption;
@@ -148,11 +107,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var submissionOptionToDelete = await _context.SubmissionOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionOptionToDelete == null)
                 throw new EntityNotFoundException<SubmissionOption>();
 
@@ -164,4 +119,3 @@ namespace Cite.Api.Services
 
     }
 }
-

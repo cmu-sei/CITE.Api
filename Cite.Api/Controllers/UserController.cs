@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Services;
@@ -19,9 +20,9 @@ namespace Cite.Api.Controllers
     public class UserController : BaseController
     {
         private readonly IUserService _userService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public UserController(IUserService userService, IAuthorizationService authorizationService)
+        public UserController(IUserService userService, ICiteAuthorizationService authorizationService)
         {
             _userService = userService;
             _authorizationService = authorizationService;
@@ -41,7 +42,27 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getUsers")]
         public async Task<IActionResult> Get(CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewUsers, SystemPermission.ViewEvaluations], ct))
+                throw new ForbiddenException();
+
             var list = await _userService.GetAsync(ct);
+            return Ok(list);
+        }
+
+        /// <summary>
+        /// Gets all Users in the evaluation
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of all of the Users in the evaluation.
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/users")]
+        [ProducesResponseType(typeof(IEnumerable<UserIdentity>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getEvaluationUsers")]
+        public async Task<IActionResult> GetEvaluationUsers(Guid evaluationId, CancellationToken ct)
+        {
+            var hasSystemPermission = await _authorizationService.AuthorizeAsync([SystemPermission.ObserveEvaluations], ct);
+            var list = await _userService.GetByEvaluationAsync(evaluationId, hasSystemPermission, ct);
             return Ok(list);
         }
 
@@ -61,32 +82,14 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getUser")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var user = await _userService.GetAsync(id, ct);
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewUsers], ct))
+                throw new ForbiddenException();
 
+            var user = await _userService.GetAsync(id, ct);
             if (user == null)
                 throw new EntityNotFoundException<User>();
 
             return Ok(user);
-        }
-
-        /// <summary>
-        /// Gets all Users for a team
-        /// </summary>
-        /// <remarks>
-        /// Returns a list of all of the Users on the team.
-        /// <para />
-        /// Only accessible to a SuperUser
-        /// </remarks>
-        /// <param name="teamId">The id of the Team</param>
-        /// <param name="ct"></param>
-        /// <returns></returns>
-        [HttpGet("teams/{teamId}/users")]
-        [ProducesResponseType(typeof(IEnumerable<User>), (int)HttpStatusCode.OK)]
-        [SwaggerOperation(OperationId = "getTeamUsers")]
-        public async Task<IActionResult> GetByTeam(Guid teamId, CancellationToken ct)
-        {
-            var list = await _userService.GetByTeamAsync(teamId, ct);
-            return Ok(list);
         }
 
         /// <summary>
@@ -104,6 +107,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createUser")]
         public async Task<IActionResult> Create([FromBody] User user, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageUsers], ct))
+                throw new ForbiddenException();
+
             user.CreatedBy = User.GetId();
             var createdUser = await _userService.CreateAsync(user, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdUser.Id }, createdUser);
@@ -126,6 +132,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateUser")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] User user, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageUsers], ct))
+                throw new ForbiddenException();
+
             user.ModifiedBy = User.GetId();
             var updatedUser = await _userService.UpdateAsync(id, user, ct);
             return Ok(updatedUser);
@@ -146,6 +155,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteUser")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ManageUsers], ct))
+                throw new ForbiddenException();
+
             await _userService.DeleteAsync(id, ct);
             return NoContent();
         }
@@ -153,4 +165,3 @@ namespace Cite.Api.Controllers
 
     }
 }
-

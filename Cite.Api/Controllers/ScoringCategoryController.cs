@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.QueryParameters;
@@ -20,9 +21,9 @@ namespace Cite.Api.Controllers
     public class ScoringCategoryController : BaseController
     {
         private readonly IScoringCategoryService _scoringCategoryService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public ScoringCategoryController(IScoringCategoryService scoringCategoryService, IAuthorizationService authorizationService)
+        public ScoringCategoryController(IScoringCategoryService scoringCategoryService, ICiteAuthorizationService authorizationService)
         {
             _scoringCategoryService = scoringCategoryService;
             _authorizationService = authorizationService;
@@ -42,6 +43,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getScoringCategories")]
         public async Task<IActionResult> Get([FromQuery] ScoringCategoryGet queryParameters, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewScoringModels], ct))
+                throw new ForbiddenException();
+
             var list = await _scoringCategoryService.GetAsync(queryParameters, ct);
             return Ok(list);
         }
@@ -60,7 +64,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getScoringCategoriesByScoringModelId")]
         public async Task<IActionResult> GetForScoringModel(Guid scoringModelId, CancellationToken ct)
         {
-            var list = await _scoringCategoryService.GetForScoringModelAsync(scoringModelId, ct);
+            var viewAsAdmin = await _authorizationService.AuthorizeAsync<ScoringModel>(scoringModelId, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct);
+            if (!viewAsAdmin &&
+                !await _authorizationService.AuthorizeAsync<ScoringModel>(scoringModelId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ParticipateInEvaluation, EvaluationPermission.ObserveEvaluation], ct))
+                throw new ForbiddenException();
+
+            var list = await _scoringCategoryService.GetForScoringModelAsync(scoringModelId, viewAsAdmin, ct);
             return Ok(list);
         }
 
@@ -78,8 +87,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getScoringCategory")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var scoringCategory = await _scoringCategoryService.GetAsync(id, ct);
+            var viewAsAdmin = await _authorizationService.AuthorizeAsync<ScoringCategory>(id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct);
+            if (!viewAsAdmin &&
+                !await _authorizationService.AuthorizeAsync<ScoringCategory>(id, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ParticipateInEvaluation, EvaluationPermission.ObserveEvaluation], ct))
+                throw new ForbiddenException();
 
+            var scoringCategory = await _scoringCategoryService.GetAsync(id, viewAsAdmin, ct);
             if (scoringCategory == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 
@@ -101,6 +114,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createScoringCategory")]
         public async Task<IActionResult> Create([FromBody] ScoringCategory scoringCategory, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ScoringModel>(scoringCategory.ScoringModelId, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+                throw new ForbiddenException();
+
             scoringCategory.CreatedBy = User.GetId();
             var createdScoringCategory = await _scoringCategoryService.CreateAsync(scoringCategory, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdScoringCategory.Id }, createdScoringCategory);
@@ -123,6 +139,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateScoringCategory")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ScoringCategory scoringCategory, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ScoringModel>(scoringCategory.ScoringModelId, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+                throw new ForbiddenException();
+
             scoringCategory.ModifiedBy = User.GetId();
             var updatedScoringCategory = await _scoringCategoryService.UpdateAsync(id, scoringCategory, ct);
             return Ok(updatedScoringCategory);
@@ -143,10 +162,12 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteScoringCategory")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ScoringCategory>(id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+                throw new ForbiddenException();
+
             await _scoringCategoryService.DeleteAsync(id, ct);
             return NoContent();
         }
 
     }
 }
-

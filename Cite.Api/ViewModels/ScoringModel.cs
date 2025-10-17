@@ -9,7 +9,7 @@ using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScoringModel : Base
+    public class ScoringModel : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -32,5 +32,6 @@ namespace Cite.Api.ViewModels
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }
         public Guid? EvaluationId { get; set; }
+        public IEnumerable<ScoringModelPermission> ScoringModelPermissions { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2022 Carnegie Mellon University. All Rights Reserved.
+// Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using System;
@@ -16,8 +16,8 @@ namespace Cite.Api.Data.Models
         public Guid Id { get; set; }
         public string Description { get; set; }
         public ItemStatus Status { get; set; }
-        public int CurrentMoveNumber { get; set;}
-        public DateTime SituationTime { get; set;}
+        public int CurrentMoveNumber { get; set; }
+        public DateTime SituationTime { get; set; }
         public string SituationDescription { get; set; }
         public Guid ScoringModelId { get; set; }
         public virtual ScoringModelEntity ScoringModel { get; set; }
@@ -25,6 +25,6 @@ namespace Cite.Api.Data.Models
         public virtual ICollection<TeamEntity> Teams { get; set; } = new HashSet<TeamEntity>();
         public virtual ICollection<MoveEntity> Moves { get; set; } = new HashSet<MoveEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
+        public virtual ICollection<EvaluationMembershipEntity> Memberships { get; set; } = new List<EvaluationMembershipEntity>();
     }
 }
-

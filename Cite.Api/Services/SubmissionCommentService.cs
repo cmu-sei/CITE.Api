@@ -23,11 +23,10 @@ namespace Cite.Api.Services
 {
     public interface ISubmissionCommentService
     {
-        Task<IEnumerable<ViewModels.SubmissionComment>> GetAsync(CancellationToken ct);
-        Task<IEnumerable<ViewModels.SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct);
-        Task<ViewModels.SubmissionComment> GetAsync(Guid id, CancellationToken ct);
-        Task<ViewModels.SubmissionComment> CreateAsync(ViewModels.SubmissionComment submissionComment, CancellationToken ct);
-        Task<ViewModels.SubmissionComment> UpdateAsync(Guid id, ViewModels.SubmissionComment submissionComment, CancellationToken ct);
+        Task<IEnumerable<SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct);
+        Task<SubmissionComment> GetAsync(Guid id, CancellationToken ct);
+        Task<SubmissionComment> CreateAsync(SubmissionComment submissionComment, CancellationToken ct);
+        Task<SubmissionComment> UpdateAsync(Guid id, SubmissionComment submissionComment, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
         Task<bool> LogXApiAsync(Uri verb, SubmissionOption submissionOption, String result, CancellationToken ct);
     }
@@ -57,41 +56,22 @@ namespace Cite.Api.Services
             _xApiService = xApiService;
         }
 
-        public async Task<IEnumerable<ViewModels.SubmissionComment>> GetAsync(CancellationToken ct)
+        public async Task<IEnumerable<SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var submissionComments = _context.SubmissionComments;
-
-            return _mapper.Map<IEnumerable<SubmissionComment>>(await submissionComments.ToListAsync());
-        }
-
-        public async Task<IEnumerable<ViewModels.SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct)
-        {
-            if (!(await HasAccess(submissionOptionId, ct)))
-                throw new ForbiddenException();
-
             var submissionComments = _context.SubmissionComments.Where(sc => sc.SubmissionOptionId == submissionOptionId);
 
             return _mapper.Map<IEnumerable<SubmissionComment>>(await submissionComments.ToListAsync());
         }
 
-        public async Task<ViewModels.SubmissionComment> GetAsync(Guid id, CancellationToken ct)
+        public async Task<SubmissionComment> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.SubmissionComments.SingleOrDefaultAsync(sc => sc.Id == id, ct);
-
-            if (!(await HasAccess(item.SubmissionOptionId, ct)))
-                throw new ForbiddenException();
 
             return _mapper.Map<SubmissionComment>(item);
         }
 
-        public async Task<ViewModels.SubmissionComment> CreateAsync(ViewModels.SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<SubmissionComment> CreateAsync(SubmissionComment submissionComment, CancellationToken ct)
         {
-            if (!(await HasAccess(submissionComment.SubmissionOptionId, ct)))
-                throw new ForbiddenException();
-
             submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
             submissionComment.DateCreated = DateTime.UtcNow;
             submissionComment.CreatedBy = _user.GetId();
@@ -112,13 +92,9 @@ namespace Cite.Api.Services
             return submissionComment;
         }
 
-        public async Task<ViewModels.SubmissionComment> UpdateAsync(Guid id, ViewModels.SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<SubmissionComment> UpdateAsync(Guid id, SubmissionComment submissionComment, CancellationToken ct)
         {
-            if (!(await HasAccess(submissionComment.SubmissionOptionId, ct)))
-                throw new ForbiddenException();
-
             var submissionCommentToUpdate = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionCommentToUpdate == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
@@ -127,12 +103,9 @@ namespace Cite.Api.Services
             submissionComment.ModifiedBy = _user.GetId();
             submissionComment.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionComment, submissionCommentToUpdate);
-
             _context.SubmissionComments.Update(submissionCommentToUpdate);
             await _context.SaveChangesAsync(ct);
-
             submissionComment = await GetAsync(submissionCommentToUpdate.Id, ct);
-
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");
             var submissionOption = _mapper.Map<SubmissionOption>(submissionCommentToUpdate.SubmissionOption);
@@ -145,16 +118,11 @@ namespace Cite.Api.Services
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
             var submissionCommentToDelete = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (submissionCommentToDelete == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
-            if (!(await HasAccess(submissionCommentToDelete.SubmissionOptionId, ct)))
-                throw new ForbiddenException();
-
             _context.SubmissionComments.Remove(submissionCommentToDelete);
             await _context.SaveChangesAsync(ct);
-
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/deleted");
             var submissionOption = _mapper.Map<SubmissionOption>(submissionCommentToDelete.SubmissionOption);
@@ -162,23 +130,6 @@ namespace Cite.Api.Services
             await LogXApiAsync(verb, submissionOption, result, ct);
 
             return true;
-        }
-
-        private async Task<bool> HasAccess(Guid submissionOptionId, CancellationToken ct)
-        {
-            var submissionOption = await _context.SubmissionOptions.FindAsync(submissionOptionId);
-            var submissionCategoryEntity = await _context.SubmissionCategories.FindAsync(submissionOption.SubmissionCategoryId);
-            var submissionEntity = await _context.Submissions.FindAsync(submissionCategoryEntity.SubmissionId);
-            var isOnTeam = await _context.TeamUsers.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId, ct);
-            var evaluationId = (Guid)submissionEntity.EvaluationId;
-            return (
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(evaluationId, _context))).Succeeded
-                        && submissionEntity.UserId == null
-                        && (submissionEntity.TeamId == null || isOnTeam)) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanModifyRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new CanSubmitRequirement(evaluationId, _context))).Succeeded && isOnTeam) ||
-                    ((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && submissionEntity.UserId == _user.GetId())
-            );
         }
 
         public async Task<bool> LogXApiAsync(Uri verb, SubmissionOption submissionOption, String result, CancellationToken ct)
@@ -192,7 +143,7 @@ namespace Cite.Api.Services
                 var scoringCategory = await _context.ScoringCategories.Where(sc => sc.Id == submissionCategory.ScoringCategoryId).FirstAsync();
                 var scoringOption = await _context.ScoringOptions.Where(so => so.Id == submissionOption.ScoringOptionId).FirstAsync();
 
-                var teamId = (await _context.TeamUsers
+                var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
 
                 // create and send xapi statement
@@ -234,4 +185,3 @@ namespace Cite.Api.Services
         }
     }
 }
-

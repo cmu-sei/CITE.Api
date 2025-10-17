@@ -9,14 +9,12 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Extensions;
-using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.ViewModels;
 
@@ -24,11 +22,11 @@ namespace Cite.Api.Services
 {
     public interface IUserService
     {
-        Task<IEnumerable<ViewModels.User>> GetAsync(CancellationToken ct);
-        Task<ViewModels.User> GetAsync(Guid id, CancellationToken ct);
-        Task<IEnumerable<ViewModels.User>> GetByTeamAsync(Guid TeamId, CancellationToken ct);
-        Task<ViewModels.User> CreateAsync(ViewModels.User user, CancellationToken ct);
-        Task<ViewModels.User> UpdateAsync(Guid id, ViewModels.User user, CancellationToken ct);
+        Task<IEnumerable<User>> GetAsync(CancellationToken ct);
+        Task<IEnumerable<UserIdentity>> GetByEvaluationAsync(Guid evaluationId, bool hasSystemPermission, CancellationToken ct);
+        Task<User> GetAsync(Guid id, CancellationToken ct);
+        Task<User> CreateAsync(User user, CancellationToken ct);
+        Task<User> UpdateAsync(Guid id, User user, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -37,63 +35,53 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
         private readonly IAuthorizationService _authorizationService;
+        private readonly IUserClaimsService _userClaimsService;
         private readonly IMapper _mapper;
         private readonly ILogger<IUserService> _logger;
 
-        public UserService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, ILogger<IUserService> logger, IMapper mapper)
+        public UserService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, IUserClaimsService userClaimsService, ILogger<IUserService> logger, IMapper mapper)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _authorizationService = authorizationService;
+            _userClaimsService = userClaimsService;
             _mapper = mapper;
             _logger = logger;
         }
 
-        public async Task<IEnumerable<ViewModels.User>> GetAsync(CancellationToken ct)
+        public async Task<IEnumerable<User>> GetAsync(CancellationToken ct)
         {
-            if(!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var items = await _context.Users
-                .ProjectTo<ViewModels.User>(_mapper.ConfigurationProvider, dest => dest.Permissions)
                 .ToArrayAsync(ct);
-            return items;
-        }
-
-        public async Task<ViewModels.User> GetAsync(Guid id, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !((await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded && id == _user.GetId()))
-                throw new ForbiddenException();
-
-            var item = await _context.Users
-                .ProjectTo<ViewModels.User>(_mapper.ConfigurationProvider, dest => dest.Permissions)
-                .SingleOrDefaultAsync(o => o.Id == id, ct);
-            return item;
-        }
-
-        public async Task<IEnumerable<ViewModels.User>> GetByTeamAsync(Guid teamId, CancellationToken ct)
-        {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
-            var items = await _context.TeamUsers
-                .Where(tu => tu.TeamId == teamId)
-                .Select(tu => tu.User)
-                .ToListAsync(ct);
-
             return _mapper.Map<IEnumerable<User>>(items);
         }
 
-        public async Task<ViewModels.User> CreateAsync(ViewModels.User user, CancellationToken ct)
+        public async Task<IEnumerable<UserIdentity>> GetByEvaluationAsync(Guid evaluationId, bool hasSystemPermission, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
+            var items = await _context.TeamMemberships
+                .Where(em => em.Team.EvaluationId == evaluationId)
+                .Select(em => new UserIdentity
+                {
+                    Id = em.User.Id,
+                    Name = em.User.Name,
+                })
+                .ToArrayAsync(ct);
+            var userId = _user.GetId();
+            if (!hasSystemPermission && !items.Any(m => m.Id == userId))
                 throw new ForbiddenException();
 
-            user.DateCreated = DateTime.UtcNow;
-            user.CreatedBy = _user.GetId();
-            user.DateModified = null;
-            user.ModifiedBy = null;
+            return _mapper.Map<IEnumerable<UserIdentity>>(items);
+        }
+
+        public async Task<User> GetAsync(Guid id, CancellationToken ct)
+        {
+            var item = await _context.Users
+                .SingleOrDefaultAsync(o => o.Id == id, ct);
+            return _mapper.Map<User>(item);
+        }
+
+        public async Task<User> CreateAsync(User user, CancellationToken ct)
+        {
             var userEntity = _mapper.Map<UserEntity>(user);
 
             _context.Users.Add(userEntity);
@@ -102,11 +90,8 @@ namespace Cite.Api.Services
             return await GetAsync(user.Id, ct);
         }
 
-        public async Task<ViewModels.User> UpdateAsync(Guid id, ViewModels.User user, CancellationToken ct)
+        public async Task<User> UpdateAsync(Guid id, User user, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             // Don't allow changing your own Id
             if (id == _user.GetId() && id != user.Id)
             {
@@ -118,23 +103,16 @@ namespace Cite.Api.Services
             if (userToUpdate == null)
                 throw new EntityNotFoundException<User>();
 
-            user.CreatedBy = userToUpdate.CreatedBy;
-            user.DateCreated = userToUpdate.DateCreated;
-            user.ModifiedBy = _user.GetId();
-            user.DateModified = DateTime.UtcNow;
             _mapper.Map(user, userToUpdate);
 
             _context.Users.Update(userToUpdate);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"User {user.Name} ({userToUpdate.Id}) updated by {_user.GetId()}");
+            _logger.LogWarning($"User {userToUpdate.Name} ({userToUpdate.Id}) updated by {_user.GetId()}");
             return await GetAsync(id, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             if (id == _user.GetId())
             {
                 throw new ForbiddenException("You cannot delete your own account");
@@ -154,3 +132,8 @@ namespace Cite.Api.Services
     }
 }
 
+public class UserIdentity
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+}

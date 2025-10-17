@@ -6,11 +6,13 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Cite.Api.Data.Enumerations;
+using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Services;
+using Cite.Api.ViewModels;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Cite.Api.Controllers
@@ -18,12 +20,33 @@ namespace Cite.Api.Controllers
     public class ActionController : BaseController
     {
         private readonly IActionService _actionService;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
-        public ActionController(IActionService actionService, IAuthorizationService authorizationService)
+        public ActionController(IActionService actionService, ICiteAuthorizationService authorizationService)
         {
             _actionService = actionService;
             _authorizationService = authorizationService;
+        }
+
+        /// <summary>
+        /// Gets Actions for the specified evaluation
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of the Actions.
+        /// <para />
+        /// Accessible to a User who can view the evaluation
+        /// </remarks>
+        /// <returns></returns>
+        [HttpGet("evaluations/{evaluationId}/actions")]
+        [ProducesResponseType(typeof(IEnumerable<ViewModels.Action>), (int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "getActionsByEvaluation")]
+        public async Task<IActionResult> GetByEvaluation([FromRoute] Guid evaluationId, CancellationToken ct)
+        {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
+            var list = await _actionService.GetByEvaluationAsync(evaluationId, ct);
+            return Ok(list);
         }
 
         /// <summary>
@@ -41,6 +64,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getActionsByEvaluationTeam")]
         public async Task<IActionResult> GetByEvaluationTeam([FromRoute] Guid evaluationId, [FromRoute] Guid teamId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct))
+                throw new ForbiddenException();
+
             var list = await _actionService.GetByEvaluationTeamAsync(evaluationId, teamId, ct);
             return Ok(list);
         }
@@ -59,6 +86,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getActionsByEvaluationMove")]
         public async Task<IActionResult> GetByEvaluationMove([FromRoute] Guid evaluationId, [FromRoute] int moveNumber, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations], [EvaluationPermission.ViewEvaluation], ct))
+                throw new ForbiddenException();
+
             var list = await _actionService.GetByEvaluationMoveAsync(evaluationId, moveNumber, ct);
             return Ok(list);
         }
@@ -77,6 +107,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getActionsByEvaluationMoveTeam")]
         public async Task<IActionResult> GetByEvaluationMoveTeam([FromRoute] Guid evaluationId, [FromRoute] int moveNumber, [FromRoute] Guid teamId, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct))
+                throw new ForbiddenException();
+
             var list = await _actionService.GetByEvaluationMoveTeamAsync(evaluationId, moveNumber, teamId, ct);
             return Ok(list);
         }
@@ -97,6 +131,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getAction")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ViewTeam], ct))
+                throw new ForbiddenException();
+
             var action = await _actionService.GetAsync(id, ct);
 
             if (action == null)
@@ -120,6 +158,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createAction")]
         public async Task<IActionResult> Create([FromBody] ViewModels.Action action, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(action.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Team>(action.TeamId, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+
             action.CreatedBy = User.GetId();
             var createdAction = await _actionService.CreateAsync(action, ct);
             return CreatedAtAction(nameof(this.Get), new { id = createdAction.Id }, createdAction);
@@ -141,6 +183,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateAction")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ViewModels.Action action, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<Evaluation>(action.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Team>(action.TeamId, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+
             action.ModifiedBy = User.GetId();
             var updatedAction = await _actionService.UpdateAsync(id, action, ct);
             return Ok(updatedAction);
@@ -159,6 +205,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "checkAction")]
         public async Task<IActionResult> Check([FromRoute] Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+
             var updatedAction = await _actionService.SetIsCheckedAsync(id, true, ct);
             return Ok(updatedAction);
         }
@@ -176,6 +226,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "uncheckAction")]
         public async Task<IActionResult> Uncheck([FromRoute] Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+
             var updatedAction = await _actionService.SetIsCheckedAsync(id, false, ct);
             return Ok(updatedAction);
         }
@@ -195,6 +249,10 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteAction")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+
             await _actionService.DeleteAsync(id, ct);
             return NoContent();
         }

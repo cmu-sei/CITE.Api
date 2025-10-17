@@ -13,7 +13,6 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
@@ -31,7 +30,6 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct);
         Task<IEnumerable<ViewModels.Evaluation>> GetMineAsync(CancellationToken ct);
-        Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct);
         Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct);
@@ -46,7 +44,6 @@ namespace Cite.Api.Services
     public class EvaluationService : IEvaluationService
     {
         private readonly CiteContext _context;
-        private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
@@ -54,37 +51,33 @@ namespace Cite.Api.Services
         private readonly IMoveService _moveService;
         private readonly IScoringModelService _scoringModelService;
         private readonly ITeamTypeService _teamTypeService;
+        private readonly IUserClaimsService _userClaimsService;
 
         public EvaluationService(
             CiteContext context,
-            IAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
             ISubmissionService submissionService,
             IMoveService moveService,
             IScoringModelService scoringModelService,
             ITeamTypeService teamTypeService,
+            IUserClaimsService userClaimsService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
-            _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
             _submissionService = submissionService;
             _moveService = moveService;
             _scoringModelService = scoringModelService;
             _teamTypeService = teamTypeService;
+            _userClaimsService = userClaimsService;
             _logger = logger;
         }
 
-        public async Task<IEnumerable<ViewModels.Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct)
+        public async Task<IEnumerable<Evaluation>> GetAsync(EvaluationGet queryParameters, CancellationToken ct)
         {
-            // only content developers can get all of the evaluations
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             IQueryable<EvaluationEntity> evaluations = null;
-
             // filter based on user
             if (!String.IsNullOrEmpty(queryParameters.UserId))
             {
@@ -139,21 +132,10 @@ namespace Cite.Api.Services
             return await GetUserEvaluationsAsync(userId, ct);
         }
 
-        public async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
+        private async Task<IEnumerable<ViewModels.Evaluation>> GetUserEvaluationsAsync(Guid userId, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            if (currentUserId == userId)
-            {
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                    throw new ForbiddenException();
-            }
-            else
-            {
-                if (!(await _authorizationService.AuthorizeAsync(_user, null, new FullRightsRequirement())).Succeeded)
-                    throw new ForbiddenException();
-            }
-
-            var evaluationIdList = await _context.TeamUsers
+            var evaluationIdList = await _context.TeamMemberships
                 .Where(tu => tu.UserId == userId)
                 .Select(tu => tu.Team.EvaluationId)
                 .ToListAsync(ct);
@@ -166,9 +148,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new BaseUserRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var item = await _context.Evaluations
                 .Include(e => e.Teams)
                 .Include(e => e.Moves)
@@ -179,20 +158,22 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.DateCreated = DateTime.UtcNow;
             evaluation.CreatedBy = _user.GetId();
             evaluation.DateModified = null;
             evaluation.ModifiedBy = null;
-
+            // create a scoring model copy
+            var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
+            evaluation.ScoringModelId = newScoringModel.Id;
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
             evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+            // update the scoring model evaluation ID
+            newScoringModel.EvaluationId = evaluation.Id;
+            await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
             // create a default move, if necessary
             if (evaluation.Moves.Count() == 0)
             {
@@ -203,15 +184,20 @@ namespace Cite.Api.Services
                 move.EvaluationId = evaluation.Id;
                 await _moveService.CreateAsync(move, ct);
             }
+            var createOwnerMembership = new EvaluationMembershipEntity() {
+                UserId = _user.GetId(),
+                EvaluationId = evaluationEntity.Id,
+                RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
+            };
+            await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
+            await _context.SaveChangesAsync(ct);
+            await _userClaimsService.RefreshClaims(_user.GetId());
 
             return await GetAsync(evaluation.Id, ct);
         }
 
         public async Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationEntity = await _context.Evaluations
                 .AsNoTracking()
                 .Include(m => m.Teams)
@@ -282,10 +268,6 @@ namespace Cite.Api.Services
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluation = await _context.Evaluations
                 .Include(m => m.ScoringModel)
                 .ThenInclude(m => m.ScoringCategories)
@@ -316,10 +298,6 @@ namespace Cite.Api.Services
 
         public async Task<Evaluation> UploadJsonAsync(FileForm form, CancellationToken ct)
         {
-            // user must be a Content Developer
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var uploadItem = form.ToUpload;
             var evaluationJson = "";
             using (StreamReader reader = new StreamReader(uploadItem.OpenReadStream()))
@@ -358,12 +336,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToUpdate == null)
                 throw new EntityNotFoundException<Evaluation>();
 
@@ -372,40 +345,40 @@ namespace Cite.Api.Services
             {
                 // get the teams for this evaluation
                 var evaluationTeamList = await _context.Teams
-                    .Include(t => t.TeamUsers)
+                    .Include(t => t.Memberships)
                     .ThenInclude(tu => tu.User)
                     .Where(t => t.EvaluationId == evaluation.Id)
                     .AsNoTracking()
                     .ToListAsync();
                 if (evaluationTeamList.Any())
                 {
-                    var evaluationTeamUsers = new List<TeamUserEntity>();
+                    var evaluationTeamMemberships = new List<TeamMembershipEntity>();
                     foreach (var team in evaluationTeamList)
                     {
-                        evaluationTeamUsers.AddRange(team.TeamUsers);
+                        evaluationTeamMemberships.AddRange(team.Memberships);
                     }
-                    var duplicateUserIds = evaluationTeamUsers
+                    var duplicateUserIds = evaluationTeamMemberships
                         .GroupBy(tu => tu.UserId)
                         .Where(g => g.Count() > 1)
                         .Select(g => g.Key);
-                    var duplicateTeamUsers = evaluationTeamUsers
+                    var duplicateTeamMemberships = evaluationTeamMemberships
                         .Where(tu => duplicateUserIds.Contains(tu.UserId))
                         .OrderBy(tu => tu.UserId)
                         .ThenBy(tu => tu.TeamId);
-                    if (duplicateTeamUsers.Any())
+                    if (duplicateTeamMemberships.Any())
                     {
                         var message = "This evaluation cannot be set Active, because a user can only be on one team, which is violated by the following:\n";
                         Guid userId = Guid.Empty;
-                        foreach (var teamUser in duplicateTeamUsers)
+                        foreach (var teamMembership in duplicateTeamMemberships)
                         {
-                            if (teamUser.UserId != userId)
+                            if (teamMembership.UserId != userId)
                             {
-                                message = message + "\nUser " + teamUser.User.Name + " is on team " + evaluationTeamList.Find(t => t.Id == teamUser.TeamId).Name;
-                                userId = teamUser.UserId;
+                                message = message + "\nUser " + teamMembership.User.Name + " is on team " + evaluationTeamList.Find(t => t.Id == teamMembership.TeamId).Name;
+                                userId = teamMembership.UserId;
                             }
                             else
                             {
-                                message = message + "\n    and is on team " + evaluationTeamList.Find(t => t.Id == teamUser.TeamId).Name;
+                                message = message + "\n    and is on team " + evaluationTeamList.Find(t => t.Id == teamMembership.TeamId).Name;
                             }
                         }
                         throw new ArgumentException(message);
@@ -432,12 +405,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToUpdate == null)
                 throw new EntityNotFoundException<Evaluation>();
 
@@ -453,10 +421,6 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded &&
-                !(await _authorizationService.AuthorizeAsync(_user, null, new CanIncrementMoveRequirement(id, _context))).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToUpdate = await _context.Evaluations
                 .Include(e => e.Moves)
                 .SingleOrDefaultAsync(v => v.Id == id, ct);
@@ -481,11 +445,7 @@ namespace Cite.Api.Services
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            if (!(await _authorizationService.AuthorizeAsync(_user, null, new ContentDeveloperRequirement())).Succeeded)
-                throw new ForbiddenException();
-
             var evaluationToDelete = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
-
             if (evaluationToDelete == null)
                 throw new EntityNotFoundException<Evaluation>();
 

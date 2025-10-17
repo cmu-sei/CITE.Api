@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScoringOption : Base
+    public class ScoringOption : Base, IAuthorizationType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
