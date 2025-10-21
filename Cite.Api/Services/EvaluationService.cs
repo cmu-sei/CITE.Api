@@ -193,18 +193,23 @@ namespace Cite.Api.Services
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+            _logger.LogWarning("Evaluation move count is " + evaluation.Moves.Count);
             // create a default move, if necessary
-            if (evaluation.Moves.Count() == 0) {
-              ViewModels.Move move = new Move();
-              move.Description = "Default Move";
-              move.MoveNumber = 0;
-              move.SituationTime = evaluation.SituationTime;
-              move.EvaluationId = evaluation.Id;
-              await _moveService.CreateAsync(move, ct);
+            if (evaluation.Moves.Count == 0)
+            {
+                ViewModels.Move move = new Move();
+                move.Description = "Default Move";
+                move.MoveNumber = 0;
+                move.SituationTime = evaluation.SituationTime;
+                move.EvaluationId = evaluation.Id;
+                _logger.LogWarning("Creating the new evaluation default move 0");
+                await _moveService.CreateAsync(move, ct);
             }
             // create the official and team submissions, if necessary
+            _logger.LogWarning("Verifying official and team submissions");
             await VerifyOfficialAndTeamSubmissions(evaluationEntity, ct);
 
+            _logger.LogWarning("return the evaluation");
             return await GetAsync(evaluation.Id, ct);
         }
 
@@ -495,6 +500,7 @@ namespace Cite.Api.Services
                 .Where(s => s.EvaluationId == evaluation.Id && s.UserId == null)
                 .AsNoTracking()
                 .ToListAsync();
+            _logger.LogWarning("submissionList length is " + submissionList.Count);
             // get the teams for this evaluation
             var evaluationTeamList = await _context.Teams
                 .Include(t => t.TeamUsers)
@@ -502,8 +508,10 @@ namespace Cite.Api.Services
                 .Where(t => t.EvaluationId == evaluation.Id)
                 .AsNoTracking()
                 .ToListAsync();
+            _logger.LogWarning("teamList length is " + evaluationTeamList.Count);
             // get a list of moves for the evaluation
             var moves = await _moveService.GetByEvaluationAsync(evaluation.Id, ct);
+            _logger.LogWarning("moveList length is " + moves.Count());
             // verify submissions exist for all moves
             // make sure all official and team submissions exist
             var moveNumber = evaluation.CurrentMoveNumber;
@@ -540,7 +548,7 @@ namespace Cite.Api.Services
                     await _submissionService.CreateNewSubmission(_context, submission, ct);
                 }
             }
-
+            _logger.LogWarning("submissions verified");
         }
 
     }
