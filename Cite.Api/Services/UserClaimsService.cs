@@ -293,7 +293,10 @@ namespace Cite.Api.Services
 
                 foreach (var membership in group)
                 {
-                    teamPermissions.AddRange(membership.Role.Permissions);
+                    if (membership.Role != null && membership.Role.Permissions.Count > 0)
+                    {
+                        teamPermissions.AddRange(membership.Role.Permissions);
+                    }
                 }
 
                 var permissionsClaim = new TeamPermissionClaim
