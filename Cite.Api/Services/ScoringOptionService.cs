@@ -83,10 +83,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.ScoringOption> CreateAsync(ViewModels.ScoringOption scoringOption, CancellationToken ct)
         {
             scoringOption.Id = scoringOption.Id != Guid.Empty ? scoringOption.Id : Guid.NewGuid();
-            scoringOption.DateCreated = DateTime.UtcNow;
             scoringOption.CreatedBy = _user.GetId();
-            scoringOption.DateModified = null;
-            scoringOption.ModifiedBy = null;
             var scoringOptionEntity = _mapper.Map<ScoringOptionEntity>(scoringOption);
 
             _context.ScoringOptions.Add(scoringOptionEntity);
@@ -102,10 +99,7 @@ namespace Cite.Api.Services
             if (scoringOptionToUpdate == null)
                 throw new EntityNotFoundException<ScoringOption>();
 
-            scoringOption.CreatedBy = scoringOptionToUpdate.CreatedBy;
-            scoringOption.DateCreated = scoringOptionToUpdate.DateCreated;
             scoringOption.ModifiedBy = _user.GetId();
-            scoringOption.DateModified = DateTime.UtcNow;
             _mapper.Map(scoringOption, scoringOptionToUpdate);
             _context.ScoringOptions.Update(scoringOptionToUpdate);
             await _context.SaveChangesAsync(ct);

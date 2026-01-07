@@ -82,6 +82,7 @@ namespace Cite.Api.Services
 
         public async Task<User> CreateAsync(User user, CancellationToken ct)
         {
+            user.CreatedBy = _user.GetId();
             var userEntity = _mapper.Map<UserEntity>(user);
 
             _context.Users.Add(userEntity);

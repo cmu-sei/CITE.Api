@@ -125,10 +125,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.Action> CreateAsync(ViewModels.Action action, CancellationToken ct)
         {
             action.Id = action.Id != Guid.Empty ? action.Id : Guid.NewGuid();
-            action.DateCreated = DateTime.UtcNow;
             action.CreatedBy = _user.GetId();
-            action.DateModified = null;
-            action.ModifiedBy = null;
             var actionEntity = _mapper.Map<ActionEntity>(action);
 
             _context.Actions.Add(actionEntity);
@@ -144,11 +141,8 @@ namespace Cite.Api.Services
             if (actionToUpdate == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
-            action.CreatedBy = actionToUpdate.CreatedBy;
-            action.DateCreated = actionToUpdate.DateCreated;
-            _mapper.Map(action, actionToUpdate);
             actionToUpdate.ModifiedBy = _user.GetId();
-            actionToUpdate.DateModified = DateTime.UtcNow;
+            _mapper.Map(action, actionToUpdate);
             _context.Actions.Update(actionToUpdate);
             await _context.SaveChangesAsync(ct);
 

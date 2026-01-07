@@ -69,10 +69,7 @@ namespace Cite.Api.Services
         public async Task<TeamType> InternalCreateAsync(TeamType teamType, CancellationToken ct)
         {
             teamType.Id = teamType.Id != Guid.Empty ? teamType.Id : Guid.NewGuid();
-            teamType.DateCreated = DateTime.UtcNow;
             teamType.CreatedBy = _user.GetId();
-            teamType.DateModified = null;
-            teamType.ModifiedBy = null;
             var teamTypeEntity = _mapper.Map<TeamTypeEntity>(teamType);
             _context.TeamTypes.Add(teamTypeEntity);
             await _context.SaveChangesAsync(ct);
@@ -87,10 +84,7 @@ namespace Cite.Api.Services
             if (teamTypeToUpdate == null)
                 throw new EntityNotFoundException<TeamType>();
 
-            teamType.CreatedBy = teamTypeToUpdate.CreatedBy;
-            teamType.DateCreated = teamTypeToUpdate.DateCreated;
             teamType.ModifiedBy = _user.GetId();
-            teamType.DateModified = DateTime.UtcNow;
             _mapper.Map(teamType, teamTypeToUpdate);
             _context.TeamTypes.Update(teamTypeToUpdate);
             await _context.SaveChangesAsync(ct);

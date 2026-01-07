@@ -99,10 +99,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct)
         {
             duty.Id = duty.Id != Guid.Empty ? duty.Id : Guid.NewGuid();
-            duty.DateCreated = DateTime.UtcNow;
             duty.CreatedBy = _user.GetId();
-            duty.DateModified = null;
-            duty.ModifiedBy = null;
             var dutyEntity = _mapper.Map<DutyEntity>(duty);
             _context.Duties.Add(dutyEntity);
             await _context.SaveChangesAsync(ct);
@@ -120,7 +117,6 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<DutyEntity>();
 
             dutyToUpdate.ModifiedBy = _user.GetId();
-            dutyToUpdate.DateModified = DateTime.UtcNow;
             dutyToUpdate.Name = duty.Name;
             _context.Duties.Update(dutyToUpdate);
             await _context.SaveChangesAsync(ct);
