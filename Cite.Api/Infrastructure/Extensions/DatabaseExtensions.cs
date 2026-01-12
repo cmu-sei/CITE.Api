@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -49,9 +50,32 @@ namespace Cite.Api.Infrastructure.Extensions
                             ctx.Database.EnsureCreated();
                         }
 
-                        var seedDataOptions = services.GetService<SeedDataOptions>();
-                        ProcessSeedDataOptions(seedDataOptions, ctx);
-                        ProcessScoringModelsBeforeTemplates(ctx);
+                        IHostEnvironment env = services.GetService<IHostEnvironment>();
+                        IConfiguration configuration = services.GetService<IConfiguration>();
+                        string seedFile = Path.Combine(
+                            env.ContentRootPath,
+                            databaseOptions.SeedFile
+                        );
+
+                        SeedDataOptions seedDataOptions = null;
+
+                        // Try to load from seed file first
+                        if (File.Exists(seedFile))
+                        {
+                            seedDataOptions = JsonSerializer.Deserialize<SeedDataOptions>(File.ReadAllText(seedFile));
+                        }
+                        // Fall back to SeedData section in appsettings.json
+                        else
+                        {
+                            seedDataOptions = new SeedDataOptions();
+                            configuration.GetSection("SeedData").Bind(seedDataOptions);
+                        }
+
+                        if (seedDataOptions != null)
+                        {
+                            ProcessSeedDataOptions(seedDataOptions, ctx);
+                            ProcessScoringModelsBeforeTemplates(ctx);
+                        }
                     }
 
                 }
