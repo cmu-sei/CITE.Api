@@ -2,6 +2,9 @@
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
 using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data.Models;
 using Cite.Api.Data.Extensions;
@@ -54,6 +57,46 @@ namespace Cite.Api.Data
                 modelBuilder.UsePostgresCasing();
             }
 
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
+        {
+            HandleAuditFields();
+            return await base.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Handle audit fields (DateCreated, DateModified, CreatedBy, ModifiedBy)
+        /// </summary>
+        private void HandleAuditFields()
+        {
+            // Handle audit fields for added entries
+            var addedEntries = ChangeTracker.Entries().Where(x => x.State == EntityState.Added);
+            foreach (var entry in addedEntries)
+            {
+                try
+                {
+                    ((BaseEntity)entry.Entity).DateCreated = DateTime.UtcNow;
+                    ((BaseEntity)entry.Entity).DateModified = null;
+                    ((BaseEntity)entry.Entity).ModifiedBy = null;
+                }
+                catch
+                { }
+            }
+
+            // Handle audit fields for modified entries
+            var modifiedEntries = ChangeTracker.Entries().Where(x => x.State == EntityState.Modified);
+            foreach (var entry in modifiedEntries)
+            {
+                try
+                {
+                    ((BaseEntity)entry.Entity).DateModified = DateTime.UtcNow;
+                    ((BaseEntity)entry.Entity).CreatedBy = (Guid)entry.OriginalValues["CreatedBy"];
+                    ((BaseEntity)entry.Entity).DateCreated = DateTime.SpecifyKind((DateTime)entry.OriginalValues["DateCreated"], DateTimeKind.Utc);
+                }
+                catch
+                { }
+            }
         }
     }
 }

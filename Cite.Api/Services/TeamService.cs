@@ -119,10 +119,7 @@ namespace Cite.Api.Services
         public async Task<Team> CreateAsync(Team team, CancellationToken ct)
         {
             team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
-            team.DateCreated = DateTime.UtcNow;
             team.CreatedBy = _user.GetId();
-            team.DateModified = null;
-            team.ModifiedBy = null;
             var teamEntity = _mapper.Map<TeamEntity>(team);
 
             _context.Teams.Add(teamEntity);
@@ -138,10 +135,7 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<Team>();
 
             var teamTypeChanged = team.TeamTypeId != teamToUpdate.TeamTypeId;
-            team.CreatedBy = teamToUpdate.CreatedBy;
-            team.DateCreated = teamToUpdate.DateCreated;
             team.ModifiedBy = _user.GetId();
-            team.DateModified = DateTime.UtcNow;
             _mapper.Map(team, teamToUpdate);
             teamToUpdate.TeamType = null;
             _context.Teams.Update(teamToUpdate);

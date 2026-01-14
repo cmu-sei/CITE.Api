@@ -115,10 +115,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct)
         {
             scoringModel.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
-            scoringModel.DateCreated = DateTime.UtcNow;
             scoringModel.CreatedBy = _user.GetId();
-            scoringModel.DateModified = null;
-            scoringModel.ModifiedBy = null;
             var scoringModelEntity = _mapper.Map<ScoringModelEntity>(scoringModel);
 
             _context.ScoringModels.Add(scoringModelEntity);
@@ -150,10 +147,7 @@ namespace Cite.Api.Services
             var currentUserId = _user.GetId();
             var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
             scoringModelEntity.Id = Guid.NewGuid();
-            scoringModelEntity.DateCreated = DateTime.UtcNow;
             scoringModelEntity.CreatedBy = currentUserId;
-            scoringModelEntity.DateModified = scoringModelEntity.DateCreated;
-            scoringModelEntity.ModifiedBy = scoringModelEntity.CreatedBy;
             scoringModelEntity.Description = scoringModelEntity.Description + " - " + username;
             var scoringCategoryIdCrossReference = new Dictionary<Guid, Guid>();
             // copy ScoringCategories
@@ -164,7 +158,6 @@ namespace Cite.Api.Services
                 scoringCategory.Id = newId;
                 scoringCategory.ScoringModelId = scoringModelEntity.Id;
                 scoringCategory.ScoringModel = null;
-                scoringCategory.DateCreated = scoringModelEntity.DateCreated;
                 scoringCategory.CreatedBy = scoringModelEntity.CreatedBy;
                 // copy DataOptions
                 foreach (var scoringOption in scoringCategory.ScoringOptions)
@@ -172,7 +165,6 @@ namespace Cite.Api.Services
                     scoringOption.Id = Guid.NewGuid();
                     scoringOption.ScoringCategoryId = scoringCategory.Id;
                     scoringOption.ScoringCategory = null;
-                    scoringOption.DateCreated = scoringModelEntity.DateCreated;
                     scoringOption.CreatedBy = scoringModelEntity.CreatedBy;
                 }
             }
@@ -241,10 +233,7 @@ namespace Cite.Api.Services
             if (scoringModelToUpdate == null)
                 throw new EntityNotFoundException<ScoringModel>();
 
-            scoringModel.CreatedBy = scoringModelToUpdate.CreatedBy;
-            scoringModel.DateCreated = scoringModelToUpdate.DateCreated;
             scoringModel.ModifiedBy = _user.GetId();
-            scoringModel.DateModified = DateTime.UtcNow;
             _mapper.Map(scoringModel, scoringModelToUpdate);
 
             _context.ScoringModels.Update(scoringModelToUpdate);

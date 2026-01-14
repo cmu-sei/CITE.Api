@@ -68,10 +68,7 @@ namespace Cite.Api.Services
         public async Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct)
         {
             submissionCategory.Id = submissionCategory.Id != Guid.Empty ? submissionCategory.Id : Guid.NewGuid();
-            submissionCategory.DateCreated = DateTime.UtcNow;
             submissionCategory.CreatedBy = _user.GetId();
-            submissionCategory.DateModified = null;
-            submissionCategory.ModifiedBy = null;
             var submissionCategoryEntity = _mapper.Map<SubmissionCategoryEntity>(submissionCategory);
 
             _context.SubmissionCategories.Add(submissionCategoryEntity);
@@ -87,10 +84,7 @@ namespace Cite.Api.Services
             if (submissionCategoryToUpdate == null)
                 throw new EntityNotFoundException<SubmissionCategory>();
 
-            submissionCategory.CreatedBy = submissionCategoryToUpdate.CreatedBy;
-            submissionCategory.DateCreated = submissionCategoryToUpdate.DateCreated;
             submissionCategory.ModifiedBy = _user.GetId();
-            submissionCategory.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionCategory, submissionCategoryToUpdate);
 
             _context.SubmissionCategories.Update(submissionCategoryToUpdate);

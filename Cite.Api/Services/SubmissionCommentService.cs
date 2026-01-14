@@ -73,10 +73,7 @@ namespace Cite.Api.Services
         public async Task<SubmissionComment> CreateAsync(SubmissionComment submissionComment, CancellationToken ct)
         {
             submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
-            submissionComment.DateCreated = DateTime.UtcNow;
             submissionComment.CreatedBy = _user.GetId();
-            submissionComment.DateModified = null;
-            submissionComment.ModifiedBy = null;
             var submissionCommentEntity = _mapper.Map<SubmissionCommentEntity>(submissionComment);
 
             _context.SubmissionComments.Add(submissionCommentEntity);
@@ -98,10 +95,7 @@ namespace Cite.Api.Services
             if (submissionCommentToUpdate == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
-            submissionComment.CreatedBy = submissionCommentToUpdate.CreatedBy;
-            submissionComment.DateCreated = submissionCommentToUpdate.DateCreated;
             submissionComment.ModifiedBy = _user.GetId();
-            submissionComment.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionComment, submissionCommentToUpdate);
             _context.SubmissionComments.Update(submissionCommentToUpdate);
             await _context.SaveChangesAsync(ct);

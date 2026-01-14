@@ -135,7 +135,8 @@ namespace Cite.Api.Services
                     user = new UserEntity
                     {
                         Id = subClaim,
-                        Name = nameClaim ?? "Anonymous"
+                        Name = nameClaim ?? "Anonymous",
+                        CreatedBy = subClaim
                     };
 
                     _context.Users.Add(user);

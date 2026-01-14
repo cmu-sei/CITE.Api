@@ -74,10 +74,7 @@ namespace Cite.Api.Services
         public async Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct)
         {
             submissionOption.Id = submissionOption.Id != Guid.Empty ? submissionOption.Id : Guid.NewGuid();
-            submissionOption.DateCreated = DateTime.UtcNow;
             submissionOption.CreatedBy = _user.GetId();
-            submissionOption.DateModified = null;
-            submissionOption.ModifiedBy = null;
             var submissionOptionEntity = _mapper.Map<SubmissionOptionEntity>(submissionOption);
 
             _context.SubmissionOptions.Add(submissionOptionEntity);
@@ -93,10 +90,7 @@ namespace Cite.Api.Services
             if (submissionOptionToUpdate == null)
                 throw new EntityNotFoundException<SubmissionOption>();
 
-            submissionOption.CreatedBy = submissionOptionToUpdate.CreatedBy;
-            submissionOption.DateCreated = submissionOptionToUpdate.DateCreated;
             submissionOption.ModifiedBy = _user.GetId();
-            submissionOption.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionOption, submissionOptionToUpdate);
             _context.SubmissionOptions.Update(submissionOptionToUpdate);
             await _context.SaveChangesAsync(ct);
