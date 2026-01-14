@@ -105,10 +105,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.ScoringCategory> CreateAsync(ViewModels.ScoringCategory scoringCategory, CancellationToken ct)
         {
             scoringCategory.Id = scoringCategory.Id != Guid.Empty ? scoringCategory.Id : Guid.NewGuid();
-            scoringCategory.DateCreated = DateTime.UtcNow;
             scoringCategory.CreatedBy = _user.GetId();
-            scoringCategory.DateModified = null;
-            scoringCategory.ModifiedBy = null;
             var scoringCategoryEntity = _mapper.Map<ScoringCategoryEntity>(scoringCategory);
             _context.ScoringCategories.Add(scoringCategoryEntity);
             await _context.SaveChangesAsync(ct);
@@ -123,10 +120,7 @@ namespace Cite.Api.Services
             if (scoringCategoryToUpdate == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 
-            scoringCategory.CreatedBy = scoringCategoryToUpdate.CreatedBy;
-            scoringCategory.DateCreated = scoringCategoryToUpdate.DateCreated;
             scoringCategory.ModifiedBy = _user.GetId();
-            scoringCategory.DateModified = DateTime.UtcNow;
             _mapper.Map(scoringCategory, scoringCategoryToUpdate);
             _context.ScoringCategories.Update(scoringCategoryToUpdate);
             await _context.SaveChangesAsync(ct);

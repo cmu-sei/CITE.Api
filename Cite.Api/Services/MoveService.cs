@@ -80,10 +80,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct)
         {
             move.Id = move.Id != Guid.Empty ? move.Id : Guid.NewGuid();
-            move.DateCreated = DateTime.UtcNow;
             move.CreatedBy = _user.GetId();
-            move.DateModified = null;
-            move.ModifiedBy = null;
             var moveEntity = _mapper.Map<MoveEntity>(move);
             moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
             _context.Moves.Add(moveEntity);
@@ -99,10 +96,7 @@ namespace Cite.Api.Services
             if (moveToUpdate == null)
                 throw new EntityNotFoundException<Move>();
 
-            move.CreatedBy = moveToUpdate.CreatedBy;
-            move.DateCreated = moveToUpdate.DateCreated;
             move.ModifiedBy = _user.GetId();
-            move.DateModified = DateTime.UtcNow;
             _mapper.Map(move, moveToUpdate);
             moveToUpdate.SituationTime = moveToUpdate.SituationTime.ToUniversalTime();
 

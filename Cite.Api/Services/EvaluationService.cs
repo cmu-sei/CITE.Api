@@ -159,10 +159,7 @@ namespace Cite.Api.Services
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
         {
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
-            evaluation.DateCreated = DateTime.UtcNow;
             evaluation.CreatedBy = _user.GetId();
-            evaluation.DateModified = null;
-            evaluation.ModifiedBy = null;
             // create a scoring model copy
             var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
             evaluation.ScoringModelId = newScoringModel.Id;
@@ -219,10 +216,7 @@ namespace Cite.Api.Services
             var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
             var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
             newEvaluationEntity.Id = Guid.NewGuid();
-            newEvaluationEntity.DateCreated = DateTime.UtcNow;
             newEvaluationEntity.CreatedBy = currentUserId;
-            newEvaluationEntity.DateModified = null;
-            newEvaluationEntity.ModifiedBy = null;
             newEvaluationEntity.Description = newEvaluationEntity.Description + " - " + username;
             _context.Evaluations.Add(newEvaluationEntity);
             await _context.SaveChangesAsync(ct);
@@ -233,10 +227,7 @@ namespace Cite.Api.Services
                 newTeam.Id = Guid.NewGuid();
                 newTeam.EvaluationId = newEvaluationEntity.Id;
                 newTeam.Evaluation = null;
-                newTeam.DateCreated = newEvaluationEntity.DateCreated;
                 newTeam.CreatedBy = newEvaluationEntity.CreatedBy;
-                newTeam.DateModified = null;
-                newTeam.ModifiedBy = null;
                 _context.Teams.Add(newTeam);
                 await _context.SaveChangesAsync(ct);
             }
@@ -247,10 +238,7 @@ namespace Cite.Api.Services
                 newMove.Id = Guid.NewGuid();
                 newMove.EvaluationId = newEvaluationEntity.Id;
                 newMove.Evaluation = null;
-                newMove.DateCreated = newEvaluationEntity.DateCreated;
                 newMove.CreatedBy = newEvaluationEntity.CreatedBy;
-                newMove.DateModified = null;
-                newMove.ModifiedBy = null;
                 _context.Moves.Add(newMove);
                 await _context.SaveChangesAsync(ct);
             }
@@ -386,10 +374,7 @@ namespace Cite.Api.Services
                 }
             }
             // okay to update this evaluation
-            evaluation.CreatedBy = evaluationToUpdate.CreatedBy;
-            evaluation.DateCreated = evaluationToUpdate.DateCreated;
             evaluation.ModifiedBy = _user.GetId();
-            evaluation.DateModified = DateTime.UtcNow;
             evaluation.Submissions = [];
             evaluation.ScoringModel = null;
             evaluation.Teams = [];
@@ -431,7 +416,6 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<Move>();
 
             evaluationToUpdate.ModifiedBy = _user.GetId();
-            evaluationToUpdate.DateModified = DateTime.UtcNow;
             evaluationToUpdate.CurrentMoveNumber = moveNumber;
             evaluationToUpdate.SituationDescription = move.SituationDescription;
             evaluationToUpdate.SituationTime = move.SituationTime;

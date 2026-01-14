@@ -367,10 +367,7 @@ namespace Cite.Api.Services
             if (submissionToUpdate == null)
                 throw new EntityNotFoundException<Submission>();
 
-            submission.CreatedBy = submissionToUpdate.CreatedBy;
-            submission.DateCreated = submissionToUpdate.DateCreated;
             submission.ModifiedBy = _user.GetId();
-            submission.DateModified = DateTime.UtcNow;
             _mapper.Map(submission, submissionToUpdate);
 
             _context.Submissions.Update(submissionToUpdate);
@@ -402,8 +399,6 @@ namespace Cite.Api.Services
             var isOnTeam = await _context.TeamMemberships.AnyAsync(tu => tu.UserId == _user.GetId() && tu.TeamId == submissionEntity.TeamId);
             var evaluationId = (Guid)submissionEntity.EvaluationId;
 
-            // get modified date/time
-            var modifiedDateTime = DateTime.UtcNow;
             var modifiedBy = _user.GetId();
             // Only one Modifier can be selected
             if (submissionOptionToUpdate.ScoringOption.IsModifier && value)
@@ -414,7 +409,6 @@ namespace Cite.Api.Services
                 {
                     submissionOption.IsSelected = false;
                     submissionOption.ModifiedBy = modifiedBy;
-                    submissionOption.DateModified = modifiedDateTime;
                 }
             }
             else
@@ -433,17 +427,14 @@ namespace Cite.Api.Services
                     {
                         submissionOption.IsSelected = false;
                         submissionOption.ModifiedBy = modifiedBy;
-                        submissionOption.DateModified = modifiedDateTime;
                     }
                 }
             }
             // update submission option
             submissionOptionToUpdate.IsSelected = value;
             submissionOptionToUpdate.ModifiedBy = modifiedBy;
-            submissionOptionToUpdate.DateModified = modifiedDateTime;
             // update submission
             submissionEntity.ModifiedBy = modifiedBy;
-            submissionEntity.DateModified = modifiedDateTime;
             await _context.SaveChangesAsync(ct);
             submissionEntity = await UpdateScoreAsync(ct, submissionEntity.Id);
 
@@ -465,10 +456,7 @@ namespace Cite.Api.Services
             // actually create a new submission
             var submissionEntity = _mapper.Map<SubmissionEntity>(submission);
             submissionEntity.Id = Guid.NewGuid();
-            submissionEntity.DateCreated = DateTime.UtcNow;
             submissionEntity.CreatedBy = _user.GetId();
-            submissionEntity.DateModified = null;
-            submissionEntity.ModifiedBy = null;
             submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
             submissionEntity.Evaluation = null;
             submissionEntity.ScoringModel = null;
@@ -539,7 +527,6 @@ namespace Cite.Api.Services
                     {
                         submissionOption.IsSelected = false;
                         submissionOption.ModifiedBy = _user.GetId();
-                        submissionOption.DateModified = DateTime.UtcNow;
                     }
                     foreach (var submissionComment in submissionOption.SubmissionComments)
                     {
@@ -599,7 +586,6 @@ namespace Cite.Api.Services
                         {
                             submissionOption.IsSelected = baseSubmissionOption.IsSelected;
                             submissionOption.ModifiedBy = _user.GetId();
-                            submissionOption.DateModified = DateTime.UtcNow;
                         }
                     }
                     targetSubmissionCategory.Score = baseSubmissionCategory.Score;
@@ -637,14 +623,10 @@ namespace Cite.Api.Services
 
             // Add the submission comment
             submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
-            submissionComment.DateCreated = DateTime.UtcNow;
             submissionComment.CreatedBy = _user.GetId();
-            submissionComment.DateModified = null;
-            submissionComment.ModifiedBy = null;
             var submissionCommentEntity = _mapper.Map<SubmissionCommentEntity>(submissionComment);
             _context.SubmissionComments.Add(submissionCommentEntity);
             // update and return the submission
-            submissionEntity.DateModified = submissionComment.DateCreated;
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
 
@@ -661,14 +643,10 @@ namespace Cite.Api.Services
             if (submissionCommentToUpdate == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
-            submissionComment.CreatedBy = submissionCommentToUpdate.CreatedBy;
-            submissionComment.DateCreated = submissionCommentToUpdate.DateCreated;
             submissionComment.ModifiedBy = _user.GetId();
-            submissionComment.DateModified = DateTime.UtcNow;
             _mapper.Map(submissionComment, submissionCommentToUpdate);
             _context.SubmissionComments.Update(submissionCommentToUpdate);
             // update and return the submission
-            submissionEntity.DateModified = submissionComment.DateCreated;
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
 
@@ -687,7 +665,6 @@ namespace Cite.Api.Services
             // delete the comment
             _context.SubmissionComments.Remove(submissionCommentEntity);
             // update and return the submission
-            submissionEntity.DateModified = DateTime.UtcNow;
             submissionEntity.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
@@ -1056,8 +1033,6 @@ namespace Cite.Api.Services
 
         public async Task CreateMoveSubmissions(MoveEntity move, CiteContext citeContext, CancellationToken ct)
         {
-            var dateCreated = DateTime.UtcNow;
-            var userId = _user.GetId();
             var evaluation = await citeContext.Evaluations.AsNoTracking().FirstOrDefaultAsync(m => m.Id == move.EvaluationId);
             var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
             var teams = await citeContext.Teams.AsNoTracking().Where(m => m.EvaluationId == evaluation.Id).ToListAsync(ct);
@@ -1070,9 +1045,7 @@ namespace Cite.Api.Services
                 UserId = null,
                 ScoringModelId = scoringModel.Id,
                 MoveNumber = move.MoveNumber,
-                Status = Data.Enumerations.ItemStatus.Active,
-                DateCreated = dateCreated,
-                CreatedBy = userId
+                Status = Data.Enumerations.ItemStatus.Active
             };
             await CreateNewSubmission(citeContext, officialSubmission, ct);
             foreach (var team in teams)
@@ -1085,9 +1058,7 @@ namespace Cite.Api.Services
                     UserId = null,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
-                    Status = Data.Enumerations.ItemStatus.Active,
-                    DateCreated = dateCreated,
-                    CreatedBy = userId
+                    Status = Data.Enumerations.ItemStatus.Active
                 };
                 await CreateNewSubmission(citeContext, teamSubmission, ct);
             }
@@ -1101,9 +1072,7 @@ namespace Cite.Api.Services
                     UserId = teamMembership.UserId,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
-                    Status = Data.Enumerations.ItemStatus.Active,
-                    DateCreated = dateCreated,
-                    CreatedBy = userId
+                    Status = Data.Enumerations.ItemStatus.Active
                 };
                 await CreateNewSubmission(citeContext, userSubmission, ct);
             }
@@ -1111,8 +1080,6 @@ namespace Cite.Api.Services
 
         public async Task CreateTeamSubmissions(TeamEntity team, CiteContext citeContext, CancellationToken ct)
         {
-            var dateCreated = DateTime.UtcNow;
-            var userId = _user.GetId();
             var evaluation = await citeContext.Evaluations.AsNoTracking().Include(m => m.Moves).FirstOrDefaultAsync(m => m.Id == team.EvaluationId, ct);
             var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
             foreach (var move in evaluation.Moves)
@@ -1125,9 +1092,7 @@ namespace Cite.Api.Services
                     UserId = null,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
-                    Status = Data.Enumerations.ItemStatus.Active,
-                    DateCreated = dateCreated,
-                    CreatedBy = userId
+                    Status = Data.Enumerations.ItemStatus.Active
                 };
                 await CreateNewSubmission(citeContext, submission, ct);
             }
@@ -1135,8 +1100,6 @@ namespace Cite.Api.Services
 
         public async Task CreateUserSubmissions(TeamMembershipEntity teamMembership, CiteContext citeContext, CancellationToken ct)
         {
-            var dateCreated = DateTime.UtcNow;
-            var userId = _user.GetId();
             var evaluation = await citeContext.Teams.AsNoTracking().Where(m => m.Id == teamMembership.TeamId).Select(m => m.Evaluation).FirstOrDefaultAsync(ct);
             var scoringModel = await citeContext.ScoringModels.AsNoTracking().FirstOrDefaultAsync(m => m.Id == evaluation.ScoringModelId, ct);
             var moves = await citeContext.Moves.AsNoTracking().Where(m => m.EvaluationId == evaluation.Id).ToListAsync(ct);
@@ -1150,9 +1113,7 @@ namespace Cite.Api.Services
                     UserId = teamMembership.UserId,
                     ScoringModelId = scoringModel.Id,
                     MoveNumber = move.MoveNumber,
-                    Status = Data.Enumerations.ItemStatus.Active,
-                    DateCreated = dateCreated,
-                    CreatedBy = userId
+                    Status = Data.Enumerations.ItemStatus.Active
                 };
                 await CreateNewSubmission(citeContext, submission, ct);
             }
