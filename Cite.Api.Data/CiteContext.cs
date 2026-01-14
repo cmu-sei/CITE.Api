@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data.Models;
 using Cite.Api.Data.Extensions;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Cite.Api.Data
 {
@@ -15,6 +20,9 @@ namespace Cite.Api.Data
     {
         // Needed for EventInterceptor
         public IServiceProvider ServiceProvider;
+
+        // Entity Events collected by EventTransactionInterceptor and published in SaveChanges
+        public List<INotification> Events { get; } = [];
 
         public CiteContext(DbContextOptions<CiteContext> options) : base(options) { }
 
@@ -59,10 +67,36 @@ namespace Cite.Api.Data
 
         }
 
+        public override int SaveChanges()
+        {
+            HandleAuditFields();
+            var result = base.SaveChanges();
+            PublishEvents().Wait();
+            return result;
+        }
+
         public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
         {
             HandleAuditFields();
-            return await base.SaveChangesAsync(ct);
+            var result = await base.SaveChangesAsync(ct);
+            await PublishEvents(ct);
+            return result;
+        }
+
+        private async Task PublishEvents(CancellationToken cancellationToken = default)
+        {
+            // Publish deferred events after transaction is committed and cleared
+            if (Events.Count > 0 && ServiceProvider is not null)
+            {
+                var mediator = ServiceProvider.GetRequiredService<IMediator>();
+                var eventsToPublish = Events.ToArray();
+                Events.Clear();
+
+                foreach (var evt in eventsToPublish)
+                {
+                    await mediator.Publish(evt, cancellationToken);
+                }
+            }
         }
 
         /// <summary>
@@ -98,5 +132,6 @@ namespace Cite.Api.Data
                 { }
             }
         }
+
     }
 }

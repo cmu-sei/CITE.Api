@@ -33,6 +33,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using AutoMapper.Internal;
 
 namespace Cite.Api;
+
 public class Startup
 {
     public Infrastructure.Options.AuthorizationOptions _authOptions = new Infrastructure.Options.AuthorizationOptions();
@@ -202,7 +203,7 @@ public class Startup
         services.AddScoped<ITeamTypeService, TeamTypeService>();
         services.AddScoped<IUserService, UserService>();
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-        services.AddScoped<IPrincipal>(p => p.GetService<IHttpContextAccessor>().HttpContext.User);
+        services.AddScoped<IPrincipal>(p => p.GetService<IHttpContextAccessor>()?.HttpContext?.User);
         services.AddHttpClient();
 
         ApplyPolicies(services);
