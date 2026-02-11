@@ -131,6 +131,14 @@ namespace Cite.Api.Services
             context.platform = _xApiContext.platform;
             context.language = _xApiContext.language;
 
+            // Set registration to evaluation ID if available (groups statements by evaluation session)
+            if (parentData.Count() > 0 && parentData.ContainsKey("type") && parentData.ContainsKey("id")) {
+                var parentType = parentData["type"].ToLower();
+                if (parentType == "evaluation" || parentType == "evaluations") {
+                    context.registration = Guid.Parse(parentData["id"]);
+                }
+            }
+
             if (teamId.ToString() !=  "") {
                 var team = _context.Teams.Find(teamId);
                 var group = new TinCan.Group();
