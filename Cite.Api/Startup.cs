@@ -190,6 +190,7 @@ public class Startup
         services.AddScoped<IIdentityResolver, IdentityResolver>();
         services.AddScoped<IMoveService, MoveService>();
         services.AddScoped<IXApiService, XApiService>();
+        services.AddScoped<IXApiQueueService, XApiQueueService>();
         services.AddScoped<IScoringCategoryService, ScoringCategoryService>();
         services.AddScoped<IScoringModelService, ScoringModelService>();
         services.AddScoped<IScoringModelMembershipService, ScoringModelMembershipService>();
@@ -208,6 +209,9 @@ public class Startup
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddScoped<IPrincipal>(p => p.GetService<IHttpContextAccessor>()?.HttpContext?.User);
         services.AddHttpClient();
+
+        // Register xAPI Background Service
+        services.AddHostedService<Services.XApiBackgroundService>();
 
         ApplyPolicies(services);
 

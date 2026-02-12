@@ -9,8 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data.Models;
 using Cite.Api.Data.Extensions;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -53,6 +51,7 @@ namespace Cite.Api.Data
         public DbSet<TeamMembershipEntity> TeamMemberships { get; set; }
         public DbSet<GroupEntity> Groups { get; set; }
         public DbSet<GroupMembershipEntity> GroupMemberships { get; set; }
+        public DbSet<XApiQueuedStatementEntity> XApiQueuedStatements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

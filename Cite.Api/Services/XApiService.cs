@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
+using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using TinCan;
@@ -37,10 +38,10 @@ namespace Cite.Api.Services
         private readonly ClaimsPrincipal _user;
         private readonly IAuthorizationService _authorizationService;
         private readonly XApiOptions _xApiOptions;
-        private readonly RemoteLRS _lrs;
-        private readonly Agent _agent;
-        private readonly AgentAccount _account;
-        private readonly Context _xApiContext;
+        private readonly IXApiQueueService _queueService;
+        private Agent _agent;
+        private AgentAccount _account;
+        private Context _xApiContext;
         private readonly ILogger<XApiService> _logger;
 
         public XApiService(
@@ -48,41 +49,43 @@ namespace Cite.Api.Services
             IPrincipal user,
             IAuthorizationService authorizationService,
             XApiOptions xApiOptions,
+            IXApiQueueService queueService,
             ILogger<XApiService> logger)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _authorizationService = authorizationService;
             _xApiOptions = xApiOptions;
+            _queueService = queueService;
             _logger = logger;
+        }
 
-            if (IsConfigured()) {
-                // configure LRS
-                _lrs = new TinCan.RemoteLRS(_xApiOptions.Endpoint, _xApiOptions.Username, _xApiOptions.Password);
+        private void EnsureAgentInitialized()
+        {
+            if (_agent != null || !IsConfigured())
+                return;
 
-                // configure AgentAccount
-                _account = new TinCan.AgentAccount();
-                _account.name = _user.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
-                var iss = _user.Identities.First().Claims.First(c => c.Type == "iss")?.Value;
-                if (_xApiOptions.IssuerUrl != "") {
-                    _account.homePage = new Uri(_xApiOptions.IssuerUrl);
-                } else if (iss.Contains("http")) {
-                    _account.homePage = new Uri(iss);
-                } else if (_xApiOptions.IssuerUrl == "") {
-                    _account.homePage = new Uri("http://" + iss);
-                }
-
-                // configure Agent
-                _agent = new TinCan.Agent();
-                _agent.name = _context.Users.Find(_user.GetId()).Name;
-                _agent.account = _account;
-
-                // Initialize the Context
-                _xApiContext = new Context();
-                _xApiContext.platform = _xApiOptions.Platform;
-                _xApiContext.language = "en-US";
-
+            // configure AgentAccount
+            _account = new TinCan.AgentAccount();
+            _account.name = _user.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
+            var iss = _user.Identities.First().Claims.First(c => c.Type == "iss")?.Value;
+            if (_xApiOptions.IssuerUrl != "") {
+                _account.homePage = new Uri(_xApiOptions.IssuerUrl);
+            } else if (iss.Contains("http")) {
+                _account.homePage = new Uri(iss);
+            } else if (_xApiOptions.IssuerUrl == "") {
+                _account.homePage = new Uri("http://" + iss);
             }
+
+            // configure Agent
+            _agent = new TinCan.Agent();
+            _agent.name = _context.Users.Find(_user.GetId()).Name;
+            _agent.account = _account;
+
+            // Initialize the Context
+            _xApiContext = new Context();
+            _xApiContext.platform = _xApiOptions.Platform;
+            _xApiContext.language = "en-US";
         }
 
         public Boolean IsConfigured()
@@ -104,6 +107,9 @@ namespace Cite.Api.Services
                 return false;
             };
 
+            // Initialize agent lazily (only when needed, not in constructor)
+            EnsureAgentInitialized();
+
             var verb = new Verb();
             verb.id = verbUri;
             verb.display = new LanguageMap();
@@ -124,6 +130,14 @@ namespace Cite.Api.Services
             var context = new Context();
             context.platform = _xApiContext.platform;
             context.language = _xApiContext.language;
+
+            // Set registration to evaluation ID if available (groups statements by evaluation session)
+            if (parentData.Count() > 0 && parentData.ContainsKey("type") && parentData.ContainsKey("id")) {
+                var parentType = parentData["type"].ToLower();
+                if (parentType == "evaluation" || parentType == "evaluations") {
+                    context.registration = Guid.Parse(parentData["id"]);
+                }
+            }
 
             if (teamId.ToString() !=  "") {
                 var team = _context.Teams.Find(teamId);
@@ -154,7 +168,10 @@ namespace Cite.Api.Services
                     }
                     group.member.Add(targetUser);
                 }
-                context.team = group;
+                // Note: TinCan library has a bug where Group serializes with objectType="Agent" instead of "Group"
+                // This causes LRS validation errors. Commenting out for now.
+                // TODO: Either fix TinCan serialization or migrate to Mos.xApi
+                // context.team = group;
             }
 
             var contextActivities = new ContextActivities();
@@ -238,17 +255,27 @@ namespace Cite.Api.Services
                 statement.result = result;
             }
 
-            TinCan.LRSResponses.StatementLRSResponse lrsStatementResponse = _lrs.SaveStatement(statement);
-            if (lrsStatementResponse.success)
+            // Queue the statement instead of sending directly
+            try
             {
-                // List of statements available
-                _logger.LogInformation("LRS saved statement from xAPI Service");
-            } else {
-                _logger.LogError("ERROR FROM LRS VIA XAPI SERVICE: " + lrsStatementResponse.errMsg);
+                var queuedStatement = new XApiQueuedStatementEntity
+                {
+                    StatementJson = statement.ToJSON(true),
+                    Verb = verbUri.ToString(),
+                    ActivityId = activity.id,
+                    TeamId = teamId != Guid.Empty ? teamId : null,
+                    CreatedBy = _user.GetId()
+                };
+
+                await _queueService.EnqueueAsync(queuedStatement, ct);
+                _logger.LogInformation("Queued xAPI statement for verb {Verb}", verbUri);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to queue xAPI statement");
                 return false;
             }
-
-            return true;
         }
 
 
