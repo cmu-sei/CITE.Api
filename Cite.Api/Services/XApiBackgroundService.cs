@@ -9,12 +9,11 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Cite.Api.Services;
 using Cite.Api.Infrastructure.Options;
 using TinCan;
 using Newtonsoft.Json;
 
-namespace Cite.Api.Infrastructure.HostedServices
+namespace Cite.Api.Services
 {
     public class XApiBackgroundService : BackgroundService
     {

@@ -9,8 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data.Models;
 using Cite.Api.Data.Extensions;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 

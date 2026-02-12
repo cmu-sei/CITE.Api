@@ -211,7 +211,7 @@ public class Startup
         services.AddHttpClient();
 
         // Register xAPI Background Service
-        services.AddHostedService<Infrastructure.HostedServices.XApiBackgroundService>();
+        services.AddHostedService<Services.XApiBackgroundService>();
 
         ApplyPolicies(services);
 
