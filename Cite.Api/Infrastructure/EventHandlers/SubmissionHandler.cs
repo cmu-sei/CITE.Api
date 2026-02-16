@@ -9,6 +9,7 @@ using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Hubs;

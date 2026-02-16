@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
+using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Services;
