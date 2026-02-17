@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Cite.Api.Infrastructure.EventHandlers;
 using Cite.Api.Infrastructure.Extensions;
+using Crucible.Common.EntityEvents.Extensions;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Identity;
 using Cite.Api.Infrastructure.JsonConverters;
@@ -70,25 +70,21 @@ public class Startup
         switch (provider)
         {
             case "InMemory":
-                services.AddPooledDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
-                   .AddInterceptors(serviceProvider.GetRequiredService<EventInterceptor>())
+                services.AddEventPublishingDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
                    .UseInMemoryDatabase("api"));
                 break;
             case "Sqlite":
-                services.AddPooledDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
-                    .AddInterceptors(serviceProvider.GetRequiredService<EventInterceptor>())
+                services.AddEventPublishingDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
                     .UseConfiguredDatabase(Configuration))
                     .AddHealthChecks().AddSqlite(connectionString, tags: new[] { "ready", "live" });
                 break;
             case "SqlServer":
-                services.AddPooledDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
-                    .AddInterceptors(serviceProvider.GetRequiredService<EventInterceptor>())
+                services.AddEventPublishingDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
                     .UseConfiguredDatabase(Configuration))
                     .AddHealthChecks().AddSqlServer(connectionString, tags: new[] { "ready", "live" });
                 break;
             case "PostgreSQL":
-                services.AddPooledDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
-                    .AddInterceptors(serviceProvider.GetRequiredService<EventInterceptor>())
+                services.AddEventPublishingDbContextFactory<CiteContext>((serviceProvider, optionsBuilder) => optionsBuilder
                     .UseConfiguredDatabase(Configuration))
                     .AddHealthChecks().AddNpgSql(connectionString, tags: new[] { "ready", "live" });
                 break;
@@ -110,9 +106,6 @@ public class Startup
         services
             .Configure<ClientOptions>(Configuration.GetSection("ClientSettings"))
             .AddScoped(config => config.GetService<IOptionsMonitor<ClientOptions>>().CurrentValue);
-
-        services.AddScoped<CiteContextFactory>();
-        services.AddScoped(sp => sp.GetRequiredService<CiteContextFactory>().CreateDbContext());
 
         services.AddScoped<IClaimsTransformation, AuthorizationClaimsTransformer>();
         services.AddScoped<IUserClaimsService, UserClaimsService>();
@@ -215,7 +208,6 @@ public class Startup
 
         ApplyPolicies(services);
 
-        services.AddTransient<EventInterceptor>();
         services.AddAutoMapper(cfg =>
         {
             cfg.Internal().ForAllPropertyMaps(
