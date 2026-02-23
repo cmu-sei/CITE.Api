@@ -78,10 +78,12 @@ namespace Cite.Api.Data
 
         protected override async Task PublishEventsAsync(CancellationToken cancellationToken)
         {
-            if (EntityEvents.Count > 0 && ServiceProvider is not null)
+            while (EntityEvents.Count > 0 && ServiceProvider is not null)
             {
                 var mediator = ServiceProvider.GetRequiredService<IMediator>();
-                foreach (var evt in EntityEvents.Cast<INotification>())
+                var events = EntityEvents.ToList();
+                EntityEvents.Clear();
+                foreach (var evt in events.Cast<INotification>())
                 {
                     await mediator.Publish(evt, cancellationToken);
                 }
