@@ -181,7 +181,8 @@ namespace Cite.Api.Services
                 move.EvaluationId = evaluation.Id;
                 await _moveService.CreateAsync(move, ct);
             }
-            var createOwnerMembership = new EvaluationMembershipEntity() {
+            var createOwnerMembership = new EvaluationMembershipEntity()
+            {
                 UserId = _user.GetId(),
                 EvaluationId = evaluationEntity.Id,
                 RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
