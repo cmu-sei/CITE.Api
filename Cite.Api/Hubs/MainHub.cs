@@ -216,5 +216,6 @@ namespace Cite.Api.Hubs
         public const string EvaluationMembershipCreated = "EvaluationMembershipCreated";
         public const string EvaluationMembershipUpdated = "EvaluationMembershipUpdated";
         public const string EvaluationMembershipDeleted = "EvaluationMembershipDeleted";
+        public const string ScoringModelCopyProgress = "ScoringModelCopyProgress";
     }
 }
