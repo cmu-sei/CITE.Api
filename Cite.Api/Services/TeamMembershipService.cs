@@ -93,18 +93,19 @@ namespace Cite.Api.Services
 
             if (existingMembership != null)
             {
-                _logger.LogWarning($"User {teamMembership.UserId} is already a member of team {teamMembership.TeamId}");
+                _logger.LogWarning("User {UserId} is already a member of team {TeamId}", teamMembership.UserId, teamMembership.TeamId);
                 throw new InvalidOperationException($"User is already a member of this team");
             }
 
-            _logger.LogInformation($"Adding user {teamMembership.UserId} to team {teamMembership.TeamId} ({team.Name}) in evaluation {team.EvaluationId}");
+            _logger.LogInformation("Adding user {UserId} to team {TeamId} ({TeamName}) in evaluation {EvaluationId}",
+                teamMembership.UserId, teamMembership.TeamId, team.Name, team.EvaluationId);
 
             var teamMembershipEntity = _mapper.Map<TeamMembershipEntity>(teamMembership);
 
             _context.TeamMemberships.Add(teamMembershipEntity);
             await _context.SaveChangesAsync(ct);
 
-            _logger.LogInformation($"Successfully added user {teamMembership.UserId} to team {teamMembership.TeamId}");
+            _logger.LogInformation("Successfully added user {UserId} to team {TeamId}", teamMembership.UserId, teamMembership.TeamId);
 
             var result = await GetAsync(teamMembershipEntity.Id, ct);
             return result;

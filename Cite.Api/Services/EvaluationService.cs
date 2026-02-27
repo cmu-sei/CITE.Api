@@ -172,7 +172,8 @@ namespace Cite.Api.Services
             if (!scoringModelExists)
                 throw new EntityNotFoundException<ScoringModel>($"ScoringModel {evaluation.ScoringModelId} not found");
 
-            _logger.LogInformation($"Creating evaluation '{evaluation.Description}' with ScoringModel {evaluation.ScoringModelId}");
+            _logger.LogInformation("Creating evaluation '{Description}' with ScoringModel {ScoringModelId}",
+                evaluation.Description, evaluation.ScoringModelId);
 
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
@@ -211,7 +212,8 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             await _userClaimsService.RefreshClaims(_user.GetId());
 
-            _logger.LogInformation($"Successfully created evaluation '{evaluation.Description}' ({evaluation.Id})");
+            _logger.LogInformation("Successfully created evaluation '{Description}' ({EvaluationId})",
+                evaluation.Description, evaluation.Id);
 
             return await GetAsync(evaluation.Id, ct);
         }
