@@ -167,22 +167,18 @@ namespace Cite.Api.Services
 
             try
             {
-                // Step 1: Create the scoring model (without categories)
-                var newScoringModel = new ScoringModelEntity
-                {
-                    Id = newScoringModelId,
-                    CreatedBy = currentUserId,
-                    Description = scoringModelEntity.Description + " - " + username,
-                    Status = scoringModelEntity.Status,
-                    EvaluationId = scoringModelEntity.EvaluationId
-                };
+                // Step 1: Create the scoring model using AutoMapper to copy all scalar properties
+                var newScoringModel = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(scoringModelEntity);
+                newScoringModel.Id = newScoringModelId;
+                newScoringModel.CreatedBy = currentUserId;
+                newScoringModel.Description = scoringModelEntity.Description + " - " + username;
 
                 _context.ScoringModels.Add(newScoringModel);
                 await _context.SaveChangesAsync(ct);
                 _logger.LogInformation($"Created scoring model {newScoringModelId}");
 
-                // Step 2: Batch insert scoring categories and options
-                const int batchSize = 10; // Process 10 categories at a time
+                // Step 2: Batch insert scoring categories and options using AutoMapper
+                const int batchSize = 10;
                 var categoriesProcessed = 0;
                 var optionsProcessed = 0;
 
@@ -192,33 +188,20 @@ namespace Cite.Api.Services
 
                     foreach (var originalCategory in batch)
                     {
-                        var newCategory = new ScoringCategoryEntity
-                        {
-                            Id = Guid.NewGuid(),
-                            ScoringModelId = newScoringModelId,
-                            CreatedBy = currentUserId,
-                            Description = originalCategory.Description,
-                            DisplayOrder = originalCategory.DisplayOrder,
-                            ScoringWeight = originalCategory.ScoringWeight,
-                            CalculationEquation = originalCategory.CalculationEquation,
-                            ScoringOptions = new List<ScoringOptionEntity>()
-                        };
+                        var newCategory = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(originalCategory);
+                        newCategory.Id = Guid.NewGuid();
+                        newCategory.ScoringModelId = newScoringModelId;
+                        newCategory.CreatedBy = currentUserId;
+                        newCategory.ScoringOptions = new List<ScoringOptionEntity>();
 
-                        // Copy scoring options for this category
                         if (originalCategory.ScoringOptions != null)
                         {
                             foreach (var originalOption in originalCategory.ScoringOptions)
                             {
-                                var newOption = new ScoringOptionEntity
-                                {
-                                    Id = Guid.NewGuid(),
-                                    ScoringCategoryId = newCategory.Id,
-                                    CreatedBy = currentUserId,
-                                    Description = originalOption.Description,
-                                    DisplayOrder = originalOption.DisplayOrder,
-                                    Value = originalOption.Value,
-                                    IsModifier = originalOption.IsModifier
-                                };
+                                var newOption = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(originalOption);
+                                newOption.Id = Guid.NewGuid();
+                                newOption.ScoringCategoryId = newCategory.Id;
+                                newOption.CreatedBy = currentUserId;
                                 newCategory.ScoringOptions.Add(newOption);
                             }
                         }

@@ -19,7 +19,10 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<EvaluationEntity, EvaluationEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore())
                 .ForMember(e => e.Moves, opt => opt.Ignore())
-                .ForMember(e => e.Teams, opt => opt.Ignore());
+                .ForMember(e => e.Teams, opt => opt.Ignore())
+                .ForMember(e => e.ScoringModel, opt => opt.Ignore())
+                .ForMember(e => e.Submissions, opt => opt.Ignore())
+                .ForMember(e => e.Memberships, opt => opt.Ignore());
 
         }
     }
