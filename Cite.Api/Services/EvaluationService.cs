@@ -23,8 +23,6 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
-using Microsoft.Data.SqlClient;
-using Npgsql;
 
 namespace Cite.Api.Services
 {
@@ -160,127 +158,62 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
         {
-            try
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(evaluation.Description))
+                throw new ArgumentException("Evaluation description is required");
+
+            if (evaluation.ScoringModelId == Guid.Empty)
+                throw new ArgumentException("ScoringModelId is required");
+
+            // Validate that the scoring model exists
+            var scoringModelExists = await _context.ScoringModels
+                .AnyAsync(sm => sm.Id == evaluation.ScoringModelId, ct);
+
+            if (!scoringModelExists)
+                throw new EntityNotFoundException<ScoringModel>($"ScoringModel {evaluation.ScoringModelId} not found");
+
+            _logger.LogInformation($"Creating evaluation '{evaluation.Description}' with ScoringModel {evaluation.ScoringModelId}");
+
+            evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
+            evaluation.CreatedBy = _user.GetId();
+
+            // create a scoring model copy
+            var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
+            evaluation.ScoringModelId = newScoringModel.Id;
+            var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
+            evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
+            _context.Evaluations.Add(evaluationEntity);
+            await _context.SaveChangesAsync(ct);
+            evaluation = await GetAsync(evaluationEntity.Id, ct);
+
+            // update the scoring model evaluation ID
+            newScoringModel.EvaluationId = evaluation.Id;
+            await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
+
+            // create a default move, if necessary
+            if (evaluation.Moves.Count() == 0)
             {
-                // Validate required fields
-                if (string.IsNullOrWhiteSpace(evaluation.Description))
-                {
-                    _logger.LogError("Evaluation creation failed: Description is required");
-                    throw new ArgumentException("Evaluation description is required");
-                }
-
-                if (evaluation.ScoringModelId == Guid.Empty)
-                {
-                    _logger.LogError("Evaluation creation failed: ScoringModelId is required");
-                    throw new ArgumentException("ScoringModelId is required");
-                }
-
-                // Validate that the scoring model exists
-                var scoringModelExists = await _context.ScoringModels
-                    .AnyAsync(sm => sm.Id == evaluation.ScoringModelId, ct);
-
-                if (!scoringModelExists)
-                {
-                    _logger.LogError($"Evaluation creation failed: ScoringModel {evaluation.ScoringModelId} not found");
-                    throw new EntityNotFoundException<ScoringModel>($"ScoringModel {evaluation.ScoringModelId} not found");
-                }
-
-                _logger.LogInformation($"Creating evaluation '{evaluation.Description}' with ScoringModel {evaluation.ScoringModelId}");
-
-                evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
-                evaluation.CreatedBy = _user.GetId();
-
-                // create a scoring model copy
-                var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
-                evaluation.ScoringModelId = newScoringModel.Id;
-                var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
-                evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
-                _context.Evaluations.Add(evaluationEntity);
-                await _context.SaveChangesAsync(ct);
-                evaluation = await GetAsync(evaluationEntity.Id, ct);
-
-                // update the scoring model evaluation ID
-                newScoringModel.EvaluationId = evaluation.Id;
-                await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
-
-                // create a default move, if necessary
-                if (evaluation.Moves.Count() == 0)
-                {
-                    ViewModels.Move move = new Move();
-                    move.Description = "Default Move";
-                    move.MoveNumber = 0;
-                    move.SituationTime = evaluation.SituationTime;
-                    move.EvaluationId = evaluation.Id;
-                    await _moveService.CreateAsync(move, ct);
-                }
-
-                var createOwnerMembership = new EvaluationMembershipEntity()
-                {
-                    UserId = _user.GetId(),
-                    EvaluationId = evaluationEntity.Id,
-                    RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
-                };
-                await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
-                await _context.SaveChangesAsync(ct);
-                await _userClaimsService.RefreshClaims(_user.GetId());
-
-                _logger.LogInformation($"Successfully created evaluation '{evaluation.Description}' ({evaluation.Id})");
-
-                return await GetAsync(evaluation.Id, ct);
+                ViewModels.Move move = new Move();
+                move.Description = "Default Move";
+                move.MoveNumber = 0;
+                move.SituationTime = evaluation.SituationTime;
+                move.EvaluationId = evaluation.Id;
+                await _moveService.CreateAsync(move, ct);
             }
-            catch (DbUpdateException ex)
+
+            var createOwnerMembership = new EvaluationMembershipEntity()
             {
-                var message = $"Database error creating evaluation '{evaluation.Description}': {ex.Message}";
-                _logger.LogError(ex, message);
+                UserId = _user.GetId(),
+                EvaluationId = evaluationEntity.Id,
+                RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
+            };
+            await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
+            await _context.SaveChangesAsync(ct);
+            await _userClaimsService.RefreshClaims(_user.GetId());
 
-                // Handle database-specific errors
-                if (ex.InnerException is PostgresException pgEx)
-                {
-                    switch (pgEx.SqlState)
-                    {
-                        case "23505": // unique_violation
-                            throw new InvalidOperationException($"An evaluation with this description already exists");
-                        case "23503": // foreign_key_violation
-                            throw new InvalidOperationException($"Invalid reference: {pgEx.MessageText}");
-                        case "23514": // check_violation
-                            throw new InvalidOperationException($"Data validation failed: {pgEx.MessageText}");
-                        default:
-                            throw new InvalidOperationException($"Database constraint violation: {pgEx.MessageText}", ex);
-                    }
-                }
-                else if (ex.InnerException is SqlException sqlEx)
-                {
-                    switch (sqlEx.Number)
-                    {
-                        case 2601:
-                        case 2627: // unique constraint
-                            throw new InvalidOperationException($"An evaluation with this description already exists");
-                        case 547: // foreign key violation
-                            throw new InvalidOperationException($"Invalid foreign key reference");
-                        default:
-                            throw new InvalidOperationException($"Database error: {sqlEx.Message}", ex);
-                    }
-                }
+            _logger.LogInformation($"Successfully created evaluation '{evaluation.Description}' ({evaluation.Id})");
 
-                throw new InvalidOperationException(message, ex);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogWarning($"Evaluation creation cancelled for '{evaluation.Description}'");
-                throw;
-            }
-            catch (TimeoutException ex)
-            {
-                var message = $"Timeout creating evaluation '{evaluation.Description}'";
-                _logger.LogError(ex, message);
-                throw new InvalidOperationException(message, ex);
-            }
-            catch (Exception ex) when (ex is not ArgumentException && ex is not EntityNotFoundException<ScoringModel> && ex is not InvalidOperationException)
-            {
-                var message = $"Unexpected error creating evaluation '{evaluation.Description}'";
-                _logger.LogError(ex, message);
-                throw new InvalidOperationException(message, ex);
-            }
+            return await GetAsync(evaluation.Id, ct);
         }
 
         public async Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct)
