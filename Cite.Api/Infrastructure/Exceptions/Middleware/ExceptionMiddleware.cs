@@ -55,7 +55,7 @@ namespace Cite.Api.Infrastructure.Exceptions.Middleware
                     ex = TransformSqlServerException(sqlEx);
                 }
 
-                _logger.LogError($"Unhandled Exception: {ex}");
+                _logger.LogError(ex, "Unhandled Exception");
 
                 await HandleExceptionAsync(httpContext, ex);
             }
@@ -116,7 +116,8 @@ namespace Cite.Api.Infrastructure.Exceptions.Middleware
         private Exception TransformPostgresException(PostgresException pgEx)
         {
             // Log detailed error for developers/ops
-            _logger.LogError($"PostgreSQL {pgEx.SqlState}: Table={pgEx.TableName}, Constraint={pgEx.ConstraintName}, Message={pgEx.MessageText}");
+            _logger.LogError(pgEx, "PostgreSQL {SqlState}: Table={TableName}, Constraint={ConstraintName}",
+                pgEx.SqlState, pgEx.TableName, pgEx.ConstraintName);
 
             // Always return generic user-friendly messages
             return pgEx.SqlState switch
@@ -142,7 +143,7 @@ namespace Cite.Api.Infrastructure.Exceptions.Middleware
         private Exception TransformSqlServerException(SqlException sqlEx)
         {
             // Log detailed error for developers/ops
-            _logger.LogError($"SQL Server Error {sqlEx.Number}: {sqlEx.Message}");
+            _logger.LogError(sqlEx, "SQL Server Error {ErrorNumber}", sqlEx.Number);
 
             // Always return generic user-friendly messages
             return sqlEx.Number switch
