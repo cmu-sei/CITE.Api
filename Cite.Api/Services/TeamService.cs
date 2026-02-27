@@ -19,6 +19,8 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.ViewModels;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace Cite.Api.Services
 {
@@ -118,14 +120,112 @@ namespace Cite.Api.Services
 
         public async Task<Team> CreateAsync(Team team, CancellationToken ct)
         {
-            team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
-            team.CreatedBy = _user.GetId();
-            var teamEntity = _mapper.Map<TeamEntity>(team);
+            try
+            {
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(team.Name))
+                {
+                    _logger.LogError("Team creation failed: Name is required");
+                    throw new ArgumentException("Team name is required");
+                }
 
-            _context.Teams.Add(teamEntity);
-            await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {team.Name} ({teamEntity.Id}) in Evaluation {team.EvaluationId} created by {_user.GetId()}");
-            return await GetAsync(teamEntity.Id, ct);
+                if (team.EvaluationId == Guid.Empty)
+                {
+                    _logger.LogError("Team creation failed: EvaluationId is required");
+                    throw new ArgumentException("EvaluationId is required");
+                }
+
+                // Validate that the evaluation exists
+                var evaluationExists = await _context.Evaluations
+                    .AnyAsync(e => e.Id == team.EvaluationId, ct);
+
+                if (!evaluationExists)
+                {
+                    _logger.LogError($"Team creation failed: Evaluation {team.EvaluationId} not found");
+                    throw new EntityNotFoundException<Evaluation>($"Evaluation {team.EvaluationId} not found");
+                }
+
+                // Validate that the team type exists if specified
+                if (team.TeamTypeId != Guid.Empty)
+                {
+                    var teamTypeExists = await _context.TeamTypes
+                        .AnyAsync(tt => tt.Id == team.TeamTypeId, ct);
+
+                    if (!teamTypeExists)
+                    {
+                        _logger.LogError($"Team creation failed: TeamType {team.TeamTypeId} not found");
+                        throw new EntityNotFoundException<TeamType>($"TeamType {team.TeamTypeId} not found");
+                    }
+                }
+
+                team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
+                team.CreatedBy = _user.GetId();
+                var teamEntity = _mapper.Map<TeamEntity>(team);
+
+                _context.Teams.Add(teamEntity);
+
+                _logger.LogInformation($"Creating team {team.Name} ({team.Id}) in Evaluation {team.EvaluationId} with TeamType {team.TeamTypeId}");
+
+                await _context.SaveChangesAsync(ct);
+
+                _logger.LogWarning($"Team {team.Name} ({teamEntity.Id}) in Evaluation {team.EvaluationId} created by {_user.GetId()}");
+
+                return await GetAsync(teamEntity.Id, ct);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Handle database-specific errors
+                var message = $"Database error creating team {team.Name} in Evaluation {team.EvaluationId}: {ex.Message}";
+                _logger.LogError(ex, message);
+
+                // Check for specific constraint violations
+                if (ex.InnerException is PostgresException pgEx)
+                {
+                    switch (pgEx.SqlState)
+                    {
+                        case "23505": // unique_violation
+                            throw new InvalidOperationException($"A team with this name already exists in the evaluation");
+                        case "23503": // foreign_key_violation
+                            throw new InvalidOperationException($"Invalid reference: {pgEx.MessageText}");
+                        case "23514": // check_violation
+                            throw new InvalidOperationException($"Data validation failed: {pgEx.MessageText}");
+                        default:
+                            throw new InvalidOperationException($"Database constraint violation: {pgEx.MessageText}", ex);
+                    }
+                }
+                else if (ex.InnerException is SqlException sqlEx)
+                {
+                    switch (sqlEx.Number)
+                    {
+                        case 2601:
+                        case 2627: // unique constraint violation
+                            throw new InvalidOperationException($"A team with this name already exists in the evaluation");
+                        case 547: // foreign key violation
+                            throw new InvalidOperationException($"Invalid foreign key reference");
+                        default:
+                            throw new InvalidOperationException($"Database error: {sqlEx.Message}", ex);
+                    }
+                }
+
+                throw new InvalidOperationException(message, ex);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning($"Team creation cancelled for {team.Name} in Evaluation {team.EvaluationId}");
+                throw;
+            }
+            catch (TimeoutException ex)
+            {
+                var message = $"Timeout creating team {team.Name} in Evaluation {team.EvaluationId}";
+                _logger.LogError(ex, message);
+                throw new InvalidOperationException(message, ex);
+            }
+            catch (Exception ex) when (ex is not ArgumentException && ex is not EntityNotFoundException<Evaluation> && ex is not EntityNotFoundException<TeamType> && ex is not InvalidOperationException)
+            {
+                var message = $"Unexpected error creating team {team.Name} in Evaluation {team.EvaluationId}";
+                _logger.LogError(ex, message);
+                throw new InvalidOperationException(message, ex);
+            }
         }
 
         public async Task<Team> UpdateAsync(Guid id, Team team, CancellationToken ct)
