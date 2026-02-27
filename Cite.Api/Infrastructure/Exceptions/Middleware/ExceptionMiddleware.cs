@@ -81,7 +81,7 @@ namespace Cite.Api.Infrastructure.Exceptions.Middleware
                 else
                 {
                     error.Title = "A server error occurred.";
-                    error.Detail = "An unexpected error occurred. Please contact support if the problem persists.";
+                    error.Detail = exception.Message;
                 }
             }
             else
