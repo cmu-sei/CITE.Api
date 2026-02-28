@@ -238,7 +238,7 @@ namespace Cite.Api.Services
         private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEvaluationEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
+            var username = await _context.Users.Where(u => u.Id == currentUserId).Select(u => u.Name).FirstOrDefaultAsync(ct) ?? "Unknown";
             var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
             newEvaluationEntity.Id = Guid.NewGuid();
             newEvaluationEntity.CreatedBy = currentUserId;
