@@ -97,8 +97,8 @@ namespace Cite.Api.Services
                 throw new InvalidOperationException($"User is already a member of this team");
             }
 
-            _logger.LogInformation("Adding user {UserId} to team {TeamId} ({TeamName}) in evaluation {EvaluationId}",
-                teamMembership.UserId, teamMembership.TeamId, team.Name, team.EvaluationId);
+            _logger.LogInformation("Adding user {UserId} to team {TeamId} in evaluation {EvaluationId}",
+                teamMembership.UserId, teamMembership.TeamId, team.EvaluationId);
 
             var teamMembershipEntity = _mapper.Map<TeamMembershipEntity>(teamMembership);
 
