@@ -118,13 +118,44 @@ namespace Cite.Api.Services
 
         public async Task<Team> CreateAsync(Team team, CancellationToken ct)
         {
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(team.Name))
+                throw new ArgumentException("Team name is required");
+
+            if (team.EvaluationId == Guid.Empty)
+                throw new ArgumentException("EvaluationId is required");
+
+            // Validate that the evaluation exists
+            var evaluationExists = await _context.Evaluations
+                .AnyAsync(e => e.Id == team.EvaluationId, ct);
+
+            if (!evaluationExists)
+                throw new EntityNotFoundException<Evaluation>($"Evaluation {team.EvaluationId} not found");
+
+            // Validate that the team type exists if specified
+            if (team.TeamTypeId != Guid.Empty)
+            {
+                var teamTypeExists = await _context.TeamTypes
+                    .AnyAsync(tt => tt.Id == team.TeamTypeId, ct);
+
+                if (!teamTypeExists)
+                    throw new EntityNotFoundException<TeamType>($"TeamType {team.TeamTypeId} not found");
+            }
+
             team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
             team.CreatedBy = _user.GetId();
             var teamEntity = _mapper.Map<TeamEntity>(team);
 
             _context.Teams.Add(teamEntity);
+
+            _logger.LogInformation("Creating team {TeamId} in Evaluation {EvaluationId} with TeamType {TeamTypeId}",
+                team.Id, team.EvaluationId, team.TeamTypeId);
+
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {team.Name} ({teamEntity.Id}) in Evaluation {team.EvaluationId} created by {_user.GetId()}");
+
+            _logger.LogWarning("Team {TeamId} in Evaluation {EvaluationId} created by {UserId}",
+                teamEntity.Id, team.EvaluationId, _user.GetId());
+
             return await GetAsync(teamEntity.Id, ct);
         }
 
@@ -142,11 +173,13 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
             if (teamTypeChanged)
             {
-                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} changed to TeamType {team.TeamTypeId} by {_user.GetId()}");
+                _logger.LogWarning("Team {TeamId} in Evaluation {EvaluationId} changed to TeamType {TeamTypeId} by {UserId}",
+                    teamToUpdate.Id, team.EvaluationId, team.TeamTypeId, _user.GetId());
             }
             else
             {
-                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} updated by {_user.GetId()}");
+                _logger.LogWarning("Team {TeamId} in Evaluation {EvaluationId} updated by {UserId}",
+                    teamToUpdate.Id, team.EvaluationId, _user.GetId());
             }
             return await GetAsync(id, ct);
         }
@@ -159,7 +192,8 @@ namespace Cite.Api.Services
 
             _context.Teams.Remove(teamToDelete);
             await _context.SaveChangesAsync(ct);
-            _logger.LogWarning($"Team {teamToDelete.Name} ({teamToDelete.Id}) in Evaluation {teamToDelete.EvaluationId} deleted by {_user.GetId()}");
+            _logger.LogWarning("Team {TeamId} in Evaluation {EvaluationId} deleted by {UserId}",
+                teamToDelete.Id, teamToDelete.EvaluationId, _user.GetId());
             await DeleteTeamSubmissions((Guid)teamToDelete.EvaluationId, teamToDelete.Id, ct);
             return true;
         }

@@ -15,6 +15,7 @@ using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
 using System.Linq;
 using Cite.Api.Data.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Cite.Api.Services
 {
@@ -32,12 +33,14 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
+        private readonly ILogger<ITeamMembershipService> _logger;
 
-        public TeamMembershipService(CiteContext context, IPrincipal user, IMapper mapper)
+        public TeamMembershipService(CiteContext context, IPrincipal user, IMapper mapper, ILogger<ITeamMembershipService> logger)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async STT.Task<TeamMembership> GetAsync(Guid id, CancellationToken ct)
@@ -62,13 +65,50 @@ namespace Cite.Api.Services
 
         public async STT.Task<TeamMembership> CreateAsync(TeamMembership teamMembership, CancellationToken ct)
         {
+            // Validate required fields
+            if (teamMembership.TeamId == Guid.Empty)
+                throw new ArgumentException("TeamId is required");
+
+            if (teamMembership.UserId == Guid.Empty)
+                throw new ArgumentException("UserId is required");
+
+            // Validate that the team exists
+            var team = await _context.Teams
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == teamMembership.TeamId, ct);
+
+            if (team == null)
+                throw new EntityNotFoundException<Team>($"Team {teamMembership.TeamId} not found");
+
+            // Validate that the user exists
+            var userExists = await _context.Users
+                .AnyAsync(u => u.Id == teamMembership.UserId, ct);
+
+            if (!userExists)
+                throw new EntityNotFoundException<User>($"User {teamMembership.UserId} not found");
+
+            // Check for duplicate membership
+            var existingMembership = await _context.TeamMemberships
+                .FirstOrDefaultAsync(tm => tm.TeamId == teamMembership.TeamId && tm.UserId == teamMembership.UserId, ct);
+
+            if (existingMembership != null)
+            {
+                _logger.LogWarning("User {UserId} is already a member of team {TeamId}", teamMembership.UserId, teamMembership.TeamId);
+                throw new InvalidOperationException($"User is already a member of this team");
+            }
+
+            _logger.LogInformation("Adding user {UserId} to team {TeamId} in evaluation {EvaluationId}",
+                teamMembership.UserId, teamMembership.TeamId, team.EvaluationId);
+
             var teamMembershipEntity = _mapper.Map<TeamMembershipEntity>(teamMembership);
 
             _context.TeamMemberships.Add(teamMembershipEntity);
             await _context.SaveChangesAsync(ct);
-            var team = await GetAsync(teamMembershipEntity.Id, ct);
 
-            return team;
+            _logger.LogInformation("Successfully added user {UserId} to team {TeamId}", teamMembership.UserId, teamMembership.TeamId);
+
+            var result = await GetAsync(teamMembershipEntity.Id, ct);
+            return result;
         }
         public async STT.Task<TeamMembership> UpdateAsync(Guid id, TeamMembership teamMembership, CancellationToken ct)
         {

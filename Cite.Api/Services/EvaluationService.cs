@@ -158,8 +158,26 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
         {
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(evaluation.Description))
+                throw new ArgumentException("Evaluation description is required");
+
+            if (evaluation.ScoringModelId == Guid.Empty)
+                throw new ArgumentException("ScoringModelId is required");
+
+            // Validate that the scoring model exists
+            var scoringModelExists = await _context.ScoringModels
+                .AnyAsync(sm => sm.Id == evaluation.ScoringModelId, ct);
+
+            if (!scoringModelExists)
+                throw new EntityNotFoundException<ScoringModel>($"ScoringModel {evaluation.ScoringModelId} not found");
+
+            _logger.LogInformation("Creating evaluation {EvaluationId} with ScoringModel {ScoringModelId}",
+                evaluation.Id, evaluation.ScoringModelId);
+
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
+
             // create a scoring model copy
             var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
             evaluation.ScoringModelId = newScoringModel.Id;
@@ -168,9 +186,11 @@ namespace Cite.Api.Services
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
+
             // update the scoring model evaluation ID
             newScoringModel.EvaluationId = evaluation.Id;
             await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
+
             // create a default move, if necessary
             if (evaluation.Moves.Count() == 0)
             {
@@ -181,6 +201,7 @@ namespace Cite.Api.Services
                 move.EvaluationId = evaluation.Id;
                 await _moveService.CreateAsync(move, ct);
             }
+
             var createOwnerMembership = new EvaluationMembershipEntity()
             {
                 UserId = _user.GetId(),
@@ -190,6 +211,9 @@ namespace Cite.Api.Services
             await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
             await _context.SaveChangesAsync(ct);
             await _userClaimsService.RefreshClaims(_user.GetId());
+
+            _logger.LogInformation("Successfully created evaluation {EvaluationId}",
+                evaluation.Id);
 
             return await GetAsync(evaluation.Id, ct);
         }
@@ -214,7 +238,7 @@ namespace Cite.Api.Services
         private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEvaluationEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
+            var username = await _context.Users.Where(u => u.Id == currentUserId).Select(u => u.Name).FirstOrDefaultAsync(ct) ?? "Unknown";
             var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
             newEvaluationEntity.Id = Guid.NewGuid();
             newEvaluationEntity.CreatedBy = currentUserId;

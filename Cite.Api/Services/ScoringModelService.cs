@@ -145,7 +145,7 @@ namespace Cite.Api.Services
         public async Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
+            var username = await _context.Users.Where(u => u.Id == currentUserId).Select(u => u.Name).FirstOrDefaultAsync(ct) ?? "Unknown";
             scoringModelEntity.Id = Guid.NewGuid();
             scoringModelEntity.CreatedBy = currentUserId;
             scoringModelEntity.Description = scoringModelEntity.Description + " - " + username;
