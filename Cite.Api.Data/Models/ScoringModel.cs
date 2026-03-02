@@ -18,6 +18,7 @@ namespace Cite.Api.Data.Models
         public string CalculationEquation { get; set; }
         public ItemStatus Status { get; set; }
         public virtual ICollection<ScoringCategoryEntity> ScoringCategories { get; set; } = new HashSet<ScoringCategoryEntity>();
+        public virtual ICollection<SubmissionEntity> Submissions { get; set; } = new HashSet<SubmissionEntity>();
         public bool HideScoresOnScoreSheet { get; set; }
         public bool DisplayCommentTextBoxes { get; set; }
         public bool DisplayScoringModelByMoveNumber { get; set; }
