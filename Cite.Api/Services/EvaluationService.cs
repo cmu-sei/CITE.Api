@@ -198,10 +198,13 @@ namespace Cite.Api.Services
         {
             var evaluationEntity = await _context.Evaluations
                 .AsNoTracking()
-                .Include(m => m.Teams)
-                .Include(m => m.Moves)
+                .Include(e => e.Teams)
+                .Include(e => e.Moves)
+                .Include(e => e.ScoringModel)
+                    .ThenInclude(sm => sm.ScoringCategories)
+                        .ThenInclude(sc => sc.ScoringOptions)
                 .AsSplitQuery()
-                .SingleOrDefaultAsync(m => m.Id == evaluationId);
+                .SingleOrDefaultAsync(e => e.Id == evaluationId, ct);
             if (evaluationEntity == null)
                 throw new EntityNotFoundException<EvaluationEntity>("Evaluation not found with ID=" + evaluationId.ToString());
 
@@ -211,48 +214,94 @@ namespace Cite.Api.Services
             return evaluation;
         }
 
-        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEvaluationEntity, CancellationToken ct)
+        private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEval, CancellationToken ct)
         {
             var currentUserId = _user.GetId();
-            var username = (await _context.Users.SingleOrDefaultAsync(u => u.Id == _user.GetId())).Name;
-            var newEvaluationEntity = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEvaluationEntity);
-            newEvaluationEntity.Id = Guid.NewGuid();
-            newEvaluationEntity.CreatedBy = currentUserId;
-            newEvaluationEntity.Description = newEvaluationEntity.Description + " - " + username;
-            _context.Evaluations.Add(newEvaluationEntity);
-            await _context.SaveChangesAsync(ct);
-            // copy teams
-            foreach (var oldTeam in oldEvaluationEntity.Teams)
+            var username = (await _context.Users.AsNoTracking()
+                .SingleOrDefaultAsync(u => u.Id == currentUserId, ct))?.Name ?? "Unknown";
+
+            var newEvalId = Guid.NewGuid();
+            var newScoringModelId = Guid.NewGuid();
+
+            // --- Build ScoringModel subgraph ---
+            var oldSm = oldEval.ScoringModel;
+            var newSm = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(oldSm);
+            newSm.Id = newScoringModelId;
+            newSm.CreatedBy = currentUserId;
+            newSm.Description = oldSm.Description + " - " + username;
+            newSm.EvaluationId = null; // set after evaluation insert
+            newSm.ScoringCategories = (oldSm.ScoringCategories ?? Enumerable.Empty<ScoringCategoryEntity>()).Select(oldCat =>
+            {
+                var newCat = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(oldCat);
+                newCat.Id = Guid.NewGuid();
+                newCat.ScoringModelId = newScoringModelId;
+                newCat.CreatedBy = currentUserId;
+                newCat.ScoringOptions = (oldCat.ScoringOptions ?? Enumerable.Empty<ScoringOptionEntity>()).Select(oldOpt =>
+                {
+                    var newOpt = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(oldOpt);
+                    newOpt.Id = Guid.NewGuid();
+                    newOpt.ScoringCategoryId = newCat.Id;
+                    newOpt.CreatedBy = currentUserId;
+                    return newOpt;
+                }).ToList();
+                return newCat;
+            }).ToList();
+
+            // --- Build Evaluation subgraph ---
+            var newEval = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEval);
+            newEval.Id = newEvalId;
+            newEval.CreatedBy = currentUserId;
+            newEval.ScoringModelId = newScoringModelId;
+            newEval.Description = oldEval.Description + " - " + username;
+            newEval.Teams = (oldEval.Teams ?? Enumerable.Empty<TeamEntity>()).Select(oldTeam =>
             {
                 var newTeam = _mapper.Map<TeamEntity, TeamEntity>(oldTeam);
                 newTeam.Id = Guid.NewGuid();
-                newTeam.EvaluationId = newEvaluationEntity.Id;
-                newTeam.Evaluation = null;
-                newTeam.CreatedBy = newEvaluationEntity.CreatedBy;
-                _context.Teams.Add(newTeam);
-                await _context.SaveChangesAsync(ct);
-            }
-            // copy moves
-            foreach (var oldMove in oldEvaluationEntity.Moves)
+                newTeam.EvaluationId = newEvalId;
+                newTeam.CreatedBy = currentUserId;
+                return newTeam;
+            }).ToList();
+            newEval.Moves = (oldEval.Moves ?? Enumerable.Empty<MoveEntity>()).Select(oldMove =>
             {
                 var newMove = _mapper.Map<MoveEntity, MoveEntity>(oldMove);
                 newMove.Id = Guid.NewGuid();
-                newMove.EvaluationId = newEvaluationEntity.Id;
-                newMove.Evaluation = null;
-                newMove.CreatedBy = newEvaluationEntity.CreatedBy;
-                _context.Moves.Add(newMove);
-                await _context.SaveChangesAsync(ct);
+                newMove.EvaluationId = newEvalId;
+                newMove.CreatedBy = currentUserId;
+                return newMove;
+            }).ToList();
+
+            // --- Save everything in one batch ---
+            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            try
+            {
+                _context.ScoringModels.Add(newSm);       // cascades to categories + options
+                _context.Evaluations.Add(newEval);        // cascades to teams + moves
+                _context.EvaluationMemberships.Add(new EvaluationMembershipEntity
+                {
+                    UserId = currentUserId,
+                    EvaluationId = newEvalId,
+                    RoleId = EvaluationRoleDefaults.EvaluationOwnerRoleId
+                });
+                await _context.SaveChangesAsync(ct);      // Save 1: all inserts
+
+                // Link scoring model back to evaluation
+                newSm.EvaluationId = newEvalId;
+                _context.Entry(newSm).Property(e => e.EvaluationId).IsModified = true;
+                await _context.SaveChangesAsync(ct);      // Save 2: single UPDATE
+            }
+            finally
+            {
+                _context.ChangeTracker.AutoDetectChangesEnabled = true;
             }
 
-            // get the new Evaluation to return
-            newEvaluationEntity = await _context.Evaluations
-                .Include(m => m.Teams)
-                .ThenInclude(t => t.TeamType)
+            await _userClaimsService.RefreshClaims(currentUserId);
+
+            // Return the full entity
+            return await _context.Evaluations
+                .Include(m => m.Teams).ThenInclude(t => t.TeamType)
                 .Include(m => m.Moves)
                 .AsSplitQuery()
-                .SingleOrDefaultAsync(sm => sm.Id == newEvaluationEntity.Id, ct);
-
-            return newEvaluationEntity;
+                .SingleOrDefaultAsync(e => e.Id == newEvalId, ct);
         }
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct)

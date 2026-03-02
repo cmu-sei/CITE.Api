@@ -15,7 +15,8 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<ScoringOption, ScoringOptionEntity>();
 
             CreateMap<ScoringOptionEntity, ScoringOptionEntity>()
-                .ForMember(e => e.Id, opt => opt.Ignore());
+                .ForMember(e => e.Id, opt => opt.Ignore())
+                .ForMember(e => e.ScoringCategory, opt => opt.Ignore());
 
         }
     }
