@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Threading;
 using System.Threading.Tasks;
 using Cite.Api.Data;
@@ -24,8 +25,7 @@ namespace Cite.Api.Hubs
         private readonly ITeamService _teamService;
         private readonly IEvaluationService _evaluationService;
         private readonly IScoringModelService _scoringModelService;
-        private readonly CiteContext _context;
-        private readonly DatabaseOptions _options;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly CancellationToken _ct;
         private readonly ICiteAuthorizationService _authorizationService;
         public const string ADMIN_DATA_GROUP = "AdminDataGroup";
@@ -40,16 +40,14 @@ namespace Cite.Api.Hubs
             ITeamService teamService,
             IEvaluationService evaluationService,
             IScoringModelService scoringModelService,
-            CiteContext context,
-            DatabaseOptions options,
+            IServiceScopeFactory scopeFactory,
             ICiteAuthorizationService authorizationService
         )
         {
             _teamService = teamService;
             _evaluationService = evaluationService;
             _scoringModelService = scoringModelService;
-            _context = context;
-            _options = options;
+            _scopeFactory = scopeFactory;
             CancellationTokenSource source = new CancellationTokenSource();
             _ct = source.Token;
             _authorizationService = authorizationService;
@@ -129,9 +127,13 @@ namespace Cite.Api.Hubs
             // add the user's ID
             var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
             idList.Add(userId);
+
             // make sure that the user has access to the requested team
-            var team = await _context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
-            var isObserver = await _context.EvaluationMemberships
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<CiteContext>();
+
+            var team = await context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
+            var isObserver = await context.EvaluationMemberships
                 .Where(er =>
                     er.EvaluationId == team.EvaluationId &&
                     er.UserId == Guid.Parse(userId) &&
@@ -139,12 +141,12 @@ namespace Cite.Api.Hubs
                 .AnyAsync();
             if (team != null)
             {
-                var teamMembership = await _context.TeamMemberships.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
+                var teamMembership = await context.TeamMemberships.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
                 if (teamMembership != null && (teamMembership.TeamId == teamId || isObserver))
                 {
                     idList.Add(teamId.ToString());
                     idList.Add(team.EvaluationId.ToString());
-                    var scoringModelId = (await _context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
+                    var scoringModelId = (await context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
                     idList.Add(scoringModelId.ToString());
                     if (teamMembership.Team.TeamType.IsOfficialScoreContributor)
                     {
