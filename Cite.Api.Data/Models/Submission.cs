@@ -37,6 +37,10 @@ namespace Cite.Api.Data.Models
             builder
                 .HasIndex(a => new { a.EvaluationId, a.UserId, a.TeamId, a.MoveNumber }).IsUnique().AreNullsDistinct(false);
             builder
+                .HasOne(d => d.ScoringModel)
+                .WithMany(d => d.Submissions)
+                .OnDelete(DeleteBehavior.Cascade);
+            builder
                 .HasOne(d => d.Evaluation)
                 .WithMany(d => d.Submissions)
                 .OnDelete(DeleteBehavior.Cascade);
