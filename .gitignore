@@ -2,7 +2,7 @@ bin/
 obj/
 *.user
 .vs/
-appsettings.Development.json
+**/appsettings.*.json
 .vscode/
 Cite.Api.Client/node_modules
 Cite.Api.Client/.config
