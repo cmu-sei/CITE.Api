@@ -10,6 +10,10 @@
     <UserSecretsId>cmu-sei-crucible-cite-api</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Cite.Api.Tests.Unit" />
+    <InternalsVisibleTo Include="Cite.Api.Tests.Integration" />
+  </ItemGroup>
+  <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="true" />
   </ItemGroup>
   <ItemGroup>

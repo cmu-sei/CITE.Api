@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Cite.Api.Tests.Shared</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoFixture" Version="4.18.1" />
+    <PackageReference Include="AutoFixture.AutoFakeItEasy" Version="4.18.1" />
+    <PackageReference Include="AutoFixture.Xunit2" Version="4.18.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cite.Api\Cite.Api.csproj" />
+    <ProjectReference Include="..\Cite.Api.Data\Cite.Api.Data.csproj" />
+    <ProjectReference Include="..\..\..\libraries\crucible-common-dotnet\src\Crucible.Common.Testing\Crucible.Common.Testing.csproj" />
+  </ItemGroup>
+
+</Project>
