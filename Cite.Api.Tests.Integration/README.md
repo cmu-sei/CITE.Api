@@ -15,7 +15,7 @@ Tests the full API stack including controllers, services, Entity Framework, and 
 ## Key Patterns
 
 ### Test Context Setup
-`CiteTestContext` extends `WebApplicationFactory<Program>` and implements `IAsyncLifetime`:
+`CiteTestContext` extends `WebApplicationFactory<Program>` and implements `IAsyncInitializer + IAsyncDisposable`:
 
 1. **Container Initialization** - Starts a PostgreSQL Testcontainer before tests
 2. **Service Replacement** - Swaps authentication and authorization services with test implementations
@@ -24,16 +24,12 @@ Tests the full API stack including controllers, services, Entity Framework, and 
 
 ### Test Structure
 ```csharp
-public class UserControllerTests : IClassFixture<CiteTestContext>
+[ClassDataSource<CiteTestContext>(Shared = SharedType.PerTestSession)]
+public class UserControllerTests(CiteTestContext context)
 {
-    private readonly CiteTestContext _context;
+    private readonly CiteTestContext _context = context;
 
-    public UserControllerTests(CiteTestContext context)
-    {
-        _context = context;
-    }
-
-    [Fact]
+    [Test]
     public async Task CreateUser_ReturnsCreated()
     {
         // Arrange
@@ -44,7 +40,7 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
         var response = await client.PostAsJsonAsync("/api/users", user);
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
     }
 }
 ```
@@ -114,12 +110,11 @@ dotnet test Cite.Api.Tests.Integration --logger "console;verbosity=detailed"
 
 ## Dependencies
 
-- **xUnit** 2.9.3 - Test framework
+- **TUnit** 1.19.22 - Test framework
 - **Testcontainers.PostgreSql** 4.0.0 - PostgreSQL test containers
 - **Microsoft.AspNetCore.Mvc.Testing** 10.0.1 - WebApplicationFactory
 - **Npgsql.EntityFrameworkCore.PostgreSQL** 10.0.0 - PostgreSQL provider
 - **FakeItEasy** 8.3.0 - Mocking framework
-- **Shouldly** 4.2.1 - Fluent assertions
 - **AutoFixture** 4.18.1 - Test data generation
 - **Crucible.Common.Testing** - Shared test utilities (TestAuthenticationHandler, TestClaimsTransformation)
 

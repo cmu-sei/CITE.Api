@@ -46,7 +46,6 @@ var team = fixture.Create<TeamEntity>();
 
 - **AutoFixture** 4.18.1 - Test data generation
 - **AutoFixture.AutoFakeItEasy** 4.18.1 - Mocking integration
-- **AutoFixture.Xunit2** 4.18.1 - xUnit integration
 - **Crucible.Common.Testing** - Shared test utilities (GuidIdBuilder, DateTimeOffsetBuilder)
 
 ## Running Tests

@@ -18,8 +18,8 @@ Tests individual services, AutoMapper profiles, and core business logic in isola
 ### Mocking Strategy
 - **FakeItEasy** for creating test doubles (mocks, stubs)
 - **TestDbContextFactory.Create<CiteContext>()** for in-memory Entity Framework Core database
-- **Shouldly** for fluent assertions
-- **xUnit** test framework with `[Fact]` attributes
+- **TUnit assertions** for fluent assertions
+- **TUnit** test framework with `[Test]` attributes
 
 ### Test Structure
 ```csharp
@@ -36,7 +36,7 @@ public class EvaluationServiceTests
         // ... initialize all dependencies
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenEvaluationNotFound_ReturnsNull()
     {
         // Arrange
@@ -47,7 +47,7 @@ public class EvaluationServiceTests
         var result = await sut.GetAsync(evaluationId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeNull();
+        await Assert.That(result).IsNull();
     }
 }
 ```
@@ -87,9 +87,8 @@ dotnet test Cite.Api.Tests.Unit --logger "console;verbosity=detailed"
 
 ## Dependencies
 
-- **xUnit** 2.9.3 - Test framework
+- **TUnit** 1.19.22 - Test framework
 - **FakeItEasy** 8.3.0 - Mocking framework
-- **Shouldly** 4.2.1 - Fluent assertions
 - **AutoFixture** 4.18.1 - Test data generation
 - **Microsoft.EntityFrameworkCore.InMemory** 10.0.1 - In-memory database for testing
 - **MockQueryable.FakeItEasy** 7.0.3 - LINQ query mocking

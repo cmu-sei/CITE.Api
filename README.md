@@ -37,3 +37,28 @@ CanModify permission required for:
 
 Authenticated user has permission to:
     * Create a Submission
+
+## Testing
+
+This project uses [TUnit](https://tunit.dev/) as its test framework with FakeItEasy for mocking.
+
+### Test Projects
+
+| Project | Description |
+|---------|-------------|
+| `Cite.Api.Tests.Unit` | Unit tests for services using in-memory EF Core and FakeItEasy |
+| `Cite.Api.Tests.Integration` | Integration tests with WebApplicationFactory and Testcontainers PostgreSQL |
+| `Cite.Api.Tests.Shared` | Shared AutoFixture customizations for entity types |
+
+### Running Tests
+
+```bash
+# Run all tests
+dotnet test
+
+# Run unit tests only
+dotnet test Cite.Api.Tests.Unit
+
+# Run integration tests (requires Docker)
+dotnet test Cite.Api.Tests.Integration
+```
