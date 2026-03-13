@@ -8,6 +8,7 @@ using Xunit;
 
 namespace Cite.Api.Tests.Integration.Tests.Controllers;
 
+[Trait("Category", "Integration")]
 public class HealthCheckTests : IClassFixture<CiteTestContext>
 {
     private readonly CiteTestContext _context;
@@ -18,7 +19,7 @@ public class HealthCheckTests : IClassFixture<CiteTestContext>
     }
 
     [Fact]
-    public async Task GetVersion_ReturnsOk()
+    public async Task GetVersion_WhenCalled_ReturnsOk()
     {
         // Arrange
         var client = _context.CreateClient();
@@ -33,7 +34,7 @@ public class HealthCheckTests : IClassFixture<CiteTestContext>
     }
 
     [Fact]
-    public async Task GetLiveliness_ReturnsHealthy()
+    public async Task GetLiveliness_WhenHealthy_ReturnsHealthy()
     {
         // Arrange
         var client = _context.CreateClient();
@@ -48,7 +49,7 @@ public class HealthCheckTests : IClassFixture<CiteTestContext>
     }
 
     [Fact]
-    public async Task GetReadiness_ReturnsHealthy()
+    public async Task GetReadiness_WhenHealthy_ReturnsHealthy()
     {
         // Arrange
         var client = _context.CreateClient();

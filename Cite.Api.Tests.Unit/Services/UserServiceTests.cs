@@ -18,6 +18,7 @@ using Xunit;
 
 namespace Cite.Api.Tests.Unit.Services;
 
+[Trait("Category", "Unit")]
 public class UserServiceTests
 {
     private readonly IMapper _fakeMapper;
@@ -42,7 +43,7 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_ReturnsAllUsers()
+    public async Task GetAsync_WhenUsersExist_ReturnsAllUsers()
     {
         // Arrange
         using var context = TestDbContextFactory.Create<CiteContext>();

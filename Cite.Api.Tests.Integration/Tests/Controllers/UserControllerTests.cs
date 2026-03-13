@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Cite.Api.Tests.Integration.Tests.Controllers;
 
+[Trait("Category", "Integration")]
 public class UserControllerTests : IClassFixture<CiteTestContext>
 {
     private readonly CiteTestContext _context;
@@ -22,7 +23,7 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
     }
 
     [Fact]
-    public async Task GetUsers_ReturnsOk()
+    public async Task GetUsers_WhenCalled_ReturnsOk()
     {
         // Arrange
         var client = _context.CreateClient();
@@ -35,7 +36,7 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
     }
 
     [Fact]
-    public async Task CreateUser_ReturnsCreated()
+    public async Task CreateUser_WithValidUser_ReturnsCreated()
     {
         // Arrange
         var client = _context.CreateClient();

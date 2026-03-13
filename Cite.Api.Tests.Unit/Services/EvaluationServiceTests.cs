@@ -18,6 +18,7 @@ using Xunit;
 
 namespace Cite.Api.Tests.Unit.Services;
 
+[Trait("Category", "Unit")]
 public class EvaluationServiceTests
 {
     private readonly IMapper _fakeMapper;

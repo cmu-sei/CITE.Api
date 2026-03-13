@@ -9,10 +9,11 @@ using Xunit;
 
 namespace Cite.Api.Tests.Unit;
 
+[Trait("Category", "Unit")]
 public class MappingConfigurationTests
 {
     [Fact]
-    public void AutoMapper_Configuration_IsValid()
+    public void AutoMapper_WithAllProfiles_ConfigurationIsValid()
     {
         // Arrange
         var config = new MapperConfiguration(cfg =>
@@ -30,7 +31,7 @@ public class MappingConfigurationTests
     }
 
     [Fact]
-    public void AutoMapper_CanCreateMapper()
+    public void AutoMapper_WithAllProfiles_CanCreateMapper()
     {
         // Arrange
         var config = new MapperConfiguration(cfg =>
