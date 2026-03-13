@@ -3,63 +3,56 @@
 
 using System.Net;
 using Cite.Api.Tests.Integration.Fixtures;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Integration.Tests.Controllers;
 
-[Trait("Category", "Integration")]
-public class HealthCheckTests : IClassFixture<CiteTestContext>
+[Category("Integration")]
+[ClassDataSource<CiteTestContext>(Shared = SharedType.PerTestSession)]
+public class HealthCheckTests(CiteTestContext context)
 {
-    private readonly CiteTestContext _context;
-
-    public HealthCheckTests(CiteTestContext context)
-    {
-        _context = context;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetVersion_WhenCalled_ReturnsOk()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/version");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.ShouldNotBeNullOrWhiteSpace();
+        await Assert.That(content).IsNotEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task GetLiveliness_WhenHealthy_ReturnsHealthy()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/health/live");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.ShouldContain("Healthy");
+        await Assert.That(content).Contains("Healthy");
     }
 
-    [Fact]
+    [Test]
     public async Task GetReadiness_WhenHealthy_ReturnsHealthy()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/health/ready");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.ShouldContain("Healthy");
+        await Assert.That(content).Contains("Healthy");
     }
 }

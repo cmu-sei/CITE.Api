@@ -13,12 +13,11 @@ using FakeItEasy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Unit.Services;
 
-[Trait("Category", "Unit")]
+[Category("Unit")]
 public class UserServiceTests
 {
     private readonly IMapper _fakeMapper;
@@ -42,7 +41,7 @@ public class UserServiceTests
         _fakeLogger = A.Fake<ILogger<IUserService>>();
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WhenUsersExist_ReturnsAllUsers()
     {
         // Arrange
@@ -75,11 +74,11 @@ public class UserServiceTests
         var result = await sut.GetAsync(CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Count().ShouldBe(2);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Count()).IsEqualTo(2);
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenUserExists_ReturnsUser()
     {
         // Arrange
@@ -104,12 +103,12 @@ public class UserServiceTests
         var result = await sut.GetAsync(userId, CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Id.ShouldBe(userId);
-        result.Name.ShouldBe("Test User");
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Id).IsEqualTo(userId);
+        await Assert.That(result.Name).IsEqualTo("Test User");
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenUserNotFound_ReturnsNull()
     {
         // Arrange
@@ -129,10 +128,10 @@ public class UserServiceTests
         var result = await sut.GetAsync(userId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeNull();
+        await Assert.That(result).IsNull();
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenDeletingSelf_ThrowsForbiddenException()
     {
         // Arrange - attempt to delete own user
@@ -150,11 +149,12 @@ public class UserServiceTests
             _fakeMapper);
 
         // Act & Assert
-        await Should.ThrowAsync<Exception>(async () =>
-            await sut.DeleteAsync(TestUserId, CancellationToken.None));
+        await Assert.That(async () =>
+            await sut.DeleteAsync(TestUserId, CancellationToken.None))
+            .ThrowsException();
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenUserExists_ReturnsTrue()
     {
         // Arrange
@@ -176,7 +176,7 @@ public class UserServiceTests
         var result = await sut.DeleteAsync(userId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeTrue();
-        context.Users.Any(u => u.Id == userId).ShouldBeFalse();
+        await Assert.That(result).IsTrue();
+        await Assert.That(context.Users.Any(u => u.Id == userId)).IsFalse();
     }
 }

@@ -7,39 +7,32 @@ using Cite.Api.Data.Models;
 using Cite.Api.Tests.Integration.Fixtures;
 using Cite.Api.ViewModels;
 using Crucible.Common.Testing.Auth;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Integration.Tests.Controllers;
 
-[Trait("Category", "Integration")]
-public class UserControllerTests : IClassFixture<CiteTestContext>
+[Category("Integration")]
+[ClassDataSource<CiteTestContext>(Shared = SharedType.PerTestSession)]
+public class UserControllerTests(CiteTestContext context)
 {
-    private readonly CiteTestContext _context;
-
-    public UserControllerTests(CiteTestContext context)
-    {
-        _context = context;
-    }
-
-    [Fact]
+    [Test]
     public async Task GetUsers_WhenCalled_ReturnsOk()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/users");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task CreateUser_WithValidUser_ReturnsCreated()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
         var userId = Guid.NewGuid();
         var user = new User
         {
@@ -51,21 +44,21 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
         var response = await client.PostAsJsonAsync("/api/users", user);
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
         var created = await response.Content.ReadFromJsonAsync<User>();
-        created.ShouldNotBeNull();
-        created.Name.ShouldBe("Test User");
+        await Assert.That(created).IsNotNull();
+        await Assert.That(created.Name).IsEqualTo("Test User");
     }
 
-    [Fact]
+    [Test]
     public async Task GetUser_WhenExists_ReturnsOk()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Seed a user in the database
         var userId = Guid.NewGuid();
-        using (var dbContext = _context.GetDbContext())
+        using (var dbContext = context.GetDbContext())
         {
             dbContext.Users.Add(new UserEntity
             {
@@ -80,21 +73,21 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
         var response = await client.GetAsync($"/api/users/{userId}");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var user = await response.Content.ReadFromJsonAsync<User>();
-        user.ShouldNotBeNull();
-        user.Name.ShouldBe("Seeded User");
+        await Assert.That(user).IsNotNull();
+        await Assert.That(user.Name).IsEqualTo("Seeded User");
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteUser_WhenExists_ReturnsNoContent()
     {
         // Arrange
-        var client = _context.CreateClient();
+        var client = context.CreateClient();
 
         // Seed a user in the database
         var userId = Guid.NewGuid();
-        using (var dbContext = _context.GetDbContext())
+        using (var dbContext = context.GetDbContext())
         {
             dbContext.Users.Add(new UserEntity
             {
@@ -109,6 +102,6 @@ public class UserControllerTests : IClassFixture<CiteTestContext>
         var response = await client.DeleteAsync($"/api/users/{userId}");
 
         // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
     }
 }

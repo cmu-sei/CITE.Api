@@ -13,12 +13,11 @@ using Crucible.Common.Testing.Fixtures;
 using FakeItEasy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Unit.Services;
 
-[Trait("Category", "Unit")]
+[Category("Unit")]
 public class EvaluationServiceTests
 {
     private readonly IMapper _fakeMapper;
@@ -46,7 +45,7 @@ public class EvaluationServiceTests
         _fakeLogger = A.Fake<ILogger<EvaluationService>>();
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenEvaluationNotFound_ReturnsNull()
     {
         // Arrange
@@ -70,10 +69,10 @@ public class EvaluationServiceTests
         var result = await sut.GetAsync(evaluationId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeNull();
+        await Assert.That(result).IsNull();
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenEvaluationExists_ReturnsMappedEvaluation()
     {
         // Arrange
@@ -110,12 +109,12 @@ public class EvaluationServiceTests
         var result = await sut.GetAsync(evaluationId, CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Id.ShouldBe(evaluationId);
-        result.Description.ShouldBe("Test Eval");
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Id).IsEqualTo(evaluationId);
+        await Assert.That(result.Description).IsEqualTo("Test Eval");
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenEvaluationExists_ReturnsTrue()
     {
         // Arrange
@@ -145,11 +144,11 @@ public class EvaluationServiceTests
         var result = await sut.DeleteAsync(evaluationId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeTrue();
-        context.Evaluations.Any(e => e.Id == evaluationId).ShouldBeFalse();
+        await Assert.That(result).IsTrue();
+        await Assert.That(context.Evaluations.Any(e => e.Id == evaluationId)).IsFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenEvaluationNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
@@ -168,7 +167,8 @@ public class EvaluationServiceTests
             _fakeLogger);
 
         // Act & Assert
-        await Should.ThrowAsync<Exception>(async () =>
-            await sut.DeleteAsync(evaluationId, CancellationToken.None));
+        await Assert.That(async () =>
+            await sut.DeleteAsync(evaluationId, CancellationToken.None))
+            .ThrowsException();
     }
 }

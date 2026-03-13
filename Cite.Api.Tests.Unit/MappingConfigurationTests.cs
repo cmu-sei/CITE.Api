@@ -4,16 +4,15 @@
 using AutoMapper;
 using AutoMapper.Internal;
 using Cite.Api.Infrastructure.Mapping;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Unit;
 
-[Trait("Category", "Unit")]
+[Category("Unit")]
 public class MappingConfigurationTests
 {
-    [Fact]
-    public void AutoMapper_WithAllProfiles_ConfigurationIsValid()
+    [Test]
+    public async Task AutoMapper_WithAllProfiles_ConfigurationIsValid()
     {
         // Arrange
         var config = new MapperConfiguration(cfg =>
@@ -27,11 +26,11 @@ public class MappingConfigurationTests
         // Act - verify mapper can be created (weaker than AssertConfigurationIsValid
         // because the app has unmapped navigation properties populated elsewhere)
         var mapper = config.CreateMapper();
-        mapper.ShouldNotBeNull();
+        await Assert.That(mapper).IsNotNull();
     }
 
-    [Fact]
-    public void AutoMapper_WithAllProfiles_CanCreateMapper()
+    [Test]
+    public async Task AutoMapper_WithAllProfiles_CanCreateMapper()
     {
         // Arrange
         var config = new MapperConfiguration(cfg =>
@@ -46,6 +45,6 @@ public class MappingConfigurationTests
         var mapper = config.CreateMapper();
 
         // Assert
-        mapper.ShouldNotBeNull();
+        await Assert.That(mapper).IsNotNull();
     }
 }

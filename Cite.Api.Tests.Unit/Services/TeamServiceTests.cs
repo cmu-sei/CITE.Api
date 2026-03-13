@@ -13,12 +13,11 @@ using FakeItEasy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Shouldly;
-using Xunit;
+using TUnit.Core;
 
 namespace Cite.Api.Tests.Unit.Services;
 
-[Trait("Category", "Unit")]
+[Category("Unit")]
 public class TeamServiceTests
 {
     private readonly IMapper _fakeMapper;
@@ -38,7 +37,7 @@ public class TeamServiceTests
         _fakeLogger = A.Fake<ILogger<ITeamService>>();
     }
 
-    [Fact]
+    [Test]
     public async Task GetAsync_WithId_WhenTeamExists_ReturnsMappedTeam()
     {
         // Arrange
@@ -70,12 +69,12 @@ public class TeamServiceTests
         var result = await sut.GetByEvaluationAsync(evaluationId, CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
-        result.Count().ShouldBe(1);
-        result.First().Name.ShouldBe("Alpha Team");
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.Count()).IsEqualTo(1);
+        await Assert.That(result.First().Name).IsEqualTo("Alpha Team");
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenTeamNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
@@ -90,11 +89,12 @@ public class TeamServiceTests
             _fakeMapper);
 
         // Act & Assert
-        await Should.ThrowAsync<Exception>(async () =>
-            await sut.DeleteAsync(teamId, CancellationToken.None));
+        await Assert.That(async () =>
+            await sut.DeleteAsync(teamId, CancellationToken.None))
+            .ThrowsException();
     }
 
-    [Fact]
+    [Test]
     public async Task DeleteAsync_WhenTeamExists_ReturnsTrue()
     {
         // Arrange
@@ -121,7 +121,7 @@ public class TeamServiceTests
         var result = await sut.DeleteAsync(teamId, CancellationToken.None);
 
         // Assert
-        result.ShouldBeTrue();
-        context.Teams.Any(t => t.Id == teamId).ShouldBeFalse();
+        await Assert.That(result).IsTrue();
+        await Assert.That(context.Teams.Any(t => t.Id == teamId)).IsFalse();
     }
 }

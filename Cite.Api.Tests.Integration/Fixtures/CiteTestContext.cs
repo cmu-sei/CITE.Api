@@ -14,11 +14,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
-using Xunit;
+using TUnit.Core;
+using TUnit.Core.Interfaces;
 
 namespace Cite.Api.Tests.Integration.Fixtures;
 
-public class CiteTestContext : WebApplicationFactory<Program>, IAsyncLifetime
+public class CiteTestContext : WebApplicationFactory<Program>, IAsyncInitializer, IAsyncDisposable
 {
     private PostgreSqlContainer? _container;
 
@@ -98,7 +99,7 @@ public class CiteTestContext : WebApplicationFactory<Program>, IAsyncLifetime
         await dbContext.Database.EnsureCreatedAsync();
     }
 
-    public new async Task DisposeAsync()
+    public new async ValueTask DisposeAsync()
     {
         if (_container is not null)
             await _container.DisposeAsync();
