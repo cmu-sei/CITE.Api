@@ -11,6 +11,7 @@ using Cite.Api.Data.Extensions;
 using System.Collections.Generic;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Crucible.Common.EntityEvents;
 using Crucible.Common.EntityEvents.Abstractions;
 
@@ -76,16 +77,23 @@ namespace Cite.Api.Data
             return await base.SaveChangesAsync(ct);
         }
 
-        protected override async Task PublishEventsAsync(CancellationToken cancellationToken)
+        public override async Task PublishEventsAsync(IReadOnlyList<IEntityEvent> events, CancellationToken cancellationToken)
         {
-            while (EntityEvents.Count > 0 && ServiceProvider is not null)
+            if (ServiceProvider is not null)
             {
                 var mediator = ServiceProvider.GetRequiredService<IMediator>();
-                var events = EntityEvents.ToList();
-                EntityEvents.Clear();
+                var logger = ServiceProvider.GetRequiredService<ILogger<CiteContext>>();
+
                 foreach (var evt in events.Cast<INotification>())
                 {
-                    await mediator.Publish(evt, cancellationToken);
+                    try
+                    {
+                        await mediator.Publish(evt, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error publishing entity event {EventType}", evt.GetType().Name);
+                    }
                 }
             }
         }
