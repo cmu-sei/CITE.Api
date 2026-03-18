@@ -56,7 +56,17 @@ public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRole
                 Immutable = false,
                 Permissions = [
                     SystemPermission.CreateScoringModels,
-                    SystemPermission.CreateEvaluations
+                    SystemPermission.ViewScoringModels,
+                    SystemPermission.EditScoringModels,
+                    SystemPermission.ManageScoringModels,
+                    SystemPermission.CreateEvaluations,
+                    SystemPermission.ViewEvaluations,
+                    SystemPermission.EditEvaluations,
+                    SystemPermission.ManageEvaluations,
+                    SystemPermission.ExecuteEvaluations,
+                    SystemPermission.ObserveEvaluations,
+                    SystemPermission.ViewRoles,
+                    SystemPermission.ViewGroups
                 ],
                 Description = "Can create and manage their own Evaluations and Scoring Models."
             },
