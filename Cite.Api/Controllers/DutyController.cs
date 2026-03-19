@@ -112,7 +112,7 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> Create([FromBody] ViewModels.Duty duty, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Evaluation>(duty.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Team>(duty.TeamId, [], [TeamPermission.ManageTeam], ct))
+                !await _authorizationService.AuthorizeAsync<Team>(duty.TeamId, [], [TeamPermission.SubmitTeamScore], ct))
                 throw new ForbiddenException();
 
             duty.CreatedBy = User.GetId();
@@ -160,7 +160,7 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> AddUserToDuty([FromRoute] Guid dutyId, [FromRoute] Guid userId, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Duty>(dutyId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Duty>(dutyId, [], [TeamPermission.ManageTeam], ct))
+                !await _authorizationService.AuthorizeAsync<Duty>(dutyId, [], [TeamPermission.EditTeamScore], ct))
                 throw new ForbiddenException();
 
             var updatedDuty = await _dutyService.AddUserAsync(dutyId, userId, ct);
@@ -182,7 +182,7 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> RemoveUserFromDuty([FromRoute] Guid dutyId, [FromRoute] Guid userId, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Duty>(dutyId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Duty>(dutyId, [], [TeamPermission.ManageTeam], ct))
+                !await _authorizationService.AuthorizeAsync<Duty>(dutyId, [], [TeamPermission.EditTeamScore], ct))
                 throw new ForbiddenException();
 
             var updatedDuty = await _dutyService.RemoveUserAsync(dutyId, userId, ct);
