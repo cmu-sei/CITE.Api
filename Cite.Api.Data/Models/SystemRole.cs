@@ -29,7 +29,7 @@ public static class SystemRoleEntityDefaults
 {
     public static Guid AdministratorRoleId = new("f35e8fff-f996-4cba-b303-3ba515ad8d2f");
     public static Guid ContentDeveloperRoleId = new("d80b73c3-95d7-4468-8650-c62bbd082507");
-    public static Guid ViewerRoleId = new("1da3027e-725d-4753-9455-a836ed9bdb1e");
+    public static Guid ObserverRoleId = new("1da3027e-725d-4753-9455-a836ed9bdb1e");
 }
 
 public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRoleEntity>
@@ -56,14 +56,24 @@ public class SystemRoleEntityConfiguration : IEntityTypeConfiguration<SystemRole
                 Immutable = false,
                 Permissions = [
                     SystemPermission.CreateScoringModels,
-                    SystemPermission.CreateEvaluations
+                    SystemPermission.ViewScoringModels,
+                    SystemPermission.EditScoringModels,
+                    SystemPermission.ManageScoringModels,
+                    SystemPermission.CreateEvaluations,
+                    SystemPermission.ViewEvaluations,
+                    SystemPermission.EditEvaluations,
+                    SystemPermission.ManageEvaluations,
+                    SystemPermission.ExecuteEvaluations,
+                    SystemPermission.ObserveEvaluations,
+                    SystemPermission.ViewRoles,
+                    SystemPermission.ViewGroups
                 ],
                 Description = "Can create and manage their own Evaluations and Scoring Models."
             },
             new SystemRoleEntity
             {
-                Id = SystemRoleEntityDefaults.ViewerRoleId,
-                Name = "Viewer",
+                Id = SystemRoleEntityDefaults.ObserverRoleId,
+                Name = "Observer",
                 AllPermissions = false,
                 Immutable = false,
                 Permissions = Enum.GetValues<SystemPermission>()

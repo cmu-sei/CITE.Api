@@ -159,7 +159,7 @@ namespace Cite.Api.Controllers
         public async Task<IActionResult> Create([FromBody] ViewModels.Action action, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Evaluation>(action.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Team>(action.TeamId, [], [TeamPermission.ManageTeam], ct))
+                !await _authorizationService.AuthorizeAsync<Team>(action.TeamId, [], [TeamPermission.SubmitTeamScore], ct))
                 throw new ForbiddenException();
 
             action.CreatedBy = User.GetId();
@@ -205,8 +205,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "checkAction")]
         public async Task<IActionResult> Check([FromRoute] Guid id, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.EditTeamScore], ct))
                 throw new ForbiddenException();
 
             var updatedAction = await _actionService.SetIsCheckedAsync(id, true, ct);
@@ -226,8 +225,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "uncheckAction")]
         public async Task<IActionResult> Uncheck([FromRoute] Guid id, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.EditTeamScore], ct))
                 throw new ForbiddenException();
 
             var updatedAction = await _actionService.SetIsCheckedAsync(id, false, ct);
