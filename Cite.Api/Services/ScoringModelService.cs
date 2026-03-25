@@ -157,99 +157,54 @@ namespace Cite.Api.Services
             var username = (await _context.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == _user.GetId(), ct))?.Name ?? "Unknown";
             var newScoringModelId = Guid.NewGuid();
             var originalCategories = scoringModelEntity.ScoringCategories?.ToList() ?? new List<ScoringCategoryEntity>();
-            var totalCategories = originalCategories.Count;
-            var totalOptions = originalCategories.Sum(c => c.ScoringOptions?.Count ?? 0);
 
-            _logger.LogInformation($"Starting scoring model copy: {scoringModelEntity.Description} ({scoringModelEntity.Id}) -> {newScoringModelId}. Categories: {totalCategories}, Options: {totalOptions}");
+            _logger.LogInformation($"Starting scoring model copy: {scoringModelEntity.Description} ({scoringModelEntity.Id}) -> {newScoringModelId}. Categories: {originalCategories.Count}, Options: {originalCategories.Sum(c => c.ScoringOptions?.Count ?? 0)}");
 
-            // Disable auto-detect changes for better performance during bulk operations
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
+            // Build the entire scoring model graph in memory before saving
+            var newScoringModel = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(scoringModelEntity);
+            newScoringModel.Id = newScoringModelId;
+            newScoringModel.CreatedBy = currentUserId;
+            newScoringModel.Description = scoringModelEntity.Description + " - " + username;
+            newScoringModel.ScoringCategories = new List<ScoringCategoryEntity>();
 
-            try
+            foreach (var originalCategory in originalCategories)
             {
-                // Step 1: Create the scoring model using AutoMapper to copy all scalar properties
-                var newScoringModel = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(scoringModelEntity);
-                newScoringModel.Id = newScoringModelId;
-                newScoringModel.CreatedBy = currentUserId;
-                newScoringModel.Description = scoringModelEntity.Description + " - " + username;
+                var newCategory = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(originalCategory);
+                newCategory.Id = Guid.NewGuid();
+                newCategory.ScoringModelId = newScoringModelId;
+                newCategory.CreatedBy = currentUserId;
+                newCategory.ScoringOptions = new List<ScoringOptionEntity>();
 
-                _context.ScoringModels.Add(newScoringModel);
-                await _context.SaveChangesAsync(ct);
-                _logger.LogInformation($"Created scoring model {newScoringModelId}");
-
-                // Step 2: Batch insert scoring categories and options using AutoMapper
-                const int batchSize = 10;
-                var categoriesProcessed = 0;
-                var optionsProcessed = 0;
-
-                for (int i = 0; i < originalCategories.Count; i += batchSize)
+                if (originalCategory.ScoringOptions != null)
                 {
-                    var batch = originalCategories.Skip(i).Take(batchSize).ToList();
-
-                    foreach (var originalCategory in batch)
+                    foreach (var originalOption in originalCategory.ScoringOptions)
                     {
-                        var newCategory = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(originalCategory);
-                        newCategory.Id = Guid.NewGuid();
-                        newCategory.ScoringModelId = newScoringModelId;
-                        newCategory.CreatedBy = currentUserId;
-                        newCategory.ScoringOptions = new List<ScoringOptionEntity>();
-
-                        if (originalCategory.ScoringOptions != null)
-                        {
-                            foreach (var originalOption in originalCategory.ScoringOptions)
-                            {
-                                var newOption = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(originalOption);
-                                newOption.Id = Guid.NewGuid();
-                                newOption.ScoringCategoryId = newCategory.Id;
-                                newOption.CreatedBy = currentUserId;
-                                newCategory.ScoringOptions.Add(newOption);
-                            }
-                        }
-
-                        _context.ScoringCategories.Add(newCategory);
-                        categoriesProcessed++;
-                        optionsProcessed += newCategory.ScoringOptions.Count;
+                        var newOption = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(originalOption);
+                        newOption.Id = Guid.NewGuid();
+                        newOption.ScoringCategoryId = newCategory.Id;
+                        newOption.CreatedBy = currentUserId;
+                        newCategory.ScoringOptions.Add(newOption);
                     }
-
-                    // Save this batch
-                    await _context.SaveChangesAsync(ct);
-
-                    var percentComplete = (int)((categoriesProcessed / (double)totalCategories) * 100);
-                    _logger.LogInformation($"Copying scoring model: {percentComplete}% complete ({categoriesProcessed}/{totalCategories} categories, {optionsProcessed}/{totalOptions} options)");
-
-                    // Send progress update via SignalR to admin group
-                    await _mainHub.Clients.Group(MainHub.ADMIN_DATA_GROUP).SendAsync(
-                        "ScoringModelCopyProgress",
-                        new
-                        {
-                            ScoringModelId = newScoringModelId,
-                            PercentComplete = percentComplete,
-                            CategoriesProcessed = categoriesProcessed,
-                            TotalCategories = totalCategories,
-                            OptionsProcessed = optionsProcessed,
-                            TotalOptions = totalOptions,
-                            Message = $"Copying scoring model: {percentComplete}% complete"
-                        },
-                        ct);
                 }
 
-                _logger.LogInformation($"Successfully copied scoring model {newScoringModelId}. Total: {categoriesProcessed} categories, {optionsProcessed} options");
-
-                // Step 3: Retrieve the complete scoring model with all relationships
-                scoringModelEntity = await _context.ScoringModels
-                    .Include(m => m.ScoringCategories)
-                    .ThenInclude(sc => sc.ScoringOptions)
-                    .AsNoTracking()
-                    .AsSplitQuery()
-                    .SingleOrDefaultAsync(sm => sm.Id == newScoringModelId, ct);
-
-                return scoringModelEntity;
+                newScoringModel.ScoringCategories.Add(newCategory);
             }
-            finally
-            {
-                // Re-enable auto-detect changes
-                _context.ChangeTracker.AutoDetectChangesEnabled = true;
-            }
+
+            // Single save for the entire graph
+            _context.ScoringModels.Add(newScoringModel);
+            await _context.SaveChangesAsync(ct);
+
+            _logger.LogInformation($"Successfully copied scoring model {newScoringModelId}");
+
+            // Retrieve the complete scoring model with all relationships
+            scoringModelEntity = await _context.ScoringModels
+                .Include(m => m.ScoringCategories)
+                .ThenInclude(sc => sc.ScoringOptions)
+                .AsNoTracking()
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(sm => sm.Id == newScoringModelId, ct);
+
+            return scoringModelEntity;
         }
 
         public async Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid scoringModelId, CancellationToken ct)
