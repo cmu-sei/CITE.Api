@@ -1013,19 +1013,30 @@ namespace Cite.Api.Services
                     category.Add("moreInfo", "");
                 }
                 // TODO maybe add all scoring categories
-                var grouping = new Dictionary<String, String>();
-                grouping.Add("id", move.Id.ToString());
-                grouping.Add("name", move.Description);
-                grouping.Add("description", "The exercise move associated with the score.");
-                grouping.Add("type", "move");
-                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
-                grouping.Add("moreInfo", "");
+                var groupingMove = new Dictionary<String, String>();
+                groupingMove.Add("id", move.Id.ToString());
+                groupingMove.Add("name", move.Description);
+                groupingMove.Add("description", "The exercise move associated with the score.");
+                groupingMove.Add("type", "move");
+                groupingMove.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                groupingMove.Add("moreInfo", "");
+
+                // Add scoring model as grouping activity for Blueprint to correlate evidence
+                var groupingScoringModel = new Dictionary<String, String>();
+                groupingScoringModel.Add("id", evaluation.ScoringModelId.ToString());
+                groupingScoringModel.Add("name", "Scoring Model");
+                groupingScoringModel.Add("description", "Scoring model used for this evaluation");
+                groupingScoringModel.Add("type", "scoringModel");
+                groupingScoringModel.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                groupingScoringModel.Add("moreInfo", "/scoringModel/" + evaluation.ScoringModelId.ToString());
+
+                var groupingList = new List<Dictionary<String, String>> { groupingMove, groupingScoringModel };
 
                 var other = new Dictionary<String, String>();
 
                 // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
-                    verb, activity, parent, category, grouping, other, teamId, ct);
+                    verb, activity, parent, category, groupingList, other, teamId, ct);
 
             }
             return false;

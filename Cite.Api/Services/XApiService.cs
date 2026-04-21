@@ -26,7 +26,7 @@ namespace Cite.Api.Services
             Dictionary<String,String> activityData,
             Dictionary<String,String> parentData,
             Dictionary<String,String> categoryData,
-            Dictionary<String,String> groupingData,
+            List<Dictionary<String,String>> groupingData,
             Dictionary<String,String> otherData,
             Guid teamId,
             CancellationToken ct);
@@ -97,7 +97,7 @@ namespace Cite.Api.Services
             Uri verbUri, Dictionary<String,String> activityData,
             Dictionary<String,String> parentData,
             Dictionary<String,String> categoryData,
-            Dictionary<String,String> groupingData,
+            List<Dictionary<String,String>> groupingData,
             Dictionary<String,String> otherData,
             Guid teamId,
             CancellationToken ct)
@@ -206,20 +206,24 @@ namespace Cite.Api.Services
                 context.contextActivities.other.Add(other);
             }
 
-            if (groupingData.Count() > 0) {
-                var grouping = new TinCan.Activity();
-                grouping.id = _xApiOptions.ApiUrl  + groupingData["type"] + "/" + groupingData["id"];
-                grouping.definition = new ActivityDefinition();
-                grouping.definition.name = new LanguageMap();
-                grouping.definition.name.Add("en-US", groupingData["name"]);
-                grouping.definition.description = new LanguageMap();
-                grouping.definition.description.Add("en-US", groupingData["description"]);
-                grouping.definition.type = new Uri(groupingData["activityType"]);
-                if (groupingData.ContainsKey("moreInfo")) {
-                    grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl + groupingData["moreInfo"]);
-                }
+            if (groupingData != null && groupingData.Count() > 0) {
                 contextActivities.grouping = new List<Activity>();
-                context.contextActivities.grouping.Add(grouping);
+                foreach (var groupingItem in groupingData) {
+                    if (groupingItem.Count() > 0) {
+                        var grouping = new TinCan.Activity();
+                        grouping.id = _xApiOptions.ApiUrl  + groupingItem["type"] + "/" + groupingItem["id"];
+                        grouping.definition = new ActivityDefinition();
+                        grouping.definition.name = new LanguageMap();
+                        grouping.definition.name.Add("en-US", groupingItem["name"]);
+                        grouping.definition.description = new LanguageMap();
+                        grouping.definition.description.Add("en-US", groupingItem["description"]);
+                        grouping.definition.type = new Uri(groupingItem["activityType"]);
+                        if (groupingItem.ContainsKey("moreInfo")) {
+                            grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl + groupingItem["moreInfo"]);
+                        }
+                        context.contextActivities.grouping.Add(grouping);
+                    }
+                }
             }
 
             if (categoryData.Count() > 0) {
