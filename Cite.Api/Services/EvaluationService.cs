@@ -160,6 +160,8 @@ namespace Cite.Api.Services
         {
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // create a scoring model copy
             var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
             evaluation.ScoringModelId = newScoringModel.Id;
@@ -189,6 +191,7 @@ namespace Cite.Api.Services
             };
             await _context.EvaluationMemberships.AddAsync(createOwnerMembership, ct);
             await _context.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             await _userClaimsService.RefreshClaims(_user.GetId());
 
             return await GetAsync(evaluation.Id, ct);
@@ -271,6 +274,7 @@ namespace Cite.Api.Services
             }).ToList();
 
             // --- Save everything in one batch ---
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             _context.ChangeTracker.AutoDetectChangesEnabled = false;
             try
             {
@@ -288,6 +292,7 @@ namespace Cite.Api.Services
                 newSm.EvaluationId = newEvalId;
                 _context.Entry(newSm).Property(e => e.EvaluationId).IsModified = true;
                 await _context.SaveChangesAsync(ct);      // Save 2: single UPDATE
+                await transaction.CommitAsync(ct);
             }
             finally
             {
