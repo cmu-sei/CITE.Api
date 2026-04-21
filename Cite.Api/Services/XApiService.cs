@@ -24,9 +24,9 @@ namespace Cite.Api.Services
         Task<Boolean> CreateAsync(
             Uri verb,
             Dictionary<String,String> activityData,
+            Dictionary<String,String> parentData,
             Dictionary<String,String> categoryData,
             Dictionary<String,String> groupingData,
-            Dictionary<String,String> parentData,
             Dictionary<String,String> otherData,
             Guid teamId,
             CancellationToken ct);
@@ -168,10 +168,7 @@ namespace Cite.Api.Services
                     }
                     group.member.Add(targetUser);
                 }
-                // Note: TinCan library has a bug where Group serializes with objectType="Agent" instead of "Group"
-                // This causes LRS validation errors. Commenting out for now.
-                // TODO: Either fix TinCan serialization or migrate to Mos.xApi
-                // context.team = group;
+                context.team = group;
             }
 
             var contextActivities = new ContextActivities();
