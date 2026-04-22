@@ -1021,9 +1021,17 @@ namespace Cite.Api.Services
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
                 grouping.Add("moreInfo", "");
 
+                var scoringModelGrouping = new Dictionary<String, String>();
+                scoringModelGrouping.Add("id", evaluation.ScoringModelId.ToString());
+                scoringModelGrouping.Add("name", "Scoring Model");
+                scoringModelGrouping.Add("description", "Scoring model used for this evaluation");
+                scoringModelGrouping.Add("type", $"evaluation/{evaluation.Id}/scoringModel");
+                scoringModelGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                scoringModelGrouping.Add("moreInfo", "");
+
                 var other = new Dictionary<String, String>();
 
-                var groupingList = new List<Dictionary<String, String>> { grouping };
+                var groupingList = new List<Dictionary<String, String>> { grouping, scoringModelGrouping };
 
                 // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
