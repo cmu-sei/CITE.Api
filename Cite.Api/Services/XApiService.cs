@@ -120,7 +120,7 @@ namespace Cite.Api.Services
             activity.definition = new TinCan.ActivityDefinition();
             activity.definition.type = new Uri(activityData["activityType"]);
             if (activityData.ContainsKey("moreInfo")) {
-                activity.definition.moreInfo = new Uri(_xApiOptions.UiUrl + activityData["moreInfo"]);
+                activity.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + activityData["moreInfo"]);
             }
             activity.definition.name = new LanguageMap();
             activity.definition.name.Add("en-US", activityData["name"]);
@@ -184,7 +184,7 @@ namespace Cite.Api.Services
                 parent.definition.description.Add("en-US", parentData["description"]);
                 parent.definition.type = new Uri(parentData["activityType"]);
                 if (parentData.ContainsKey("moreInfo")) {
-                    parent.definition.moreInfo = new Uri(_xApiOptions.UiUrl + parentData["moreInfo"]);
+                    parent.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + parentData["moreInfo"]);
                 }
                 contextActivities.parent = new List<Activity>();
                 contextActivities.parent.Add(parent);
@@ -200,7 +200,7 @@ namespace Cite.Api.Services
                 other.definition.description.Add("en-US", otherData["description"]);
                 other.definition.type = new Uri(otherData["activityType"]);
                 if (otherData.ContainsKey("moreInfo")) {
-                    other.definition.moreInfo = new Uri(_xApiOptions.UiUrl + otherData["moreInfo"]);
+                    other.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + otherData["moreInfo"]);
                 }
                 contextActivities.other = new List<Activity>();
                 context.contextActivities.other.Add(other);
@@ -219,7 +219,7 @@ namespace Cite.Api.Services
                         grouping.definition.description.Add("en-US", groupingItem["description"]);
                         grouping.definition.type = new Uri(groupingItem["activityType"]);
                         if (groupingItem.ContainsKey("moreInfo")) {
-                            grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl + groupingItem["moreInfo"]);
+                            grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + groupingItem["moreInfo"]);
                         }
                         context.contextActivities.grouping.Add(grouping);
                     }
@@ -236,7 +236,7 @@ namespace Cite.Api.Services
                 category.definition.description.Add("en-US", categoryData["description"]);
                 category.definition.type = new Uri(categoryData["activityType"]);
                 if (categoryData.ContainsKey("moreInfo")) {
-                    category.definition.moreInfo = new Uri(_xApiOptions.UiUrl + categoryData["moreInfo"]);
+                    category.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + categoryData["moreInfo"]);
                 }
                 contextActivities.category = new List<Activity>();
                 context.contextActivities.category.Add(category);
