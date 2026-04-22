@@ -218,14 +218,12 @@ namespace Cite.Api.Services
 
                 var category = new Dictionary<String,String>();
 
-                var groupingMove = new Dictionary<String,String>();
-                groupingMove.Add("id", move.Id.ToString());
-                groupingMove.Add("name", move.MoveNumber.ToString());
-                groupingMove.Add("description", move.Description);
-                groupingMove.Add("type", "moves");
-                groupingMove.Add("activityType", "http://id.tincanapi.com/activitytype/step");
-
-                var groupingList = new List<Dictionary<String,String>> { groupingMove };
+                var grouping = new Dictionary<String,String>();
+                grouping.Add("id", move.Id.ToString());
+                grouping.Add("name", move.MoveNumber.ToString());
+                grouping.Add("description", move.Description);
+                grouping.Add("type", "moves");
+                grouping.Add("activityType", "http://id.tincanapi.com/activitytype/step");
 
                 var other = new Dictionary<String,String>();
                 other.Add("id", user.Id.ToString());
@@ -235,7 +233,7 @@ namespace Cite.Api.Services
                 other.Add("activityType", "http://id.tincanapi.com/activitytype/user-profile");
 
                 return await _xApiService.CreateAsync(
-                    verb, activity, parent, category, groupingList, other, teamId, ct);
+                    verb, activity, parent, category, grouping, other, teamId, ct);
 
             }
             return false;
