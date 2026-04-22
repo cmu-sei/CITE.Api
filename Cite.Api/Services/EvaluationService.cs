@@ -219,6 +219,11 @@ namespace Cite.Api.Services
 
         private async Task<EvaluationEntity> privateEvaluationCopyAsync(EvaluationEntity oldEval, CancellationToken ct)
         {
+            if (oldEval.ScoringModel == null)
+            {
+                throw new InvalidOperationException("Cannot copy evaluation: ScoringModel is null");
+            }
+
             var currentUserId = _user.GetId();
             var username = (await _context.Users.AsNoTracking()
                 .SingleOrDefaultAsync(u => u.Id == currentUserId, ct))?.Name ?? "Unknown";
@@ -353,14 +358,45 @@ namespace Cite.Api.Services
                 ReferenceHandler = ReferenceHandler.Preserve
             };
             var evaluationEntity = JsonSerializer.Deserialize<EvaluationEntity>(evaluationJson, options);
+
+            if (evaluationEntity == null)
+            {
+                throw new InvalidOperationException("Failed to deserialize evaluation JSON");
+            }
+
             // if the scoring model doesn't exist, create it
             var exists = await _context.ScoringModels.AnyAsync(m => m.Id == evaluationEntity.ScoringModelId, ct);
+
             if (!exists)
             {
+                if (evaluationEntity.ScoringModel == null)
+                {
+                    throw new InvalidOperationException("Uploaded evaluation does not contain a ScoringModel object and the ScoringModelId does not exist in the database");
+                }
+
                 var newScoringModel = await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
                 evaluationEntity.ScoringModelId = newScoringModel.Id;
             }
-            evaluationEntity.ScoringModel = null;
+
+            // Load the scoring model from the database to ensure all relationships are properly loaded
+            var scoringModelFromDb = await _context.ScoringModels
+                .AsNoTracking()
+                .Include(sm => sm.ScoringCategories)
+                    .ThenInclude(sc => sc.ScoringOptions)
+                .SingleOrDefaultAsync(sm => sm.Id == evaluationEntity.ScoringModelId, ct);
+
+            if (scoringModelFromDb != null)
+            {
+                // Use the scoring model from the database if it was found
+                evaluationEntity.ScoringModel = scoringModelFromDb;
+            }
+            else if (evaluationEntity.ScoringModel == null)
+            {
+                // If we couldn't find it in the DB and it's not in the JSON, that's an error
+                throw new InvalidOperationException($"ScoringModel with ID {evaluationEntity.ScoringModelId} could not be found or created.");
+            }
+            // else: use the scoring model from the uploaded JSON
+
             // if TeamTypes don't exist, then create them
             foreach (var team in evaluationEntity.Teams)
             {
