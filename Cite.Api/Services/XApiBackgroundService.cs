@@ -21,6 +21,7 @@ namespace Cite.Api.Services
         private readonly ILogger<XApiBackgroundService> _logger;
         private const int ProcessingDelaySeconds = 5;
         private const int BatchSize = 10;
+        private const int CleanupDelayHours = 24;
 
         public XApiBackgroundService(
             IServiceProvider serviceProvider,
@@ -45,6 +46,8 @@ namespace Cite.Api.Services
                 }
             }
 
+            DateTime lastCleanup = DateTime.MinValue;
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -54,6 +57,19 @@ namespace Cite.Api.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing xAPI queue");
+                }
+
+                if (DateTime.UtcNow - lastCleanup >= TimeSpan.FromHours(CleanupDelayHours))
+                {
+                    try
+                    {
+                        await CleanupOldStatementsAsync(stoppingToken);
+                        lastCleanup = DateTime.UtcNow;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error cleaning up old xAPI statements");
+                    }
                 }
 
                 // Wait before processing next batch
@@ -112,6 +128,37 @@ namespace Cite.Api.Services
                     _logger.LogError(ex, "Error processing xAPI statement {StatementId}", queuedStatement.Id);
                 }
             }
+        }
+
+        private async Task CleanupOldStatementsAsync(CancellationToken cancellationToken)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var queueService = scope.ServiceProvider.GetRequiredService<IXApiQueueService>();
+            var xApiOptions = scope.ServiceProvider.GetRequiredService<XApiOptions>();
+
+            var cutoffDate = DateTime.UtcNow.AddDays(-xApiOptions.RetentionDays);
+
+            _logger.LogInformation("Cleaning up xAPI statements older than {CutoffDate} (Retention: {RetentionDays} days)", 
+                cutoffDate, xApiOptions.RetentionDays);
+
+            var completedStatements = await queueService.GetOldCompletedStatementsAsync(cutoffDate, cancellationToken);
+            var failedStatements = await queueService.GetOldFailedStatementsAsync(cutoffDate, cancellationToken);
+
+            var totalStatements = completedStatements.Count + failedStatements.Count;
+
+            if (totalStatements == 0)
+            {
+                _logger.LogInformation("No old statements to cleanup");
+                return;
+            }
+
+            var allStatementIds = completedStatements.Select(s => s.Id)
+                .Concat(failedStatements.Select(s => s.Id))
+                .ToList();
+
+            await queueService.DeleteStatementsAsync(allStatementIds, cancellationToken);
+
+            _logger.LogInformation("Deleted {Count} old xAPI statements", totalStatements);
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
