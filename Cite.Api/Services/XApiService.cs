@@ -21,12 +21,14 @@ namespace Cite.Api.Services
     public interface IXApiService
     {
         Boolean IsConfigured();
+        Task<Boolean> EvaluationDashboardObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
+        Task<Boolean> EvaluationScoresheetObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<Boolean> CreateAsync(
             Uri verb,
             Dictionary<String,String> activityData,
-            Dictionary<String,String> categoryData,
-            Dictionary<String,String> groupingData,
             Dictionary<String,String> parentData,
+            Dictionary<String,String> categoryData,
+            List<Dictionary<String,String>> groupingData,
             Dictionary<String,String> otherData,
             Guid teamId,
             CancellationToken ct);
@@ -97,7 +99,7 @@ namespace Cite.Api.Services
             Uri verbUri, Dictionary<String,String> activityData,
             Dictionary<String,String> parentData,
             Dictionary<String,String> categoryData,
-            Dictionary<String,String> groupingData,
+            List<Dictionary<String,String>> groupingData,
             Dictionary<String,String> otherData,
             Guid teamId,
             CancellationToken ct)
@@ -120,7 +122,7 @@ namespace Cite.Api.Services
             activity.definition = new TinCan.ActivityDefinition();
             activity.definition.type = new Uri(activityData["activityType"]);
             if (activityData.ContainsKey("moreInfo")) {
-                activity.definition.moreInfo = new Uri(_xApiOptions.UiUrl + activityData["moreInfo"]);
+                activity.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + activityData["moreInfo"]);
             }
             activity.definition.name = new LanguageMap();
             activity.definition.name.Add("en-US", activityData["name"]);
@@ -151,7 +153,9 @@ namespace Cite.Api.Services
                 group.account.homePage = new Uri(_xApiOptions.UiUrl);
                 group.account.name = team.Id.ToString();;
                 group.member = new List<Agent> {};
-                group.member.Add(_agent);
+                if (verb.id.Segments.Last() != "observed") {
+                    group.member.Add(_agent);
+                }
                 if (otherData.ContainsKey("type") && otherData["type"] == "users") {
                     var targetUser = new Agent();
                     targetUser.name = otherData["name"];
@@ -168,10 +172,7 @@ namespace Cite.Api.Services
                     }
                     group.member.Add(targetUser);
                 }
-                // Note: TinCan library has a bug where Group serializes with objectType="Agent" instead of "Group"
-                // This causes LRS validation errors. Commenting out for now.
-                // TODO: Either fix TinCan serialization or migrate to Mos.xApi
-                // context.team = group;
+                context.team = group;
             }
 
             var contextActivities = new ContextActivities();
@@ -187,7 +188,7 @@ namespace Cite.Api.Services
                 parent.definition.description.Add("en-US", parentData["description"]);
                 parent.definition.type = new Uri(parentData["activityType"]);
                 if (parentData.ContainsKey("moreInfo")) {
-                    parent.definition.moreInfo = new Uri(_xApiOptions.UiUrl + parentData["moreInfo"]);
+                    parent.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + parentData["moreInfo"]);
                 }
                 contextActivities.parent = new List<Activity>();
                 contextActivities.parent.Add(parent);
@@ -203,26 +204,30 @@ namespace Cite.Api.Services
                 other.definition.description.Add("en-US", otherData["description"]);
                 other.definition.type = new Uri(otherData["activityType"]);
                 if (otherData.ContainsKey("moreInfo")) {
-                    other.definition.moreInfo = new Uri(_xApiOptions.UiUrl + otherData["moreInfo"]);
+                    other.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + otherData["moreInfo"]);
                 }
                 contextActivities.other = new List<Activity>();
                 context.contextActivities.other.Add(other);
             }
 
-            if (groupingData.Count() > 0) {
-                var grouping = new TinCan.Activity();
-                grouping.id = _xApiOptions.ApiUrl  + groupingData["type"] + "/" + groupingData["id"];
-                grouping.definition = new ActivityDefinition();
-                grouping.definition.name = new LanguageMap();
-                grouping.definition.name.Add("en-US", groupingData["name"]);
-                grouping.definition.description = new LanguageMap();
-                grouping.definition.description.Add("en-US", groupingData["description"]);
-                grouping.definition.type = new Uri(groupingData["activityType"]);
-                if (groupingData.ContainsKey("moreInfo")) {
-                    grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl + groupingData["moreInfo"]);
-                }
+            if (groupingData != null && groupingData.Count() > 0) {
                 contextActivities.grouping = new List<Activity>();
-                context.contextActivities.grouping.Add(grouping);
+                foreach (var groupingItem in groupingData) {
+                    if (groupingItem.Count() > 0) {
+                        var grouping = new TinCan.Activity();
+                        grouping.id = _xApiOptions.ApiUrl  + groupingItem["type"] + "/" + groupingItem["id"];
+                        grouping.definition = new ActivityDefinition();
+                        grouping.definition.name = new LanguageMap();
+                        grouping.definition.name.Add("en-US", groupingItem["name"]);
+                        grouping.definition.description = new LanguageMap();
+                        grouping.definition.description.Add("en-US", groupingItem["description"]);
+                        grouping.definition.type = new Uri(groupingItem["activityType"]);
+                        if (groupingItem.ContainsKey("moreInfo")) {
+                            grouping.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + groupingItem["moreInfo"]);
+                        }
+                        context.contextActivities.grouping.Add(grouping);
+                    }
+                }
             }
 
             if (categoryData.Count() > 0) {
@@ -235,7 +240,7 @@ namespace Cite.Api.Services
                 category.definition.description.Add("en-US", categoryData["description"]);
                 category.definition.type = new Uri(categoryData["activityType"]);
                 if (categoryData.ContainsKey("moreInfo")) {
-                    category.definition.moreInfo = new Uri(_xApiOptions.UiUrl + categoryData["moreInfo"]);
+                    category.definition.moreInfo = new Uri(_xApiOptions.UiUrl.TrimEnd('/') + categoryData["moreInfo"]);
                 }
                 contextActivities.category = new List<Activity>();
                 context.contextActivities.category.Add(category);
@@ -276,6 +281,93 @@ namespace Cite.Api.Services
                 _logger.LogError(ex, "Failed to queue xAPI statement");
                 return false;
             }
+        }
+
+
+        public async Task<Boolean> EvaluationDashboardObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
+        {
+            var evaluation = await _context.Evaluations.FindAsync(evaluationId);
+            if (evaluation == null) return false;
+
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/observed");
+
+            var activity = new Dictionary<String,String>();
+            activity.Add("id", evaluation.Id.ToString());
+            activity.Add("name", "Dashboard");
+            activity.Add("description", "The CITE Dashboard shows status indicators for the evaluation.");
+            activity.Add("type", "evaluation");
+            activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            activity.Add("moreInfo", "?section=dashboard&evaluation=" + evaluation.Id.ToString());
+
+            var parent = new Dictionary<String,String>();
+            parent.Add("id", evaluation.Id.ToString());
+            parent.Add("name", evaluation.Description);
+            parent.Add("description", evaluation.Description);
+            parent.Add("type", "evaluation");
+            parent.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            parent.Add("moreInfo", "?evaluation=" + evaluation.Id.ToString());
+
+            var category = new Dictionary<String,String>();
+            var grouping = new List<Dictionary<String,String>>();
+            var other = new Dictionary<String,String>();
+
+            if (evaluation.CurrentMoveNumber >= 0)
+            {
+                var moveGrouping = new Dictionary<String,String>();
+                moveGrouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                moveGrouping.Add("name", $"Move {evaluation.CurrentMoveNumber}");
+                moveGrouping.Add("description", "");
+                moveGrouping.Add("type", $"evaluation/{evaluation.Id}/move");
+                moveGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                moveGrouping.Add("moreInfo", "");
+                grouping.Add(moveGrouping);
+            }
+
+            return await CreateAsync(
+                verb, activity, parent, category, grouping, other, teamId, ct);
+        }
+
+        public async Task<Boolean> EvaluationScoresheetObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
+        {
+            var evaluation = await _context.Evaluations.FindAsync(evaluationId);
+            if (evaluation == null) return false;
+
+            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/observed");
+
+            var activity = new Dictionary<String,String>();
+            activity.Add("id", evaluation.Id.ToString());
+            activity.Add("name", "Scoresheet");
+            activity.Add("description", "The CITE Scoresheet is where teams enter their risk assessment scores.");
+            activity.Add("type", "evaluation");
+            activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            activity.Add("moreInfo", "?section=scoresheet&evaluation=" + evaluation.Id.ToString());
+
+            var parent = new Dictionary<String,String>();
+            parent.Add("id", evaluation.Id.ToString());
+            parent.Add("name", evaluation.Description);
+            parent.Add("description", evaluation.Description);
+            parent.Add("type", "evaluation");
+            parent.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            parent.Add("moreInfo", "?evaluation=" + evaluation.Id.ToString());
+
+            var category = new Dictionary<String,String>();
+            var grouping = new List<Dictionary<String,String>>();
+            var other = new Dictionary<String,String>();
+
+            if (evaluation.CurrentMoveNumber >= 0)
+            {
+                var moveGrouping = new Dictionary<String,String>();
+                moveGrouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                moveGrouping.Add("name", $"Move {evaluation.CurrentMoveNumber}");
+                moveGrouping.Add("description", "");
+                moveGrouping.Add("type", $"evaluation/{evaluation.Id}/move");
+                moveGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                moveGrouping.Add("moreInfo", "");
+                grouping.Add(moveGrouping);
+            }
+
+            return await CreateAsync(
+                verb, activity, parent, category, grouping, other, teamId, ct);
         }
 
 

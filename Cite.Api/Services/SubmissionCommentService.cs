@@ -168,11 +168,11 @@ namespace Cite.Api.Services
                 category.Add("activityType", "http://id.tincanapi.com/activitytype/category");
                 category.Add("moreInfo", "");
 
-                var grouping = new Dictionary<String,String>();
+                var groupingList = new List<Dictionary<String,String>>();
                 var other = new Dictionary<String,String>();
 
                 return await _xApiService.CreateAsync(
-                    verb, activity, parent, category, grouping, other, teamId, ct);
+                    verb, activity, parent, category, groupingList, other, teamId, ct);
 
             }
             return false;
