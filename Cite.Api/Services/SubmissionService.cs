@@ -1014,18 +1014,28 @@ namespace Cite.Api.Services
                 }
                 // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String, String>();
-                grouping.Add("id", move.Id.ToString());
-                grouping.Add("name", move.Description);
-                grouping.Add("description", "The exercise move associated with the score.");
-                grouping.Add("type", "move");
+                grouping.Add("id", move.MoveNumber.ToString());
+                grouping.Add("name", $"Move {move.MoveNumber}");
+                grouping.Add("description", move.Description);
+                grouping.Add("type", $"evaluation/{evaluation.Id}/move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
                 grouping.Add("moreInfo", "");
 
+                var scoringModelGrouping = new Dictionary<String, String>();
+                scoringModelGrouping.Add("id", evaluation.ScoringModelId.ToString());
+                scoringModelGrouping.Add("name", "Scoring Model");
+                scoringModelGrouping.Add("description", "Scoring model used for this evaluation");
+                scoringModelGrouping.Add("type", $"evaluation/{evaluation.Id}/scoringModel");
+                scoringModelGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                scoringModelGrouping.Add("moreInfo", "");
+
                 var other = new Dictionary<String, String>();
+
+                var groupingList = new List<Dictionary<String, String>> { grouping, scoringModelGrouping };
 
                 // TODO determine if we should log exhibit as registration
                 return await _xApiService.CreateAsync(
-                    verb, activity, parent, category, grouping, other, teamId, ct);
+                    verb, activity, parent, category, groupingList, other, teamId, ct);
 
             }
             return false;
