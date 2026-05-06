@@ -8272,6 +8272,100 @@
           }
         }
       }
+    },
+    "/api/xapi/observed/evaluation/{evaluationId}/team/{teamId}/dashboard": {
+      "get": {
+        "tags": [
+          "XApi"
+        ],
+        "summary": "Logs xAPI observed statement for Dashboard by Evaluation id and Team id",
+        "description": "Returns status",
+        "operationId": "observedEvaluationDashboard",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "description": "The id of the Evaluation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "description": "The id of the Team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Problem response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xapi/observed/evaluation/{evaluationId}/team/{teamId}/scoresheet": {
+      "get": {
+        "tags": [
+          "XApi"
+        ],
+        "summary": "Logs xAPI observed statement for Scoresheet by Evaluation id and Team id",
+        "description": "Returns status",
+        "operationId": "observedEvaluationScoresheet",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "description": "The id of the Evaluation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "description": "The id of the Team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Problem response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8753,6 +8847,9 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "showAdvanceButton": {
+            "type": "boolean"
           },
           "teams": {
             "type": "array",
@@ -11614,6 +11711,9 @@
     },
     {
       "name": "User"
+    },
+    {
+      "name": "XApi"
     }
   ]
 }
