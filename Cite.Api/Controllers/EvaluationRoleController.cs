@@ -59,24 +59,4 @@ public class EvaluationRolesController : BaseController
         var result = await _evaluationRoleService.GetAsync(ct);
         return Ok(result);
     }
-
-    /// <summary>
-    /// Get all EvaluationRoles as lightweight {Id, Name} lookups.
-    /// </summary>
-    /// <remarks>
-    /// Intended for clients that only need a name-to-id mapping and cannot consume the
-    /// full EvaluationRole shape (avoids deserialization issues with the Permissions enum collection).
-    /// </remarks>
-    /// <returns></returns>
-    [HttpGet("evaluation-roles/lookup")]
-    [ProducesResponseType(typeof(IEnumerable<EvaluationRoleLookup>), (int)HttpStatusCode.OK)]
-    [SwaggerOperation(OperationId = "GetAllEvaluationRoleLookups")]
-    public async Task<IActionResult> GetLookup(CancellationToken ct)
-    {
-        if (!await _authorizationService.AuthorizeAsync([SystemPermission.ViewRoles], ct))
-            throw new ForbiddenException();
-
-        var result = await _evaluationRoleService.GetLookupAsync(ct);
-        return Ok(result);
-    }
 }

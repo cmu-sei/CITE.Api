@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
@@ -21,7 +20,6 @@ namespace Cite.Api.Services
     {
         STT.Task<IEnumerable<ViewModels.EvaluationRole>> GetAsync(CancellationToken ct);
         STT.Task<ViewModels.EvaluationRole> GetAsync(Guid id, CancellationToken ct);
-        STT.Task<IEnumerable<ViewModels.EvaluationRoleLookup>> GetLookupAsync(CancellationToken ct);
     }
 
     public class EvaluationRoleService : IEvaluationRoleService
@@ -54,13 +52,6 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<EvaluationRole>();
 
             return _mapper.Map<SAVM.EvaluationRole>(item);
-        }
-
-        public async STT.Task<IEnumerable<ViewModels.EvaluationRoleLookup>> GetLookupAsync(CancellationToken ct)
-        {
-            return await _context.EvaluationRoles
-                .Select(r => new SAVM.EvaluationRoleLookup { Id = r.Id, Name = r.Name })
-                .ToListAsync(ct);
         }
 
     }

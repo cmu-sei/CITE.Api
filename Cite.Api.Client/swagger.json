@@ -2207,57 +2207,6 @@
         }
       }
     },
-    "/api/evaluation-roles/lookup": {
-      "get": {
-        "tags": [
-          "EvaluationRoles"
-        ],
-        "summary": "Get all EvaluationRoles as lightweight {Id, Name} lookups.",
-        "description": "Intended for clients that only need a name-to-id mapping and cannot consume the\nfull EvaluationRole shape (avoids deserialization issues with the Permissions enum collection).",
-        "operationId": "GetAllEvaluationRoleLookups",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EvaluationRoleLookup"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EvaluationRoleLookup"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EvaluationRoleLookup"
-                  }
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Problem response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/evaluations/{evaluationId}/unreadarticlecount": {
       "get": {
         "tags": [
@@ -9008,20 +8957,6 @@
             "items": {
               "$ref": "#/components/schemas/EvaluationPermission"
             },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "EvaluationRoleLookup": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string",
             "nullable": true
           }
         },
