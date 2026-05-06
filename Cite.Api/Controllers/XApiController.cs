@@ -35,9 +35,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "observedEvaluationDashboard")]
         public async Task<IActionResult> ObservedEvaluationDashboard(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (!await _xApiService.EvaluationDashboardObservedAsync(evaluationId, teamId, ct))
-                throw new Exception();
-
+            await _xApiService.EvaluationDashboardObservedAsync(evaluationId, teamId, ct);
             return Ok();
         }
 
@@ -56,9 +54,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "observedEvaluationScoresheet")]
         public async Task<IActionResult> ObservedEvaluationScoresheet(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (!await _xApiService.EvaluationScoresheetObservedAsync(evaluationId, teamId, ct))
-                throw new Exception();
-
+            await _xApiService.EvaluationScoresheetObservedAsync(evaluationId, teamId, ct);
             return Ok();
         }
     }
