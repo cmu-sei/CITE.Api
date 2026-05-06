@@ -92,7 +92,7 @@ namespace Cite.Api.Services
 
         public Boolean IsConfigured()
         {
-            return !string.IsNullOrWhiteSpace(_xApiOptions.Username);
+            return _xApiOptions.Enabled && !string.IsNullOrWhiteSpace(_xApiOptions.Username);
         }
 
         public async Task<Boolean> CreateAsync(
