@@ -17,5 +17,7 @@ namespace Cite.Api.Infrastructure.Options
         public string EmailDomain { get; set; }
         public string Platform { get; set; }
         public int RetentionDays { get; set; } = 7;
+        public int ProcessingTimeoutMinutes { get; set; } = 10;
+        public int ProcessingDelaySeconds { get; set; } = 30;
     }
 }
