@@ -2207,6 +2207,57 @@
         }
       }
     },
+    "/api/evaluation-roles/lookup": {
+      "get": {
+        "tags": [
+          "EvaluationRoles"
+        ],
+        "summary": "Get all EvaluationRoles as lightweight {Id, Name} lookups.",
+        "description": "Intended for clients that only need a name-to-id mapping and cannot consume the\nfull EvaluationRole shape (avoids deserialization issues with the Permissions enum collection).",
+        "operationId": "GetAllEvaluationRoleLookups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRoleLookup"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRoleLookup"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRoleLookup"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/evaluations/{evaluationId}/unreadarticlecount": {
       "get": {
         "tags": [
@@ -8272,6 +8323,100 @@
           }
         }
       }
+    },
+    "/api/xapi/observed/evaluation/{evaluationId}/team/{teamId}/dashboard": {
+      "get": {
+        "tags": [
+          "XApi"
+        ],
+        "summary": "Logs xAPI observed statement for Dashboard by Evaluation id and Team id",
+        "description": "Returns status",
+        "operationId": "observedEvaluationDashboard",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "description": "The id of the Evaluation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "description": "The id of the Team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Problem response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xapi/observed/evaluation/{evaluationId}/team/{teamId}/scoresheet": {
+      "get": {
+        "tags": [
+          "XApi"
+        ],
+        "summary": "Logs xAPI observed statement for Scoresheet by Evaluation id and Team id",
+        "description": "Returns status",
+        "operationId": "observedEvaluationScoresheet",
+        "parameters": [
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "description": "The id of the Evaluation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "description": "The id of the Team",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Problem response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8754,6 +8899,9 @@
             "format": "uuid",
             "nullable": true
           },
+          "showAdvanceButton": {
+            "type": "boolean"
+          },
           "teams": {
             "type": "array",
             "items": {
@@ -8860,6 +9008,20 @@
             "items": {
               "$ref": "#/components/schemas/EvaluationPermission"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EvaluationRoleLookup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -11614,6 +11776,9 @@
     },
     {
       "name": "User"
+    },
+    {
+      "name": "XApi"
     }
   ]
 }
