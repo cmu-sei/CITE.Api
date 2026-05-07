@@ -144,8 +144,9 @@ namespace Cite.Api.Services
                 }
             }
 
-            if (teamId.ToString() !=  "") {
+            if (teamId != Guid.Empty) {
                 var team = _context.Teams.Find(teamId);
+                if (team == null) return false;
                 var group = new TinCan.Group();
                 group.name = team.ShortName;
                 if (_xApiOptions.EmailDomain != "") {
@@ -294,9 +295,10 @@ namespace Cite.Api.Services
 
             var verb = new Uri("http://id.tincanapi.com/verb/viewed");
 
-            var teamId = (_context.TeamUsers
+            var teamUser = await _context.TeamUsers
                 .Include(tu => tu.Team)
-                .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
+                .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId, ct);
+            var teamId = teamUser?.TeamId ?? Guid.Empty;
 
             var activity = new Dictionary<String,String>();
             activity.Add("id", evaluation.Id.ToString());
@@ -341,9 +343,10 @@ namespace Cite.Api.Services
 
             var verb = new Uri("http://id.tincanapi.com/verb/viewed");
 
-            var teamId = (_context.TeamUsers
+            var teamUser = await _context.TeamUsers
                 .Include(tu => tu.Team)
-                .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
+                .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId, ct);
+            var teamId = teamUser?.TeamId ?? Guid.Empty;
 
             var activity = new Dictionary<String,String>();
             activity.Add("id", evaluation.Id.ToString());
