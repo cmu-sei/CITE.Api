@@ -141,7 +141,10 @@ namespace Cite.Api.Hubs
                 .AnyAsync();
             if (team != null)
             {
-                var teamMembership = await context.TeamMemberships.SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
+                var teamMembership = await context.TeamMemberships
+                    .Include(tu => tu.Team)
+                    .ThenInclude(t => t.TeamType)
+                    .SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
                 if (teamMembership != null && (teamMembership.TeamId == teamId || isObserver))
                 {
                     idList.Add(teamId.ToString());
