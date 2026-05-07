@@ -9,6 +9,7 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
@@ -294,6 +295,7 @@ namespace Cite.Api.Services
             var verb = new Uri("http://id.tincanapi.com/verb/viewed");
 
             var teamId = (_context.TeamUsers
+                .Include(tu => tu.Team)
                 .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
 
             var activity = new Dictionary<String,String>();
@@ -340,6 +342,7 @@ namespace Cite.Api.Services
             var verb = new Uri("http://id.tincanapi.com/verb/viewed");
 
             var teamId = (_context.TeamUsers
+                .Include(tu => tu.Team)
                 .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
 
             var activity = new Dictionary<String,String>();
