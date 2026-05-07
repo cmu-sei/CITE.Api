@@ -21,6 +21,8 @@ namespace Cite.Api.Services
     public interface IXApiService
     {
         Boolean IsConfigured();
+        Task<Boolean> EvaluationDashboardViewedAsync(Guid evaluationId, CancellationToken ct);
+        Task<Boolean> EvaluationScoresheetViewedAsync(Guid evaluationId, CancellationToken ct);
         Task<Boolean> EvaluationDashboardObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<Boolean> EvaluationScoresheetObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<Boolean> CreateAsync(
@@ -283,6 +285,98 @@ namespace Cite.Api.Services
             }
         }
 
+
+        public async Task<Boolean> EvaluationDashboardViewedAsync(Guid evaluationId, CancellationToken ct)
+        {
+            var evaluation = await _context.Evaluations.FindAsync(evaluationId);
+            if (evaluation == null) return false;
+
+            var verb = new Uri("http://id.tincanapi.com/verb/viewed");
+
+            var teamId = (_context.TeamUsers
+                .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
+
+            var activity = new Dictionary<String,String>();
+            activity.Add("id", evaluation.Id.ToString());
+            activity.Add("name", "Dashboard");
+            activity.Add("description", "The CITE Dashboard shows status indicators for the evaluation.");
+            activity.Add("type", "evaluation");
+            activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            activity.Add("moreInfo", "?section=dashboard&evaluation=" + evaluation.Id.ToString());
+
+            var parent = new Dictionary<String,String>();
+            parent.Add("id", evaluation.Id.ToString());
+            parent.Add("name", evaluation.Description);
+            parent.Add("description", evaluation.Description);
+            parent.Add("type", "evaluation");
+            parent.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            parent.Add("moreInfo", "?evaluation=" + evaluation.Id.ToString());
+
+            var category = new Dictionary<String,String>();
+            var grouping = new List<Dictionary<String,String>>();
+            var other = new Dictionary<String,String>();
+
+            if (evaluation.CurrentMoveNumber >= 0)
+            {
+                var moveGrouping = new Dictionary<String,String>();
+                moveGrouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                moveGrouping.Add("name", $"Move {evaluation.CurrentMoveNumber}");
+                moveGrouping.Add("description", "");
+                moveGrouping.Add("type", $"evaluation/{evaluation.Id}/move");
+                moveGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                moveGrouping.Add("moreInfo", "");
+                grouping.Add(moveGrouping);
+            }
+
+            return await CreateAsync(
+                verb, activity, parent, category, grouping, other, teamId, ct);
+        }
+
+        public async Task<Boolean> EvaluationScoresheetViewedAsync(Guid evaluationId, CancellationToken ct)
+        {
+            var evaluation = await _context.Evaluations.FindAsync(evaluationId);
+            if (evaluation == null) return false;
+
+            var verb = new Uri("http://id.tincanapi.com/verb/viewed");
+
+            var teamId = (_context.TeamUsers
+                .SingleOrDefault(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == evaluationId))?.TeamId ?? Guid.Empty;
+
+            var activity = new Dictionary<String,String>();
+            activity.Add("id", evaluation.Id.ToString());
+            activity.Add("name", "Scoresheet");
+            activity.Add("description", "The CITE Scoresheet is where teams enter their risk assessment scores.");
+            activity.Add("type", "evaluation");
+            activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            activity.Add("moreInfo", "?section=scoresheet&evaluation=" + evaluation.Id.ToString());
+
+            var parent = new Dictionary<String,String>();
+            parent.Add("id", evaluation.Id.ToString());
+            parent.Add("name", evaluation.Description);
+            parent.Add("description", evaluation.Description);
+            parent.Add("type", "evaluation");
+            parent.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
+            parent.Add("moreInfo", "?evaluation=" + evaluation.Id.ToString());
+
+            var category = new Dictionary<String,String>();
+            var grouping = new List<Dictionary<String,String>>();
+            var other = new Dictionary<String,String>();
+
+            if (evaluation.CurrentMoveNumber >= 0)
+            {
+                var moveGrouping = new Dictionary<String,String>();
+                moveGrouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                moveGrouping.Add("name", $"Move {evaluation.CurrentMoveNumber}");
+                moveGrouping.Add("description", "");
+                moveGrouping.Add("type", $"evaluation/{evaluation.Id}/move");
+                moveGrouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
+                moveGrouping.Add("moreInfo", "");
+                grouping.Add(moveGrouping);
+            }
+
+            return await CreateAsync(
+                verb, activity, parent, category, grouping, other, teamId, ct);
+        }
 
         public async Task<Boolean> EvaluationDashboardObservedAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
