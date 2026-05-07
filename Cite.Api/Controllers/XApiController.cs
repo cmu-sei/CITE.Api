@@ -21,6 +21,42 @@ namespace Cite.Api.Controllers
         }
 
         /// <summary>
+        /// Logs xAPI viewed statement for Dashboard by Evaluation id
+        /// </summary>
+        /// <remarks>
+        /// Returns status
+        /// </remarks>
+        /// <param name="evaluationId">The id of the Evaluation</param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        [HttpGet("xapi/viewed/evaluation/{evaluationId}/dashboard")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "viewedEvaluationDashboard")]
+        public async Task<IActionResult> ViewedEvaluationDashboard(Guid evaluationId, CancellationToken ct)
+        {
+            await _xApiService.EvaluationDashboardViewedAsync(evaluationId, ct);
+            return Ok();
+        }
+
+        /// <summary>
+        /// Logs xAPI viewed statement for Scoresheet by Evaluation id
+        /// </summary>
+        /// <remarks>
+        /// Returns status
+        /// </remarks>
+        /// <param name="evaluationId">The id of the Evaluation</param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        [HttpGet("xapi/viewed/evaluation/{evaluationId}/scoresheet")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [SwaggerOperation(OperationId = "viewedEvaluationScoresheet")]
+        public async Task<IActionResult> ViewedEvaluationScoresheet(Guid evaluationId, CancellationToken ct)
+        {
+            await _xApiService.EvaluationScoresheetViewedAsync(evaluationId, ct);
+            return Ok();
+        }
+
+        /// <summary>
         /// Logs xAPI observed statement for Dashboard by Evaluation id and Team id
         /// </summary>
         /// <remarks>
@@ -35,7 +71,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "observedEvaluationDashboard")]
         public async Task<IActionResult> ObservedEvaluationDashboard(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            await _xApiService.EvaluationDashboardObservedAsync(evaluationId, teamId, ct);
+            if (!await _xApiService.EvaluationDashboardObservedAsync(evaluationId, teamId, ct))
+                throw new Exception();
+
             return Ok();
         }
 
@@ -54,7 +92,9 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "observedEvaluationScoresheet")]
         public async Task<IActionResult> ObservedEvaluationScoresheet(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            await _xApiService.EvaluationScoresheetObservedAsync(evaluationId, teamId, ct);
+            if (!await _xApiService.EvaluationScoresheetObservedAsync(evaluationId, teamId, ct))
+                throw new Exception();
+
             return Ok();
         }
     }
