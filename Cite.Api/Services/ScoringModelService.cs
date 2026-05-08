@@ -35,8 +35,8 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.ScoringModel>> GetAsync(ScoringModelGet queryParameters, CancellationToken ct);
         Task<ViewModels.ScoringModel> GetAsync(Guid id, bool hasPermission, bool viewAsAdmin, CancellationToken ct);
         Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct);
-        Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct);
-        Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct);
+        Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct, string descriptionSuffix = null);
+        Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct, string descriptionSuffix = null);
         Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid scoringModelId, CancellationToken ct);
         Task<ScoringModel> UploadJsonAsync(FileForm form, CancellationToken ct);
         Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.ScoringModel scoringModel, CancellationToken ct);
@@ -134,7 +134,7 @@ namespace Cite.Api.Services
             return scoringModel;
         }
 
-        public async Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct)
+        public async Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct, string descriptionSuffix = null)
         {
             var scoringModelEntity = await _context.ScoringModels
                 .AsNoTracking()
@@ -145,16 +145,17 @@ namespace Cite.Api.Services
             if (scoringModelEntity == null)
                 throw new EntityNotFoundException<ScoringModelEntity>("ScoringModel not found with ID=" + scoringModelId.ToString());
 
-            var newScoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct);
+            var newScoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionSuffix);
             var scoringModel = _mapper.Map<ScoringModel>(newScoringModelEntity);
 
             return scoringModel;
         }
 
-        public async Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct)
+        public async Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct, string descriptionSuffix = null)
         {
             var currentUserId = _user.GetId();
             var username = (await _context.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == _user.GetId(), ct))?.Name ?? "Unknown";
+            descriptionSuffix ??= " *copy by " + username + "*";
             var newScoringModelId = Guid.NewGuid();
             var originalCategories = scoringModelEntity.ScoringCategories?.ToList() ?? new List<ScoringCategoryEntity>();
 
@@ -164,7 +165,7 @@ namespace Cite.Api.Services
             var newScoringModel = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(scoringModelEntity);
             newScoringModel.Id = newScoringModelId;
             newScoringModel.CreatedBy = currentUserId;
-            newScoringModel.Description = scoringModelEntity.Description + " - " + username;
+            newScoringModel.Description = scoringModelEntity.Description + descriptionSuffix;
             newScoringModel.ScoringCategories = new List<ScoringCategoryEntity>();
 
             foreach (var originalCategory in originalCategories)

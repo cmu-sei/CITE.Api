@@ -163,7 +163,7 @@ namespace Cite.Api.Services
 
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // create a scoring model copy
-            var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct);
+            var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct, " => on " + evaluation.Description);
             evaluation.ScoringModelId = newScoringModel.Id;
             var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
             evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
