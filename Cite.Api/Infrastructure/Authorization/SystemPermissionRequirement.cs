@@ -26,11 +26,8 @@ namespace Cite.Api.Infrastructure.Authorization
             {
                 context.Fail();
             }
-            else if (requirement.RequiredPermissions == null || requirement.RequiredPermissions.Length == 0)
-            {
-                context.Succeed(requirement);
-            }
-            else if (requirement.RequiredPermissions.Any(p => context.User.HasClaim(AuthorizationConstants.PermissionClaimType, p.ToString())))
+            else if (requirement.RequiredPermissions != null && requirement.RequiredPermissions.Length > 0 &&
+                requirement.RequiredPermissions.Any(p => context.User.HasClaim(AuthorizationConstants.PermissionClaimType, p.ToString())))
             {
                 context.Succeed(requirement);
             }

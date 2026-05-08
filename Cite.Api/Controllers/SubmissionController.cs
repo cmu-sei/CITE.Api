@@ -180,7 +180,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "updateSubmission")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Submission submission, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(submission.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+            if (!await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.Submit, ct))
                 throw new ForbiddenException();
 
             var updatedSubmission = await _submissionService.UpdateAsync(id, submission, ct);
