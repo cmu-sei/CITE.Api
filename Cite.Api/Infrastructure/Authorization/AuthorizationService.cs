@@ -221,6 +221,8 @@ public class AuthorizationService(
         {
             var t when t == typeof(Evaluation) => resourceId,
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
+            var t when t == typeof(Team) => await GetEvaluationIdFromTeam(resourceId, cancellationToken),
+            var t when t == typeof(TeamMembership) => await GetEvaluationIdFromTeamMembership(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
             var t when t == typeof(Duty) => await GetEvaluationIdFromDuty(resourceId, cancellationToken),
             var t when t == typeof(Submission) => await GetEvaluationIdFromSubmission(resourceId, cancellationToken),
@@ -249,6 +251,22 @@ public class AuthorizationService(
         return await dbContext.EvaluationMemberships
             .Where(x => x.Id == id)
             .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid?> GetEvaluationIdFromTeam(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Teams
+            .Where(x => x.Id == id)
+            .Select(x => x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<Guid?> GetEvaluationIdFromTeamMembership(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.TeamMemberships
+            .Where(x => x.Id == id)
+            .Select(x => x.Team.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
