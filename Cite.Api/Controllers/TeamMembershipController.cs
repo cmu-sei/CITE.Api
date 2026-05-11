@@ -38,7 +38,8 @@ public class TeamMembershipsController : BaseController
     public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken ct)
     {
         var result = await _teamMembershipService.GetAsync(id, ct);
-        if (!await _authorizationService.AuthorizeAsync<Team>(result.TeamId, [], [TeamPermission.ViewTeam], ct))
+        if (!await _authorizationService.AuthorizeAsync<Team>(result.TeamId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ViewEvaluation, EvaluationPermission.ObserveEvaluation], ct) &&
+            !await _authorizationService.AuthorizeAsync<Team>(result.TeamId, [], [TeamPermission.ViewTeam], ct))
             throw new ForbiddenException();
 
         return Ok(result);
@@ -53,7 +54,8 @@ public class TeamMembershipsController : BaseController
     [SwaggerOperation(OperationId = "GetAllTeamMemberships")]
     public async Task<IActionResult> GetAll(Guid id, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<Team>(id, [], [TeamPermission.ViewTeam], ct))
+        if (!await _authorizationService.AuthorizeAsync<Team>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ViewEvaluation, EvaluationPermission.ObserveEvaluation], ct) &&
+            !await _authorizationService.AuthorizeAsync<Team>(id, [], [TeamPermission.ViewTeam], ct))
             throw new ForbiddenException();
 
         var result = await _teamMembershipService.GetByTeamAsync(id, ct);
@@ -71,7 +73,8 @@ public class TeamMembershipsController : BaseController
     [SwaggerOperation(OperationId = "CreateTeamMembership")]
     public async Task<IActionResult> CreateMembership([FromRoute] Guid teamId, TeamMembership teamMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
+        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
+            !await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
             throw new ForbiddenException();
 
         var result = await _teamMembershipService.CreateAsync(teamMembership, ct);
@@ -92,7 +95,8 @@ public class TeamMembershipsController : BaseController
     [SwaggerOperation(OperationId = "updateTeamMembership")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] TeamMembership teamMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<TeamMembership>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
+        if (!await _authorizationService.AuthorizeAsync<TeamMembership>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
+            !await _authorizationService.AuthorizeAsync<TeamMembership>(id, [], [TeamPermission.ManageTeam], ct))
             throw new ForbiddenException();
 
         var updatedTeamMembership = await _teamMembershipService.UpdateAsync(id, teamMembership, ct);
@@ -109,7 +113,8 @@ public class TeamMembershipsController : BaseController
     public async Task<IActionResult> DeleteMembership([FromRoute] Guid id, CancellationToken ct)
     {
         var teamMembership = await _teamMembershipService.GetAsync(id, ct);
-        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
+        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
+            !await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
             throw new ForbiddenException();
 
         await _teamMembershipService.DeleteAsync(id, ct);
