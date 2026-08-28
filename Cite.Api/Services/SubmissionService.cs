@@ -43,7 +43,8 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct);
         Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct);
         Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
-        Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct);
+        Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct, string response = null);
+        Task<bool> LogCommentXApiAsync(Uri verb, Guid submissionOptionId, string response, CancellationToken ct);
         Task CreateMoveSubmissions(MoveEntity moveEntity, CiteContext citeContext, CancellationToken ct);
         Task CreateTeamSubmissions(TeamEntity teamEntity, CiteContext citeContext, CancellationToken ct);
         Task CreateUserSubmissions(TeamMembershipEntity teamMembershipEntity, CiteContext citeContext, CancellationToken ct);
@@ -630,6 +631,12 @@ namespace Cite.Api.Services
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
 
+            await LogCommentXApiAsync(
+                new Uri("https://w3id.org/xapi/dod-isd/verbs/stated"),
+                submissionCommentEntity.SubmissionOptionId,
+                submissionComment.Comment,
+                ct);
+
             return await GetAsync(submissionId, ct);
         }
 
@@ -650,6 +657,12 @@ namespace Cite.Api.Services
             submissionEntity.ModifiedBy = submissionComment.CreatedBy;
             await _context.SaveChangesAsync(ct);
 
+            await LogCommentXApiAsync(
+                new Uri("https://w3id.org/xapi/dod-isd/verbs/edited"),
+                submissionCommentToUpdate.SubmissionOptionId,
+                submissionCommentToUpdate.Comment,
+                ct);
+
             return await GetAsync(submissionId, ct);
         }
 
@@ -662,11 +675,21 @@ namespace Cite.Api.Services
             var submissionCommentEntity = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
             if (submissionCommentEntity == null)
                 throw new EntityNotFoundException<SubmissionComment>();
+
+            var submissionOptionId = submissionCommentEntity.SubmissionOptionId;
+            var response = submissionCommentEntity.Comment;
+
             // delete the comment
             _context.SubmissionComments.Remove(submissionCommentEntity);
             // update and return the submission
             submissionEntity.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
+
+            await LogCommentXApiAsync(
+                new Uri("https://w3id.org/xapi/dod-isd/verbs/deleted"),
+                submissionOptionId,
+                response,
+                ct);
 
             return await GetAsync(submissionId, ct);
         }
@@ -944,7 +967,26 @@ namespace Cite.Api.Services
 
             return result;
         }
-        public async Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct)
+        public async Task<bool> LogCommentXApiAsync(Uri verb, Guid submissionOptionId, string response, CancellationToken ct)
+        {
+            if (!_xApiService.IsConfigured())
+                return false;
+
+            var submissionOption = await _context.SubmissionOptions
+                .AsNoTracking()
+                .SingleOrDefaultAsync(so => so.Id == submissionOptionId, ct);
+            if (submissionOption == null)
+                return false;
+
+            return await LogXApiAsync(
+                verb,
+                null,
+                _mapper.Map<SubmissionOption>(submissionOption),
+                ct,
+                response);
+        }
+
+        public async Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct, string response = null)
         {
 
             if (_xApiService.IsConfigured())
@@ -982,6 +1024,10 @@ namespace Cite.Api.Services
                     activity.Add("type", "scoringOption");
                     activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
                     activity.Add("moreInfo", "/scoringOption/" + scoringOption.Id.ToString());
+                    if (response != null)
+                    {
+                        activity.Add("result", response);
+                    }
                 }
                 else
                 {
