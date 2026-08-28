@@ -1033,7 +1033,7 @@ namespace Cite.Api.Services
                 {
                     // log the submission
                     activity.Add("id", submission.Id.ToString());
-                    activity.Add("name", "New Submission");
+                    activity.Add("name", GetSubmissionActivityName(submission, move));
                     activity.Add("description", "A score submitted to assess an incident.");
                     activity.Add("type", "submission");
                     activity.Add("activityType", "http://id.tincanapi.com/activitytype/resource");
@@ -1085,6 +1085,17 @@ namespace Cite.Api.Services
 
             }
             return false;
+        }
+
+        private static string GetSubmissionActivityName(Submission submission, Move move)
+        {
+            var scope = submission.UserId.HasValue
+                ? "User"
+                : submission.TeamId.HasValue
+                    ? "Team"
+                    : "Official";
+
+            return $"{scope} Submission — Move {submission.MoveNumber}: {move.Description}";
         }
 
         public async Task CreateMoveSubmissions(MoveEntity move, CiteContext citeContext, CancellationToken ct)
