@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cite.Api.Data", "Cite.Api.D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cite.Api.Client", "Cite.Api.Client\Cite.Api.Client.csproj", "{3B98E14E-EC52-451C-8C38-7B740BAB205C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cite.Api.Tests", "Cite.Api.Tests\Cite.Api.Tests.csproj", "{0623EA99-2DD4-43C2-805B-73C4CE7F8774}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{3B98E14E-EC52-451C-8C38-7B740BAB205C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B98E14E-EC52-451C-8C38-7B740BAB205C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B98E14E-EC52-451C-8C38-7B740BAB205C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0623EA99-2DD4-43C2-805B-73C4CE7F8774}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0623EA99-2DD4-43C2-805B-73C4CE7F8774}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0623EA99-2DD4-43C2-805B-73C4CE7F8774}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0623EA99-2DD4-43C2-805B-73C4CE7F8774}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
