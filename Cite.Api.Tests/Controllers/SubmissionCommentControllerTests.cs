@@ -45,6 +45,46 @@ public class SubmissionCommentControllerTests(DatabaseFixture fixture, CiteAppFa
     }
 
     [Fact]
+    public async Task GetForSubmissionOption_lists_the_comments_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    {
+        var (graph, submission, comment) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var comments = await ReadAsync<List<SubmissionComment>>(await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
+
+        Assert.Equal(comment.Id, Assert.Single(comments).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionOption_lists_the_comments_to_a_caller_holding_ObserveEvaluations()
+    {
+        var (_, submission, comment) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var comments = await ReadAsync<List<SubmissionComment>>(await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
+
+        Assert.Equal(comment.Id, Assert.Single(comments).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionOption_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (_, submission, _) = await Seed();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
+    }
+
+    [Fact]
+    public async Task GetForSubmissionOption_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, submission, _) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_comment_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
     {
         var (graph, _, comment) = await Seed();
@@ -62,6 +102,26 @@ public class SubmissionCommentControllerTests(DatabaseFixture fixture, CiteAppFa
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_comment_to_a_member_holding_ViewTeam()
+    {
+        var (graph, _, comment) = await Seed();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        var read = await ReadAsync<SubmissionComment>(await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
+
+        Assert.Equal(comment.Comment, read.Comment);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, _, comment) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
     }
 
     /// <summary>A member holding only ViewTeam adds a comment.</summary>

@@ -186,6 +186,16 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
     }
 
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_ViewEvaluation_only_on_another_evaluation()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ViewEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
+    }
+
     /// <summary>A member of a sibling team reads another team's submission with the ViewTeam of their own team.</summary>
     [Fact]
     public async Task Get_returns_another_teams_submission_to_a_member_of_a_sibling_team_holding_ViewTeam()
@@ -219,6 +229,30 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewCurrentOfficialScore]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/submissions/{past.Submission.Id}", Ct));
+    }
+
+    // Same case as Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore.
+    [Fact]
+    public async Task Get_returns_the_current_moves_official_submission_to_a_member_holding_only_ViewPastOfficialScore()
+    {
+        var graph = await Seed();
+        var current = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewPastOfficialScore]).SeedAsync();
+
+        var returned = await ReadAsync<Submission>(await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
+
+        Assert.Equal(current.Submission.Id, returned.Id);
+    }
+
+    // Same case as Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore.
+    [Fact]
+    public async Task Get_is_forbidden_on_the_current_moves_official_submission_for_a_member_holding_only_ViewCurrentOfficialScore()
+    {
+        var graph = await Seed();
+        var current = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewCurrentOfficialScore]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
     }
 
     /// <summary>An unknown submission id is answered with a 500 for a caller the evaluation-wide check refuses.</summary>
@@ -540,6 +574,49 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
 
         await using var context = NewContext();
         Assert.True(await context.SubmissionComments.AnyAsync(x => x.Id == comment.Id, Ct));
+    }
+
+    /// <summary>An official submission (no team, no user) is submitted with the team permission EditOfficialScore.</summary>
+    [Fact]
+    public async Task Update_completes_the_official_submission_for_a_member_holding_EditOfficialScore()
+    {
+        var graph = await Seed();
+        var official = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditOfficialScore]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/submissions/{official.Submission.Id}", Body(official, graph) with { Status = "Complete" }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(ItemStatus.Complete, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
+    }
+
+    /// <summary>SubmitTeamScore, which submits the team's own submission, does not submit the official one.</summary>
+    [Fact]
+    public async Task Update_is_forbidden_on_the_official_submission_for_a_member_holding_only_SubmitTeamScore()
+    {
+        var graph = await Seed();
+        var official = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.SubmitTeamScore]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissions/{official.Submission.Id}", Body(official, graph) with { Status = "Complete" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_on_the_official_submission_for_a_member_holding_EditOfficialScore_only_in_another_evaluation()
+    {
+        var graph = await Seed();
+        var official = await SeedSubmission(graph);
+        var other = await Seed("Other Evaluation");
+        var actor = await Actor().OnNewTeam(other.Evaluation.Id, TeamPermission.EditOfficialScore).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissions/{official.Submission.Id}", Body(official, graph) with { Status = "Complete" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
     }
 
     private Task<EvaluationGraph> Seed(string description = "Test Evaluation") =>

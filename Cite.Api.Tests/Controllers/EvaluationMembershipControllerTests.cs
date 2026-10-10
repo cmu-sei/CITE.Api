@@ -80,7 +80,25 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
     }
 
     [Fact]
-    public async Task CreateMembership_adds_the_user_for_a_caller_holding_ManageEvaluation_on_it()
+    public async Task CreateMembership_adds_the_user_with_a_role_granting_ManageEvaluation_for_a_caller_holding_ManageEvaluation_on_it()
+    {
+        var evaluation = await SeedEvaluation();
+        var user = TestData.User();
+        var managerRole = TestData.EvaluationRole(EvaluationPermission.ManageEvaluation);
+        await Seed(user, managerRole);
+        var actor = await Actor().OnEvaluation(evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/evaluations/{evaluation.Id}/memberships",
+            new { evaluationId = evaluation.Id, userId = user.Id, roleId = managerRole.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        await using var context = NewContext();
+        Assert.Equal(managerRole.Id, (await context.EvaluationMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).RoleId);
+    }
+
+    /// <summary>A caller holding only ManageEvaluation gives another user the Owner role, which holds every evaluation permission.</summary>
+    [Fact]
+    public async Task CreateMembership_lets_a_caller_holding_only_ManageEvaluation_grant_the_Owner_role()
     {
         var evaluation = await SeedEvaluation();
         var user = TestData.User();

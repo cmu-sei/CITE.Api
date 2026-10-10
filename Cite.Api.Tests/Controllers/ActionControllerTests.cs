@@ -77,6 +77,24 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
     }
 
     [Fact]
+    public async Task GetByEvaluationTeam_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (graph, _) = await SeedWithAction();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/actions", Ct));
+    }
+
+    [Fact]
+    public async Task GetByEvaluationTeam_is_forbidden_for_a_caller_holding_only_ParticipateInEvaluation_on_the_evaluation()
+    {
+        var (graph, _) = await SeedWithAction();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/actions", Ct));
+    }
+
+    [Fact]
     public async Task GetByEvaluationMove_lists_the_moves_actions_to_a_caller_holding_ViewEvaluations()
     {
         var (graph, action) = await SeedWithAction();
@@ -117,6 +135,46 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
     }
 
     [Fact]
+    public async Task GetByEvaluationMoveTeam_lists_the_teams_actions_for_the_move_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    {
+        var (graph, action) = await SeedWithAction();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var actions = await ReadAsync<List<Action>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves/0/teams/{graph.Team.Id}/actions", Ct));
+
+        Assert.Equal(action.Id, Assert.Single(actions).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluationMoveTeam_lists_the_teams_actions_for_the_move_to_a_caller_holding_ViewEvaluations()
+    {
+        var (graph, action) = await SeedWithAction();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var actions = await ReadAsync<List<Action>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves/0/teams/{graph.Team.Id}/actions", Ct));
+
+        Assert.Equal(action.Id, Assert.Single(actions).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluationMoveTeam_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (graph, _) = await SeedWithAction();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves/0/teams/{graph.Team.Id}/actions", Ct));
+    }
+
+    [Fact]
+    public async Task GetByEvaluationMoveTeam_is_forbidden_for_a_caller_holding_only_ParticipateInEvaluation_on_the_evaluation()
+    {
+        var (graph, _) = await SeedWithAction();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves/0/teams/{graph.Team.Id}/actions", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_action_to_a_caller_holding_ViewTeam_on_its_team()
     {
         var (graph, action) = await SeedWithAction();
@@ -134,6 +192,46 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.ViewTeam).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/actions/{action.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_action_to_a_caller_holding_ViewEvaluation_on_its_evaluation()
+    {
+        var (graph, action) = await SeedWithAction();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        var read = await ReadAsync<Action>(await Client(actor).GetAsync($"api/actions/{action.Id}", Ct));
+
+        Assert.Equal(action.Description, read.Description);
+    }
+
+    [Fact]
+    public async Task Get_returns_the_action_to_a_caller_holding_ObserveEvaluations()
+    {
+        var (_, action) = await SeedWithAction();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var read = await ReadAsync<Action>(await Client(actor).GetAsync($"api/actions/{action.Id}", Ct));
+
+        Assert.Equal(action.Description, read.Description);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_ViewEvaluation_only_on_another_evaluation()
+    {
+        var (_, action) = await SeedWithAction();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ViewEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/actions/{action.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ParticipateInEvaluation_on_its_evaluation()
+    {
+        var (graph, action) = await SeedWithAction();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/actions/{action.Id}", Ct));
     }
 
     /// <summary>An unknown action id is answered with a 500 for a caller the gate lets through.</summary>
@@ -283,6 +381,18 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
     {
         var (graph, action) = await SeedWithAction(isChecked: true);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/actions/{action.Id}/uncheck", null, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.Actions.SingleAsync(x => x.Id == action.Id, Ct)).IsChecked);
+    }
+
+    [Fact]
+    public async Task Uncheck_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, action) = await SeedWithAction(isChecked: true);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/actions/{action.Id}/uncheck", null, Ct));
 

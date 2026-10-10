@@ -128,6 +128,24 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         Assert.Contains(graph.Team.Id.ToString(), Joined(harness));
     }
 
+    /// <summary>ObserveEvaluation reached through a group does not let a member of a sibling team join another team.</summary>
+    [Fact]
+    public async Task SwitchTeam_joins_only_the_callers_own_group_for_a_member_holding_ObserveEvaluation_through_a_group()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var sibling = TestData.Team(graph.Evaluation.Id, graph.TeamType.Id, "Sibling");
+        await Seed(sibling);
+        var harness = await MemberOf(sibling.Id);
+        var group = TestData.Group();
+        var role = TestData.EvaluationRole(EvaluationPermission.ObserveEvaluation);
+        await Seed(group, TestData.GroupMembership(group.Id, harness.UserId), role,
+            TestData.EvaluationMembership(graph.Evaluation.Id, null, role.Id, group.Id));
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.Equal([harness.UserId.ToString()], Joined(harness));
+    }
+
     /// <summary>A previous team id that names no team throws before the null check that follows its lookup.</summary>
     [Fact]
     public async Task SwitchTeam_throws_when_the_team_being_left_does_not_exist()

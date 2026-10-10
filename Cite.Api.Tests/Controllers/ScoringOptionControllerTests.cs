@@ -88,6 +88,17 @@ public class ScoringOptionControllerTests(DatabaseFixture fixture, CiteAppFactor
         Assert.Equal(option.Value, read.Value);
     }
 
+    [Fact]
+    public async Task Get_returns_the_option_to_a_caller_holding_ObserveEvaluations()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var read = await ReadAsync<ScoringOption>(await Client(actor).GetAsync($"api/scoringOptions/{graph.Option.Id}", Ct));
+
+        Assert.Equal(graph.Option.Value, read.Value);
+    }
+
     // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
     public async Task Get_answers_a_caller_holding_ViewScoringModel_only_on_another_scoring_model_with_a_server_error()

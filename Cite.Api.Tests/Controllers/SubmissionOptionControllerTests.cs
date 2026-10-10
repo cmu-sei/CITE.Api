@@ -45,6 +45,46 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
     }
 
     [Fact]
+    public async Task GetForSubmissionCategory_lists_the_options_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var options = await ReadAsync<List<SubmissionOption>>(await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
+
+        Assert.Equal(submission.Option.Id, Assert.Single(options).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionCategory_lists_the_options_to_a_caller_holding_ViewEvaluations()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var options = await ReadAsync<List<SubmissionOption>>(await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
+
+        Assert.Equal(submission.Option.Id, Assert.Single(options).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionCategory_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
+    }
+
+    [Fact]
+    public async Task GetForSubmissionCategory_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_option_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
     {
         var (graph, submission) = await Seed();
@@ -62,6 +102,26 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_option_to_a_member_holding_ViewTeam()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        var read = await ReadAsync<SubmissionOption>(await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
+
+        Assert.Equal(graph.Option.Id, read.ScoringOptionId);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
     }
 
     [Fact]
@@ -238,10 +298,44 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.True(await context.SubmissionOptions.AnyAsync(x => x.Id == submission.Option.Id, Ct));
     }
 
+    /// <summary>An option of an official submission (no team, no user) is selected with the team permission EditOfficialScore.</summary>
+    [Fact]
+    public async Task SetOptionTrue_selects_an_option_of_the_official_submission_for_a_member_holding_EditOfficialScore()
+    {
+        var (graph, official) = await SeedOfficial();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditOfficialScore]).SeedAsync();
+
+        var scored = await ReadAsync<Submission>(await Client(actor).PutAsync($"api/submissionOptions/{official.Option.Id}/select", null, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == official.Option.Id, Ct)).IsSelected);
+        Assert.Equal(official.Submission.Id, scored.Id);
+    }
+
+    /// <summary>EditTeamScore, which scores the team's own submission, does not score the official one.</summary>
+    [Fact]
+    public async Task SetOptionTrue_is_forbidden_on_the_official_submission_for_a_member_holding_only_EditTeamScore()
+    {
+        var (graph, official) = await SeedOfficial();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/submissionOptions/{official.Option.Id}/select", null, Ct));
+
+        await using var context = NewContext();
+        Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == official.Option.Id, Ct)).IsSelected);
+    }
+
     private async Task<(EvaluationGraph Graph, SubmissionGraph Submission)> Seed()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
 
         return (graph, await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id));
+    }
+
+    private async Task<(EvaluationGraph Graph, SubmissionGraph Submission)> SeedOfficial()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+
+        return (graph, await TestScenario.SeedSubmissionAsync(Db, Ct, graph));
     }
 }

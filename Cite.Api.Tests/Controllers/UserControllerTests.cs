@@ -131,6 +131,20 @@ public class UserControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
+    public async Task Update_renames_the_user_for_a_caller_holding_ManageUsers()
+    {
+        var user = TestData.User(name: "Before");
+        await Seed(user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageUsers).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/users/{user.Id}", new { id = user.Id, name = "After" }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal("After", (await context.Users.SingleAsync(x => x.Id == user.Id, Ct)).Name);
+    }
+
+    [Fact]
     public async Task Update_assigns_a_role_for_a_caller_holding_ManageUsers()
     {
         var user = TestData.User(name: "Assigned");
@@ -158,6 +172,20 @@ public class UserControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, response);
         await using var context = NewContext();
         Assert.Null((await context.Users.SingleAsync(x => x.Id == user.Id, Ct)).RoleId);
+    }
+
+    /// <summary>A caller holding only ManageUsers gives itself the Administrator role.</summary>
+    [Fact]
+    public async Task Update_lets_a_caller_holding_only_ManageUsers_give_itself_the_administrator_role()
+    {
+        var actor = await Actor().WithName("Climber").WithSystemPermissions(SystemPermission.ManageUsers).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/users/{actor.Id}",
+            new { id = actor.Id, name = "Climber", roleId = TestData.Roles.Administrator.ToString() }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.Roles.Administrator, (await context.Users.SingleAsync(x => x.Id == actor.Id, Ct)).RoleId);
     }
 
     [Fact]

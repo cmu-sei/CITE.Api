@@ -4,6 +4,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Tests.Support;
 
 namespace Cite.Api.Tests.Hubs;
@@ -15,6 +16,9 @@ namespace Cite.Api.Tests.Hubs;
 public class MainHubConnectionTests(DatabaseFixture fixture, CiteAppFactory factory) : ApiTestBase(fixture, factory)
 {
     private const string HubPath = "/hubs/main";
+
+    /// <summary>A scope the token carries that is not the <c>cite</c> scope the default policy requires.</summary>
+    private const string OtherScope = "gallery";
 
     [Fact]
     public async Task An_actor_connects_and_joins()
@@ -33,6 +37,16 @@ public class MainHubConnectionTests(DatabaseFixture fixture, CiteAppFactory fact
     public async Task Negotiate_without_an_identity_is_unauthorized()
     {
         await AssertStatus(HttpStatusCode.Unauthorized, await Client().PostAsync($"{HubPath}/negotiate?negotiateVersion=1", null, Ct));
+    }
+
+    [Fact]
+    public async Task Negotiate_is_forbidden_for_an_actor_whose_token_lacks_the_cite_scope()
+    {
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{HubPath}/negotiate?negotiateVersion=1");
+        request.Headers.Add(TestAuthHandler.ScopeHeader, OtherScope);
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).SendAsync(request, Ct));
     }
 
     /// <summary>A WebSocket to the TestServer, carrying the headers every ApiTestBase client sends.</summary>

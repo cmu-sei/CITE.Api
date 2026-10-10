@@ -53,6 +53,24 @@ public class SubmissionCategoryControllerTests(DatabaseFixture fixture, CiteAppF
     }
 
     [Fact]
+    public async Task GetForSubmission_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submission/{submission.Submission.Id}/submissionCategories", Ct));
+    }
+
+    [Fact]
+    public async Task GetForSubmission_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submission/{submission.Submission.Id}/submissionCategories", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_category_to_a_member_holding_ViewTeam()
     {
         var (graph, submission) = await Seed();
@@ -71,6 +89,46 @@ public class SubmissionCategoryControllerTests(DatabaseFixture fixture, CiteAppF
         var actor = await Actor().OnNewTeam(other.Evaluation.Id, TeamPermission.ViewTeam).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategories/{submission.Category.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_category_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var read = await ReadAsync<SubmissionCategory>(await Client(actor).GetAsync($"api/submissionCategories/{submission.Category.Id}", Ct));
+
+        Assert.Equal(graph.Category.Id, read.ScoringCategoryId);
+    }
+
+    [Fact]
+    public async Task Get_returns_the_category_to_a_caller_holding_ViewEvaluations()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var read = await ReadAsync<SubmissionCategory>(await Client(actor).GetAsync($"api/submissionCategories/{submission.Category.Id}", Ct));
+
+        Assert.Equal(graph.Category.Id, read.ScoringCategoryId);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategories/{submission.Category.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategories/{submission.Category.Id}", Ct));
     }
 
     [Fact]

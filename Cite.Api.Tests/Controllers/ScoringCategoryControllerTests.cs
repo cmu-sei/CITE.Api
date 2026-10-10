@@ -117,6 +117,17 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
     }
 
     [Fact]
+    public async Task Get_masks_the_equation_of_an_evaluations_category_for_a_caller_holding_ObserveEvaluations()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
+
+        Assert.Equal(("********", 0.0), (read.CalculationEquation, read.ScoringWeight));
+    }
+
+    [Fact]
     public async Task Get_is_forbidden_on_a_template_category_for_a_caller_holding_only_ObserveEvaluations()
     {
         var (_, category) = await SeedTemplate();
@@ -136,7 +147,7 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
     }
 
-    /// <summary>An unknown category id is answered with a 500 for a caller holding ViewScoringModels.</summary>
+    /// <summary>An unknown category id is answered with a 500 for a caller the gate lets through.</summary>
     [Fact]
     public async Task Get_answers_an_unknown_category_with_a_server_error()
     {

@@ -6,6 +6,8 @@ The suite is built on xUnit v3 and NSubstitute and runs against a real PostgreSQ
 
 Defects the tests found are characterized by ordinary passing tests and described in `agent-docs/api-test-bugs/cite.api.md` in the workspace, never in test comments.
 
+Every authorization call site needs an allowed test whose caller holds exactly the permission (never `Root`) and a near-miss denied test; the standard's `check-repo.js gates`, run by `verify.sh`, fails any gate without them. The few gates the harness cannot meet are listed, each with its reason, in `agent-docs/api-test-gaps/cite.api.txt` in the workspace (today the scoring option reads and the second tier of the scoring category list, whose near miss is answered with a 500 the defect document describes, and the first tier of the scoring category list, which is tested by its other-branch near miss, the ObserveEvaluations caller who gets the masked categories, but which the check cannot credit), never in a file in this repository.
+
 # Running the tests
 
 ```bash
@@ -62,7 +64,7 @@ Cite.Api.Tests/
   AssemblyFixtures.cs
   Controllers/        one <Controller>Tests.cs per controller, UnknownIdResponseTests
   Hubs/               MainHubTests (HubHarness), MainHubConnectionTests (a real connection)
-  Infrastructure/     Authorization/ (requirement handlers), EventHandlers/ (membership broadcasts, on a test-owned HubRecorder),
+  Infrastructure/     Authorization/ (requirement handlers), Extensions/ (ScopePolicyTests: the cite scope), EventHandlers/ (membership broadcasts, on a test-owned HubRecorder),
                       Filters/ (MalformedRequestTests), MappingConfigurationTests
   Services/           services driven directly: UserClaimsService, GalleryService (its own
                       StubHttpMessageHandler), ActionService and DutyService (xAPI, with a test-owned

@@ -121,6 +121,18 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
     }
 
     [Fact]
+    public async Task Get_returns_an_evaluations_scoring_model_with_redacted_equations_to_a_caller_holding_ObserveEvaluations()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var read = await ReadAsync<ScoringModel>(await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
+
+        var category = Assert.Single(read.ScoringCategories);
+        Assert.Equal(("Redacted", 0.0), (category.CalculationEquation, category.ScoringWeight));
+    }
+
+    [Fact]
     public async Task Get_is_forbidden_on_an_evaluations_scoring_model_for_a_member_of_a_team_in_another_evaluation()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);

@@ -65,7 +65,25 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
     }
 
     [Fact]
-    public async Task CreateMembership_adds_the_user_for_a_caller_holding_ManageScoringModel_on_it()
+    public async Task CreateMembership_adds_the_user_with_a_role_granting_ManageScoringModel_for_a_caller_holding_ManageScoringModel_on_it()
+    {
+        var model = TestData.ScoringModel();
+        var user = TestData.User();
+        var managerRole = TestData.ScoringModelRole(ScoringModelPermission.ManageScoringModel);
+        await Seed(model, user, managerRole);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ManageScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/scoringModels/{model.Id}/memberships",
+            new { scoringModelId = model.Id, userId = user.Id, roleId = managerRole.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        await using var context = NewContext();
+        Assert.Equal(managerRole.Id, (await context.ScoringModelMemberships.SingleAsync(x => x.ScoringModelId == model.Id && x.UserId == user.Id, Ct)).RoleId);
+    }
+
+    /// <summary>A caller holding only ManageScoringModel gives another user the Owner role, which holds every scoring model permission.</summary>
+    [Fact]
+    public async Task CreateMembership_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role()
     {
         var model = TestData.ScoringModel();
         var user = TestData.User();
@@ -73,11 +91,11 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
         var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ManageScoringModel]).SeedAsync();
 
         var response = await Client(actor).PostAsJsonAsync($"api/scoringModels/{model.Id}/memberships",
-            new { scoringModelId = model.Id, userId = user.Id, roleId = TestData.ScoringModelRoles.Editor }, Ct);
+            new { scoringModelId = model.Id, userId = user.Id, roleId = TestData.ScoringModelRoles.Owner }, Ct);
 
         await AssertStatus(HttpStatusCode.Created, response);
         await using var context = NewContext();
-        Assert.True(await context.ScoringModelMemberships.AnyAsync(x => x.ScoringModelId == model.Id && x.UserId == user.Id, Ct));
+        Assert.Equal(TestData.ScoringModelRoles.Owner, (await context.ScoringModelMemberships.SingleAsync(x => x.ScoringModelId == model.Id && x.UserId == user.Id, Ct)).RoleId);
     }
 
     [Fact]
@@ -139,7 +157,24 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
     }
 
     [Fact]
-    public async Task Update_changes_the_role_for_a_caller_holding_ManageScoringModel_on_its_scoring_model()
+    public async Task Update_changes_the_role_to_one_granting_ManageScoringModel_for_a_caller_holding_ManageScoringModel_on_its_scoring_model()
+    {
+        var (model, membership) = await SeedWithMember();
+        var managerRole = TestData.ScoringModelRole(ScoringModelPermission.ManageScoringModel);
+        await Seed(managerRole);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ManageScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringModels/memberships/{membership.Id}",
+            new { id = membership.Id, scoringModelId = model.Id, userId = membership.UserId, roleId = managerRole.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(managerRole.Id, (await context.ScoringModelMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    // Same case as CreateMembership_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role.
+    [Fact]
+    public async Task Update_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role()
     {
         var (model, membership) = await SeedWithMember();
         var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ManageScoringModel]).SeedAsync();
