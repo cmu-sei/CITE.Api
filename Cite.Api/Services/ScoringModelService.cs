@@ -98,6 +98,8 @@ namespace Cite.Api.Services
                 .ThenInclude(sc => sc.ScoringOptions)
                 .AsNoTracking()
                 .SingleOrDefaultAsync(sm => sm.Id == id, ct);
+            if (item == null)
+                throw new EntityNotFoundException<ScoringModelEntity>("ScoringModel not found with ID=" + id.ToString());
             if (item.EvaluationId == null && !viewAsAdmin)
                 throw new ForbiddenException();
             // make sure the user has permission
