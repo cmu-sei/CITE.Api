@@ -55,15 +55,26 @@ public class SubmissionCommentControllerTests(DatabaseFixture fixture, CiteAppFa
         Assert.Equal(comment.Id, Assert.Single(comments).Id);
     }
 
-    [Fact]
-    public async Task GetForSubmissionOption_lists_the_comments_to_a_caller_holding_ObserveEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetForSubmissionOption_lists_the_comments_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var (_, submission, comment) = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var comments = await ReadAsync<List<SubmissionComment>>(await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
 
         Assert.Equal(comment.Id, Assert.Single(comments).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionOption_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (_, submission, _) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOption/{submission.Option.Id}/submissionComments", Ct));
     }
 
     [Fact]
@@ -93,6 +104,28 @@ public class SubmissionCommentControllerTests(DatabaseFixture fixture, CiteAppFa
         var read = await ReadAsync<SubmissionComment>(await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
 
         Assert.Equal(comment.Comment, read.Comment);
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_comment_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var (_, _, comment) = await Seed();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var read = await ReadAsync<SubmissionComment>(await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
+
+        Assert.Equal(comment.Comment, read.Comment);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (_, _, comment) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionComments/{comment.Id}", Ct));
     }
 
     [Fact]

@@ -36,15 +36,39 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Contains(memberships, x => x.Id == membership.Id);
     }
 
-    [Fact]
-    public async Task GetAll_lists_the_memberships_to_a_caller_holding_ObserveEvaluation_on_the_teams_evaluation()
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task GetAll_lists_the_memberships_to_a_caller_holding_an_evaluation_permission_on_the_teams_evaluation(EvaluationPermission permission)
     {
         var (graph, membership) = await SeedWithMember();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var memberships = await ReadAsync<List<TeamMembership>>(await Client(actor).GetAsync($"api/teams/{graph.Team.Id}/memberships", Ct));
 
         Assert.Equal(membership.Id, Assert.Single(memberships).Id);
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetAll_lists_the_memberships_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var (graph, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var memberships = await ReadAsync<List<TeamMembership>>(await Client(actor).GetAsync($"api/teams/{graph.Team.Id}/memberships", Ct));
+
+        Assert.Equal(membership.Id, Assert.Single(memberships).Id);
+    }
+
+    [Fact]
+    public async Task GetAll_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (graph, _) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/teams/{graph.Team.Id}/memberships", Ct));
     }
 
     [Fact]
@@ -85,11 +109,26 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/teams/memberships/{membership.Id}", Ct));
     }
 
-    [Fact]
-    public async Task Get_returns_the_membership_to_a_caller_holding_ViewEvaluation_on_the_teams_evaluation()
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task Get_returns_the_membership_to_a_caller_holding_an_evaluation_permission_on_the_teams_evaluation(EvaluationPermission permission)
     {
         var (graph, membership) = await SeedWithMember();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
+
+        var read = await ReadAsync<TeamMembership>(await Client(actor).GetAsync($"api/teams/memberships/{membership.Id}", Ct));
+
+        Assert.Equal(membership.UserId, read.UserId);
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_membership_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var read = await ReadAsync<TeamMembership>(await Client(actor).GetAsync($"api/teams/memberships/{membership.Id}", Ct));
 
@@ -97,14 +136,12 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
     }
 
     [Fact]
-    public async Task Get_returns_the_membership_to_a_caller_holding_ObserveEvaluations()
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
     {
         var (_, membership) = await SeedWithMember();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
 
-        var read = await ReadAsync<TeamMembership>(await Client(actor).GetAsync($"api/teams/memberships/{membership.Id}", Ct));
-
-        Assert.Equal(membership.UserId, read.UserId);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/teams/memberships/{membership.Id}", Ct));
     }
 
     [Fact]
@@ -391,6 +428,84 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/teams/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
+    [Fact]
+    public async Task CreateMembership_adds_the_user_for_a_caller_holding_ManageEvaluations()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(graph.Team.Id, (await context.TeamMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).TeamId);
+    }
+
+    [Fact]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.TeamMemberships.AnyAsync(x => x.UserId == user.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Update_changes_the_role_for_a_caller_holding_ManageEvaluations()
+    {
+        var (graph, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = TestData.TeamRoles.Owner }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(TestData.TeamRoles.Owner, (await context.TeamMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (graph, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = TestData.TeamRoles.Owner }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(TestData.TeamRoles.Member, (await context.TeamMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task DeleteMembership_removes_the_membership_for_a_caller_holding_ManageEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/teams/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/teams/memberships/{membership.Id}", Ct));
 
         await using var context = NewContext();
         Assert.True(await context.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct));

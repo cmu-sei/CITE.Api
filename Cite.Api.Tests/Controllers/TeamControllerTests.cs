@@ -52,6 +52,30 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
+    public async Task GetMineByEvaluation_lists_every_team_to_a_caller_holding_ObserveEvaluations()
+    {
+        var graph = await Seed();
+        var otherTeam = TestData.Team(graph.Evaluation.Id, graph.TeamType.Id, "Other Team");
+        await Seed(otherTeam);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var teams = await ReadAsync<List<Team>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/myteams", Ct));
+
+        Assert.Equal(new[] { graph.Team.Id, otherTeam.Id }.Order(), teams.Select(x => x.Id).Order());
+    }
+
+    [Fact]
+    public async Task GetMineByEvaluation_lists_nothing_to_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var teams = await ReadAsync<List<Team>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/myteams", Ct));
+
+        Assert.Empty(teams);
+    }
+
+    [Fact]
     public async Task GetMineByEvaluation_lists_nothing_to_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
     {
         var graph = await Seed();
@@ -62,15 +86,40 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Empty(teams);
     }
 
-    [Fact]
-    public async Task GetByEvaluation_lists_the_teams_to_a_caller_holding_ParticipateInEvaluation_on_it()
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ParticipateInEvaluation)]
+    public async Task GetByEvaluation_lists_the_teams_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var teams = await ReadAsync<List<Team>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams", Ct));
 
         Assert.Equal(graph.Team.Id, Assert.Single(teams).Id);
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetByEvaluation_lists_the_teams_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var teams = await ReadAsync<List<Team>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams", Ct));
+
+        Assert.Equal(graph.Team.Id, Assert.Single(teams).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams", Ct));
     }
 
     [Fact]
@@ -102,13 +151,24 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(actor.Id, Assert.Single(team.Memberships).UserId);
     }
 
-    [Fact]
-    public async Task Get_returns_the_team_to_a_caller_holding_ObserveEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_team_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/teams/{graph.Team.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/teams/{graph.Team.Id}", Ct));
     }
 
     [Fact]
@@ -211,6 +271,18 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Team.Name, (await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct)).Name);
     }
 
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_EditEvaluation_only_on_another_evaluation()
+    {
+        var graph = await Seed();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.EditEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/teams/{graph.Team.Id}", NewTeam(graph.Team.Id, graph) with { Name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(graph.Team.Name, (await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct)).Name);
+    }
+
     /// <summary>EditEvaluation on the evaluation named in the body moves a team of another evaluation into it.</summary>
     [Fact]
     public async Task Update_moves_a_team_of_another_evaluation_into_the_one_the_caller_edits()
@@ -285,6 +357,80 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
 
         await using var context = NewContext();
         Assert.False(await context.Teams.AnyAsync(x => x.Id == team.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Create_persists_the_team_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/teams", NewTeam(id, graph), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("New Team", (await context.Teams.SingleAsync(x => x.Id == id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/teams", NewTeam(id, graph), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Teams.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
+    public async Task Update_renames_the_team_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/teams/{graph.Team.Id}", NewTeam(graph.Team.Id, graph) with { Name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Renamed", (await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/teams/{graph.Team.Id}", NewTeam(graph.Team.Id, graph) with { Name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(graph.Team.Name, (await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_team_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/teams/{graph.Team.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Teams.AnyAsync(x => x.Id == graph.Team.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/teams/{graph.Team.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Teams.AnyAsync(x => x.Id == graph.Team.Id, Ct));
     }
 
     private Task<EvaluationGraph> Seed(string description = "Test Evaluation") =>

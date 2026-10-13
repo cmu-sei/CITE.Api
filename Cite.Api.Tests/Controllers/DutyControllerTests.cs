@@ -47,6 +47,27 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
+    public async Task GetByEvaluation_lists_the_duties_with_their_users_to_a_caller_holding_ViewEvaluations()
+    {
+        var (graph, duty, assignee) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var duties = await ReadAsync<List<Duty>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/duties", Ct));
+
+        var read = Assert.Single(duties);
+        Assert.Equal((duty.Id, assignee.Id), (read.Id, Assert.Single(read.Users).Id));
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_is_forbidden_for_a_caller_holding_only_ObserveEvaluations()
+    {
+        var (graph, _, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/duties", Ct));
+    }
+
+    [Fact]
     public async Task GetByEvaluationTeam_lists_the_teams_duties_to_a_caller_holding_ViewTeam_on_it()
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
@@ -66,22 +87,26 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/duties", Ct));
     }
 
-    [Fact]
-    public async Task GetByEvaluationTeam_lists_the_teams_duties_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    [Theory]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    public async Task GetByEvaluationTeam_lists_the_teams_duties_to_a_caller_holding_an_evaluation_permission_on_the_evaluation(EvaluationPermission permission)
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var duties = await ReadAsync<List<Duty>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/duties", Ct));
 
         Assert.Equal(duty.Id, Assert.Single(duties).Id);
     }
 
-    [Fact]
-    public async Task GetByEvaluationTeam_lists_the_teams_duties_to_a_caller_holding_ObserveEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetByEvaluationTeam_lists_the_teams_duties_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var duties = await ReadAsync<List<Duty>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/duties", Ct));
 
@@ -107,6 +132,15 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
+    public async Task GetByEvaluationTeam_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (graph, _, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/duties", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_duty_to_a_caller_holding_ViewTeam_on_its_team()
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
@@ -126,22 +160,26 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/duties/{duty.Id}", Ct));
     }
 
-    [Fact]
-    public async Task Get_returns_the_duty_to_a_caller_holding_ViewEvaluation_on_its_evaluation()
+    [Theory]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    public async Task Get_returns_the_duty_to_a_caller_holding_an_evaluation_permission_on_its_evaluation(EvaluationPermission permission)
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var read = await ReadAsync<Duty>(await Client(actor).GetAsync($"api/duties/{duty.Id}", Ct));
 
         Assert.Equal(duty.Name, read.Name);
     }
 
-    [Fact]
-    public async Task Get_returns_the_duty_to_a_caller_holding_ViewEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_duty_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var (_, duty, _) = await SeedWithAssignedDuty();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var read = await ReadAsync<Duty>(await Client(actor).GetAsync($"api/duties/{duty.Id}", Ct));
 
@@ -162,6 +200,15 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/duties/{duty.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (_, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
 
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/duties/{duty.Id}", Ct));
     }
@@ -479,6 +526,138 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.EditEvaluation).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/duties/{duty.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Duties.AnyAsync(x => x.Id == duty.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Create_persists_the_duty_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/duties",
+            new { id, evaluationId = graph.Evaluation.Id, teamId = graph.Team.Id, name = "Scribe" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Scribe", (await context.Duties.SingleAsync(x => x.Id == id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/duties",
+            new { id, evaluationId = graph.Evaluation.Id, teamId = graph.Team.Id, name = "Scribe" }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Duties.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
+    public async Task Update_renames_the_duty_for_a_caller_holding_EditEvaluations()
+    {
+        var (graph, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/duties/{duty.Id}",
+            new { id = duty.Id, evaluationId = graph.Evaluation.Id, teamId = graph.Team.Id, name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Renamed", (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var (graph, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/duties/{duty.Id}",
+            new { id = duty.Id, evaluationId = graph.Evaluation.Id, teamId = graph.Team.Id, name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(duty.Name, (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task AddUserToDuty_assigns_the_user_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var duty = TestData.Duty(graph.Evaluation.Id, graph.Team.Id);
+        var user = TestData.User();
+        await Seed(duty, user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/duties/{duty.Id}/users/{user.Id}/add", null, Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.DutyUsers.AnyAsync(x => x.DutyId == duty.Id && x.UserId == user.Id, Ct));
+    }
+
+    [Fact]
+    public async Task AddUserToDuty_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var duty = TestData.Duty(graph.Evaluation.Id, graph.Team.Id);
+        var user = TestData.User();
+        await Seed(duty, user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/duties/{duty.Id}/users/{user.Id}/add", null, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.DutyUsers.AnyAsync(x => x.DutyId == duty.Id, Ct));
+    }
+
+    [Fact]
+    public async Task RemoveUserFromDuty_unassigns_the_user_for_a_caller_holding_EditEvaluations()
+    {
+        var (_, duty, assignee) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/duties/{duty.Id}/users/{assignee.Id}/remove", null, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.DutyUsers.AnyAsync(x => x.DutyId == duty.Id, Ct));
+    }
+
+    [Fact]
+    public async Task RemoveUserFromDuty_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var (_, duty, assignee) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/duties/{duty.Id}/users/{assignee.Id}/remove", null, Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.DutyUsers.AnyAsync(x => x.DutyId == duty.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_duty_for_a_caller_holding_EditEvaluations()
+    {
+        var (_, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/duties/{duty.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Duties.AnyAsync(x => x.Id == duty.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var (_, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/duties/{duty.Id}", Ct));
 
         await using var context = NewContext();
         Assert.True(await context.Duties.AnyAsync(x => x.Id == duty.Id, Ct));

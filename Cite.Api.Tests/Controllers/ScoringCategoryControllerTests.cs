@@ -58,10 +58,33 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
     }
 
     [Fact]
+    public async Task GetForScoringModel_lists_the_categories_with_their_equations_to_a_caller_holding_ViewScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{model.Id}/scoringCategories", Ct));
+
+        Assert.Equal(category.CalculationEquation, Assert.Single(categories).CalculationEquation);
+    }
+
+    [Fact]
     public async Task GetForScoringModel_masks_the_equations_of_an_evaluations_model_for_a_caller_holding_ObserveEvaluations()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
         var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
+
+        var category = Assert.Single(categories);
+        Assert.Equal(("********", 0.0), (category.CalculationEquation, category.ScoringWeight));
+    }
+
+    [Fact]
+    public async Task GetForScoringModel_masks_the_equations_for_a_caller_holding_ObserveEvaluations_and_ViewScoringModel_only_on_another_scoring_model()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
 
         var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
 
@@ -94,6 +117,18 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
 
     // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
+    public async Task GetForScoringModel_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
+
+        Assert.Equal("Handler for type ScoringModel is not implemented.", error.Detail);
+    }
+
+    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
+    [Fact]
     public async Task GetForScoringModel_answers_a_caller_holding_only_ViewEvaluations_with_a_server_error()
     {
         var (model, _) = await SeedTemplate();
@@ -117,6 +152,17 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
     }
 
     [Fact]
+    public async Task Get_returns_the_category_with_its_equation_to_a_caller_holding_ViewScoringModels()
+    {
+        var (_, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{category.Id}", Ct));
+
+        Assert.Equal(category.CalculationEquation, read.CalculationEquation);
+    }
+
+    [Fact]
     public async Task Get_masks_the_equation_of_an_evaluations_category_for_a_caller_holding_ObserveEvaluations()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
@@ -136,6 +182,15 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategories/{category.Id}", Ct));
     }
 
+    [Fact]
+    public async Task Get_is_forbidden_on_a_template_category_for_a_caller_holding_ObserveEvaluations_and_ViewScoringModel_only_on_another_scoring_model()
+    {
+        var (_, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategories/{category.Id}", Ct));
+    }
+
     // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
     public async Task Get_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error()
@@ -144,6 +199,18 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
 
         var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
+        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+    }
+
+    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
+    [Fact]
+    public async Task Get_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+
+        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
+
         Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
     }
 
@@ -254,6 +321,83 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.EditScoringModel).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/scoringCategories/{category.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.ScoringCategories.AnyAsync(x => x.Id == category.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Create_persists_the_category_for_a_caller_holding_EditScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/scoringCategories", NewCategory(id, model.Id), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("New Category", (await context.ScoringCategories.SingleAsync(x => x.Id == id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_ViewScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/scoringCategories", NewCategory(id, model.Id), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.ScoringCategories.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
+    public async Task Update_changes_the_category_for_a_caller_holding_EditScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}",
+            NewCategory(category.Id, model.Id) with { Description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Changed", (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}",
+            NewCategory(category.Id, model.Id) with { Description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(category.Description, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_category_and_its_options_for_a_caller_holding_EditScoringModels()
+    {
+        var (_, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/scoringCategories/{category.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.ScoringCategories.AnyAsync(x => x.Id == category.Id, Ct));
+        Assert.False(await context.ScoringOptions.AnyAsync(x => x.ScoringCategoryId == category.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_ViewScoringModels()
+    {
+        var (_, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/scoringCategories/{category.Id}", Ct));
 
         await using var context = NewContext();
         Assert.True(await context.ScoringCategories.AnyAsync(x => x.Id == category.Id, Ct));

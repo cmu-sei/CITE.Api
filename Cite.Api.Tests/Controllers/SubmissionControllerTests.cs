@@ -77,6 +77,28 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task GetByEvaluation_lists_the_submissions_up_to_the_current_move_for_a_caller_holding_ManageEvaluations()
+    {
+        var graph = await Seed();
+        var current = await SeedSubmission(graph, graph.Team.Id);
+        await SeedSubmission(graph, graph.Team.Id, moveNumber: 1);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/submissions", Ct));
+
+        Assert.Equal(current.Submission.Id, Assert.Single(submissions).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/submissions", Ct));
+    }
+
+    [Fact]
     public async Task GetMineByEvaluation_lists_the_callers_and_their_teams_submissions()
     {
         var graph = await Seed();
@@ -126,6 +148,27 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task GetByEvaluationTeam_lists_the_teams_submissions_to_a_caller_holding_ObserveEvaluations()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+
+        Assert.Equal(submission.Submission.Id, Assert.Single(submissions).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluationTeam_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+    }
+
+    [Fact]
     public async Task GetByEvaluationTeam_is_forbidden_for_a_caller_holding_ViewTeam_only_on_a_sibling_team()
     {
         var graph = await Seed();
@@ -155,14 +198,40 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(submission.Option.Id, Assert.Single(Assert.Single(read.SubmissionCategories).SubmissionOptions).Id);
     }
 
-    [Fact]
-    public async Task Get_returns_the_submission_to_a_caller_holding_ObserveEvaluation_on_the_evaluation()
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task Get_returns_the_submission_to_a_caller_holding_an_evaluation_permission_on_the_evaluation(EvaluationPermission permission)
     {
         var graph = await Seed();
         var submission = await SeedSubmission(graph, graph.Team.Id);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_submission_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var read = await ReadAsync<Submission>(await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
+
+        Assert.Equal(submission.Option.Id, Assert.Single(Assert.Single(read.SubmissionCategories).SubmissionOptions).Id);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
     }
 
     [Fact]
@@ -303,6 +372,32 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.False(await context.Submissions.AnyAsync(Ct));
     }
 
+    [Fact]
+    public async Task Create_builds_a_submission_for_a_caller_holding_ManageEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        var created = await ReadAsync<Submission>(await Client(actor).PostAsJsonAsync("api/submissions", NewSubmission(graph, 1), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Submissions.SingleAsync(x => x.Id == created.Id, Ct);
+        Assert.Equal(graph.Team.Id, stored.TeamId);
+        Assert.Equal(1, stored.MoveNumber);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/submissions", NewSubmission(graph, 1), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Submissions.AnyAsync(Ct));
+    }
+
     /// <summary>A second team submission for the same move is answered with a 500.</summary>
     [Fact]
     public async Task Create_answers_a_duplicate_submission_with_a_server_error()
@@ -378,6 +473,46 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await using var context = NewContext();
         Assert.False(await context.Submissions.AnyAsync(x => x.Id == submission.Submission.Id, Ct));
         Assert.False(await context.SubmissionOptions.AnyAsync(x => x.Id == submission.Option.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_submission_for_a_caller_holding_ManageEvaluations()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/submissions/{submission.Submission.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Submissions.AnyAsync(x => x.Id == submission.Submission.Id, Ct));
+        Assert.False(await context.SubmissionOptions.AnyAsync(x => x.Id == submission.Option.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/submissions/{submission.Submission.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Submissions.AnyAsync(x => x.Id == submission.Submission.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_ManageEvaluation_only_on_another_evaluation()
+    {
+        var graph = await Seed();
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ManageEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/submissions/{submission.Submission.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Submissions.AnyAsync(x => x.Id == submission.Submission.Id, Ct));
     }
 
     [Fact]

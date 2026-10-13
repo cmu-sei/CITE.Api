@@ -6,7 +6,7 @@ The suite is built on xUnit v3 and NSubstitute and runs against a real PostgreSQ
 
 Defects the tests found are characterized by ordinary passing tests and described in `agent-docs/api-test-bugs/cite.api.md` in the workspace, never in test comments.
 
-Every authorization call site needs an allowed test whose caller holds exactly the permission (never `Root`) and a near-miss denied test; the standard's `check-repo.js gates`, run by `verify.sh`, fails any gate without them. The few gates the harness cannot meet are listed, each with its reason, in `agent-docs/api-test-gaps/cite.api.txt` in the workspace (today the scoring option reads and the second tier of the scoring category list, whose near miss is answered with a 500 the defect document describes, and the first tier of the scoring category list, which is tested by its other-branch near miss, the ObserveEvaluations caller who gets the masked categories, but which the check cannot credit), never in a file in this repository.
+Every authorization call site needs, for each permission value it reads, an allowed test whose caller holds exactly that value (never `Root`), and a near-miss denied test for each tier it reads (the system permission, and the evaluation, team or scoring model permission); the standard's `check-repo.js gates`, run by `verify.sh`, fails any gate without an allowed case and a near miss. The few gates the harness cannot meet are listed, each with its reason, in `agent-docs/api-test-gaps/cite.api.txt` in the workspace (today the scoring option reads and the second tier of the scoring category list and get, whose near misses and evaluation-permission callers are answered with a 500 the defect document describes), never in a file in this repository.
 
 # Running the tests
 
@@ -55,7 +55,7 @@ The standard's README describes the shared parts. What cite.api adds:
 
 # Adding a test
 
-Follow `CONVENTIONS.md` section 2 of the standard. Put the file where the code under test lives (`Controllers/`, `Hubs/`, `Services/`, `Infrastructure/<Area>/`), derive from `ApiTestBase` for a request, seed with `TestScenario`, `TestData` and `Actor()`, assert on the response and on a `NewContext()` read, and pass `Ct`. Denied cases are near misses (`<Operation>_is_forbidden_for_a_caller_holding_only_<Permission>`, or the right permission `_only_on_another_evaluation`/`_only_on_a_sibling_team`). A behaviour that looks wrong is characterized by a passing test and an entry in `agent-docs/api-test-bugs/cite.api.md`.
+Follow `CONVENTIONS.md` section 2 of the standard. Put the file where the code under test lives (`Controllers/`, `Hubs/`, `Services/`, `Infrastructure/<Area>/`), derive from `ApiTestBase` for a request, seed with `TestScenario`, `TestData` and `Actor()`, assert on the response and on a `NewContext()` read, and pass `Ct`. Denied cases are near misses (`<Operation>_is_forbidden_for_a_caller_holding_only_<Permission>`, or the right permission `_only_on_another_evaluation`/`_only_on_a_sibling_team`). Allowed tests that differ only in the permission value held are one `[Theory]` with an `[InlineData]` row per value (`..._to_a_caller_holding_a_system_permission(SystemPermission permission)`). A behaviour that looks wrong is characterized by a passing test and an entry in `agent-docs/api-test-bugs/cite.api.md`.
 
 # Layout
 

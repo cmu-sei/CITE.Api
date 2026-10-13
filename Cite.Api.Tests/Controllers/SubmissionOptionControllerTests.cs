@@ -55,15 +55,26 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.Equal(submission.Option.Id, Assert.Single(options).Id);
     }
 
-    [Fact]
-    public async Task GetForSubmissionCategory_lists_the_options_to_a_caller_holding_ViewEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetForSubmissionCategory_lists_the_options_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var (_, submission) = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var options = await ReadAsync<List<SubmissionOption>>(await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
 
         Assert.Equal(submission.Option.Id, Assert.Single(options).Id);
+    }
+
+    [Fact]
+    public async Task GetForSubmissionCategory_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionCategory/{submission.Category.Id}/submissionOptions", Ct));
     }
 
     [Fact]
@@ -93,6 +104,28 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         var read = await ReadAsync<SubmissionOption>(await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
 
         Assert.Equal(graph.Option.Id, read.ScoringOptionId);
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_option_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var read = await ReadAsync<SubmissionOption>(await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
+
+        Assert.Equal(graph.Option.Id, read.ScoringOptionId);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
     }
 
     [Fact]
@@ -232,6 +265,46 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
     }
 
     [Fact]
+    public async Task Create_persists_the_option_for_a_caller_holding_ManageEvaluations()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/submissionOptions", new { id, submissionCategoryId = submission.Category.Id, scoringOptionId = graph.Option.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(submission.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == id, Ct)).SubmissionCategoryId);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/submissionOptions",
+            new { id, submissionCategoryId = submission.Category.Id, scoringOptionId = graph.Option.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionOptions.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (graph, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}",
+            new { id = submission.Option.Id, submissionCategoryId = submission.Category.Id, scoringOptionId = graph.Option.Id, isSelected = true }, Ct));
+
+        await using var context = NewContext();
+        Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
+    }
+
+    [Fact]
     public async Task Update_changes_the_option_for_a_caller_holding_ManageEvaluations()
     {
         var (graph, submission) = await Seed();
@@ -323,6 +396,30 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
 
         await using var context = NewContext();
         Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == official.Option.Id, Ct)).IsSelected);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_option_for_a_caller_holding_ManageEvaluations()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionOptions.AnyAsync(x => x.Id == submission.Option.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (_, submission) = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/submissionOptions/{submission.Option.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.SubmissionOptions.AnyAsync(x => x.Id == submission.Option.Id, Ct));
     }
 
     private async Task<(EvaluationGraph Graph, SubmissionGraph Submission)> Seed()

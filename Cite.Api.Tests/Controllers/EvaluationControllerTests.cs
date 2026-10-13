@@ -168,6 +168,15 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ObserveEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}", Ct));
+    }
+
+    [Fact]
     public async Task Get_is_forbidden_for_a_caller_holding_ViewEvaluation_only_on_another_evaluation()
     {
         var graph = await Seed();
@@ -271,6 +280,31 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task Copy_creates_an_evaluation_for_a_caller_holding_CreateEvaluations_and_ViewEvaluations()
+    {
+        var graph = await Seed("Source");
+        var actor = await Actor().WithName("Copier").WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ViewEvaluations).SeedAsync();
+
+        var copy = await ReadAsync<Evaluation>(await Client(actor).PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        Assert.Equal("Source - Copier", copy.Description);
+        await using var context = NewContext();
+        Assert.True(await context.Evaluations.AnyAsync(x => x.Id == copy.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Copy_is_forbidden_for_a_caller_holding_CreateEvaluations_and_ObserveEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(1, await context.Evaluations.CountAsync(Ct));
+    }
+
+    [Fact]
     public async Task Copy_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
     {
         var graph = await Seed();
@@ -328,6 +362,30 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", Body(graph.Evaluation, "After"), Ct));
     }
 
+    [Fact]
+    public async Task Update_changes_the_description_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed("Before");
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", Body(graph.Evaluation, "After"), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("After", (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed("Before");
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", Body(graph.Evaluation, "After"), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Before", (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).Description);
+    }
+
     /// <summary>Activating an evaluation with a user on two of its teams is refused with a 500.</summary>
     [Fact]
     public async Task Update_answers_activating_with_a_user_on_two_teams_with_a_server_error()
@@ -354,11 +412,13 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertApiError(HttpStatusCode.NotFound, await RootClient.PutAsJsonAsync($"api/evaluations/{id}", Body(graph.Evaluation, "Nobody") with { Id = id }, Ct));
     }
 
-    [Fact]
-    public async Task UpdateSituation_stores_the_situation_for_a_caller_holding_ExecuteEvaluation_on_it()
+    [Theory]
+    [InlineData(EvaluationPermission.EditEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
+    public async Task UpdateSituation_stores_the_situation_for_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ExecuteEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var response = await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}/situation",
             new { situationTime = TestData.DefaultDateCreated.AddDays(1), situationDescription = "Escalating" }, Ct);
@@ -382,11 +442,13 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Null((await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).SituationDescription);
     }
 
-    [Fact]
-    public async Task UpdateSituation_stores_the_situation_for_a_caller_holding_ExecuteEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.EditEvaluations)]
+    [InlineData(SystemPermission.ExecuteEvaluations)]
+    public async Task UpdateSituation_stores_the_situation_for_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var response = await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}/situation",
             new { situationTime = TestData.DefaultDateCreated.AddDays(1), situationDescription = "Escalating" }, Ct);
@@ -410,14 +472,16 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Null((await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).SituationDescription);
     }
 
-    [Fact]
-    public async Task SetCurrentMove_moves_the_evaluation_and_takes_the_move_situation_for_a_caller_holding_ExecuteEvaluation_on_it()
+    [Theory]
+    [InlineData(EvaluationPermission.EditEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
+    public async Task SetCurrentMove_moves_the_evaluation_and_takes_the_move_situation_for_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
         var move = TestData.Move(graph.Evaluation.Id, 1);
         move.SituationDescription = "Move One Situation";
         await Seed(move);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ExecuteEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/1", null, Ct));
 
@@ -439,14 +503,16 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(0, (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).CurrentMoveNumber);
     }
 
-    [Fact]
-    public async Task SetCurrentMove_moves_the_evaluation_and_takes_the_move_situation_for_a_caller_holding_ExecuteEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.EditEvaluations)]
+    [InlineData(SystemPermission.ExecuteEvaluations)]
+    public async Task SetCurrentMove_moves_the_evaluation_and_takes_the_move_situation_for_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
         var move = TestData.Move(graph.Evaluation.Id, 1);
         move.SituationDescription = "Move One Situation";
         await Seed(move);
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/1", null, Ct));
 
@@ -524,6 +590,31 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task Delete_removes_the_evaluation_and_its_scoring_model_copy_for_a_caller_holding_ManageEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/evaluations/{graph.Evaluation.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == graph.Evaluation.Id, Ct));
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == graph.ScoringModel.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/evaluations/{graph.Evaluation.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Evaluations.AnyAsync(x => x.Id == graph.Evaluation.Id, Ct));
+    }
+
+    [Fact]
     public async Task DownloadJson_answers_a_file_named_for_the_evaluation_to_a_caller_holding_ViewEvaluation_on_it()
     {
         var graph = await Seed("Exported");
@@ -543,6 +634,28 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.ViewEvaluation).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct));
+    }
+
+    [Fact]
+    public async Task DownloadJson_answers_a_file_named_for_the_evaluation_to_a_caller_holding_ViewEvaluations()
+    {
+        var graph = await Seed("Exported");
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var response = await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal("Exported.json", response.Content.Headers.ContentDisposition?.FileName);
+        Assert.Contains(graph.Team.Id.ToString(), await response.Content.ReadAsStringAsync(Ct));
+    }
+
+    [Fact]
+    public async Task DownloadJson_is_forbidden_for_a_caller_holding_only_ObserveEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct));
     }
 
     [Fact]

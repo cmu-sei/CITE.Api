@@ -45,6 +45,46 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
     }
 
     [Fact]
+    public async Task GetAll_lists_the_memberships_to_a_caller_holding_ViewScoringModels()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        var memberships = await ReadAsync<List<ScoringModelMembership>>(await Client(actor).GetAsync($"api/scoringModels/{model.Id}/memberships", Ct));
+
+        Assert.Equal(membership.Id, Assert.Single(memberships).Id);
+    }
+
+    [Fact]
+    public async Task GetAll_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var (model, _) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{model.Id}/memberships", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_membership_to_a_caller_holding_ViewScoringModel_on_its_scoring_model()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ViewScoringModel]).SeedAsync();
+
+        var read = await ReadAsync<ScoringModelMembership>(await Client(actor).GetAsync($"api/scoringModels/memberships/{membership.Id}", Ct));
+
+        Assert.Equal(membership.UserId, read.UserId);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/memberships/{membership.Id}", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_membership_to_a_caller_holding_ViewScoringModels()
     {
         var (_, membership) = await SeedWithMember();
@@ -126,6 +166,38 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
             new { scoringModelId = model.Id, userId = user.Id, roleId = TestData.ScoringModelRoles.Editor }, Ct));
     }
 
+    [Fact]
+    public async Task CreateMembership_adds_the_user_for_a_caller_holding_ManageScoringModels()
+    {
+        var model = TestData.ScoringModel();
+        var user = TestData.User();
+        await Seed(model, user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageScoringModels).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/scoringModels/{model.Id}/memberships",
+            new { scoringModelId = model.Id, userId = user.Id, roleId = TestData.ScoringModelRoles.Editor }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.ScoringModelRoles.Editor, (await context.ScoringModelMemberships.SingleAsync(x => x.ScoringModelId == model.Id && x.UserId == user.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var model = TestData.ScoringModel();
+        var user = TestData.User();
+        await Seed(model, user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/scoringModels/{model.Id}/memberships",
+            new { scoringModelId = model.Id, userId = user.Id, roleId = TestData.ScoringModelRoles.Editor }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModelMemberships.AnyAsync(x => x.UserId == user.Id, Ct));
+    }
+
     /// <summary>A body naming another scoring model than the route is refused with a 500.</summary>
     [Fact]
     public async Task CreateMembership_answers_a_body_for_another_scoring_model_with_a_server_error()
@@ -199,6 +271,58 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
         await AssertStatus(HttpStatusCode.Forbidden, response);
         await using var context = NewContext();
         Assert.Equal(TestData.ScoringModelRoles.Editor, (await context.ScoringModelMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_changes_the_role_for_a_caller_holding_ManageScoringModels()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageScoringModels).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringModels/memberships/{membership.Id}",
+            new { id = membership.Id, scoringModelId = model.Id, userId = membership.UserId, roleId = TestData.ScoringModelRoles.Owner }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.ScoringModelRoles.Owner, (await context.ScoringModelMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringModels/memberships/{membership.Id}",
+            new { id = membership.Id, scoringModelId = model.Id, userId = membership.UserId, roleId = TestData.ScoringModelRoles.Owner }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.ScoringModelRoles.Editor, (await context.ScoringModelMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task DeleteMembership_removes_the_membership_for_a_caller_holding_ManageScoringModel_on_its_scoring_model()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.ManageScoringModel]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/scoringModels/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModelMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_is_forbidden_for_a_caller_holding_only_EditScoringModel_on_its_scoring_model()
+    {
+        var (model, membership) = await SeedWithMember();
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/scoringModels/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.ScoringModelMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
     }
 
     [Fact]

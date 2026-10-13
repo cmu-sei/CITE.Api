@@ -54,6 +54,46 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
     }
 
     [Fact]
+    public async Task GetAll_lists_the_memberships_to_a_caller_holding_ViewEvaluations()
+    {
+        var (evaluation, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var memberships = await ReadAsync<List<EvaluationMembership>>(await Client(actor).GetAsync($"api/evaluations/{evaluation.Id}/memberships", Ct));
+
+        Assert.Equal(membership.Id, Assert.Single(memberships).Id);
+    }
+
+    [Fact]
+    public async Task GetAll_is_forbidden_for_a_caller_holding_only_ObserveEvaluations()
+    {
+        var (evaluation, _) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{evaluation.Id}/memberships", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_membership_to_a_caller_holding_ViewEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        var read = await ReadAsync<EvaluationMembership>(await Client(actor).GetAsync($"api/evaluations/memberships/{membership.Id}", Ct));
+
+        Assert.Equal(membership.UserId, read.UserId);
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ObserveEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/memberships/{membership.Id}", Ct));
+    }
+
+    [Fact]
     public async Task Get_returns_the_membership_to_a_caller_holding_ViewEvaluation_on_its_evaluation()
     {
         var (evaluation, membership) = await SeedWithMember();
@@ -141,6 +181,38 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
             new { evaluationId = evaluation.Id, userId = user.Id, roleId = TestData.EvaluationRoles.Owner }, Ct));
     }
 
+    [Fact]
+    public async Task CreateMembership_adds_the_user_for_a_caller_holding_ManageEvaluations()
+    {
+        var evaluation = await SeedEvaluation();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/evaluations/{evaluation.Id}/memberships",
+            new { evaluationId = evaluation.Id, userId = user.Id, roleId = TestData.EvaluationRoles.Member }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.EvaluationRoles.Member, (await context.EvaluationMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var evaluation = await SeedEvaluation();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/evaluations/{evaluation.Id}/memberships",
+            new { evaluationId = evaluation.Id, userId = user.Id, roleId = TestData.EvaluationRoles.Member }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.False(await context.EvaluationMemberships.AnyAsync(x => x.UserId == user.Id, Ct));
+    }
+
     /// <summary>A second membership for a user already on the evaluation is stored beside the first.</summary>
     [Fact]
     public async Task CreateMembership_stores_a_second_membership_for_a_user_already_on_the_evaluation()
@@ -199,6 +271,36 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         await AssertStatus(HttpStatusCode.Forbidden, response);
     }
 
+    /// <summary>A membership created with its evaluation's id is changed for a caller holding ManageEvaluation on that evaluation.</summary>
+    // Same case as Update_is_forbidden_for_a_caller_holding_ManageEvaluation_on_the_memberships_evaluation.
+    [Fact]
+    public async Task Update_changes_the_role_of_a_membership_whose_id_is_its_evaluations_id_for_a_caller_holding_ManageEvaluation_there()
+    {
+        var (evaluation, membership) = await SeedWithMemberIdOfItsEvaluation();
+        var actor = await Actor().OnEvaluation(evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}",
+            new { id = membership.Id, evaluationId = evaluation.Id, userId = membership.UserId, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.EvaluationRoles.Owner, (await context.EvaluationMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_on_a_membership_whose_id_is_its_evaluations_id_for_a_caller_holding_only_EditEvaluation_there()
+    {
+        var (evaluation, membership) = await SeedWithMemberIdOfItsEvaluation();
+        var actor = await Actor().OnEvaluation(evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}",
+            new { id = membership.Id, evaluationId = evaluation.Id, userId = membership.UserId, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.EvaluationRoles.Member, (await context.EvaluationMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
     [Fact]
     public async Task Update_is_forbidden_for_a_caller_holding_only_ManageScoringModels()
     {
@@ -237,6 +339,30 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         Assert.True(await context.EvaluationMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
     }
 
+    [Fact]
+    public async Task DeleteMembership_removes_the_membership_for_a_caller_holding_ManageEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/evaluations/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.EvaluationMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_is_forbidden_for_a_caller_holding_only_EditEvaluations()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/evaluations/memberships/{membership.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.EvaluationMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
     private async Task<EvaluationEntity> SeedEvaluation() => (await TestScenario.SeedEvaluationAsync(Db, Ct)).Evaluation;
 
     private async Task<(EvaluationEntity Evaluation, EvaluationMembershipEntity Membership)> SeedWithMember()
@@ -244,6 +370,18 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         var evaluation = await SeedEvaluation();
         var user = TestData.User(name: "Member");
         var membership = TestData.EvaluationMembership(evaluation.Id, user.Id, TestData.EvaluationRoles.Member);
+        await Seed(user, membership);
+
+        return (evaluation, membership);
+    }
+
+    /// <summary>A member of a new evaluation whose membership row carries the evaluation's own id.</summary>
+    private async Task<(EvaluationEntity Evaluation, EvaluationMembershipEntity Membership)> SeedWithMemberIdOfItsEvaluation()
+    {
+        var evaluation = await SeedEvaluation();
+        var user = TestData.User(name: "Member");
+        var membership = TestData.EvaluationMembership(evaluation.Id, user.Id, TestData.EvaluationRoles.Member);
+        membership.Id = evaluation.Id;
         await Seed(user, membership);
 
         return (evaluation, membership);

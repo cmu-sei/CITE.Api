@@ -142,6 +142,24 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
     }
 
+    [Fact]
+    public async Task Get_is_forbidden_on_an_evaluations_scoring_model_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_is_forbidden_on_an_evaluations_scoring_model_for_a_caller_holding_ViewScoringModel_only_on_another_scoring_model()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
+    }
+
     /// <summary>An unknown scoring model id is answered with a 500.</summary>
     [Fact]
     public async Task Get_answers_an_unknown_scoring_model_with_a_server_error()
@@ -211,6 +229,32 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         var actor = await Actor().WithSystemPermissions(SystemPermission.CreateScoringModels).OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+    }
+
+    [Fact]
+    public async Task Copy_copies_categories_and_options_for_a_caller_holding_CreateScoringModels_and_ViewScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithName("Copier").WithSystemPermissions(SystemPermission.CreateScoringModels, SystemPermission.ViewScoringModels).SeedAsync();
+
+        var copy = await ReadAsync<ScoringModel>(await Client(actor).PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Equal("Template *copy by Copier*", copy.Description);
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.Include(x => x.ScoringCategories).ThenInclude(x => x.ScoringOptions).SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.Single(Assert.Single(stored.ScoringCategories).ScoringOptions);
+    }
+
+    [Fact]
+    public async Task Copy_is_forbidden_for_a_caller_holding_CreateScoringModels_and_EditScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateScoringModels, SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id != model.Id && x.Description.StartsWith("Template"), Ct));
     }
 
     [Fact]
@@ -286,6 +330,55 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.True(await context.ScoringModels.AnyAsync(x => x.Id == model.Id, Ct));
     }
 
+    [Fact]
+    public async Task Update_changes_the_scoring_model_for_a_caller_holding_EditScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/scoringModels/{model.Id}", new { id = model.Id, description = "Renamed", status = "Active" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Renamed", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/scoringModels/{model.Id}", new { id = model.Id, description = "Renamed", status = "Active" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Template", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_template_and_its_categories_for_a_caller_holding_ManageScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageScoringModels).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/scoringModels/{model.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == model.Id, Ct));
+        Assert.False(await context.ScoringCategories.AnyAsync(x => x.Id == category.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/scoringModels/{model.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.ScoringModels.AnyAsync(x => x.Id == model.Id, Ct));
+    }
+
     /// <summary>Deleting the scoring model an evaluation is scored with is answered with a 500, and both stay.</summary>
     [Fact]
     public async Task Delete_answers_a_scoring_model_an_evaluation_uses_with_a_server_error()
@@ -319,6 +412,28 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{model.Id}/json", Ct));
+    }
+
+    [Fact]
+    public async Task DownloadJson_answers_the_model_with_its_categories_to_a_caller_holding_ViewScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        var response = await Client(actor).GetAsync($"api/scoringModels/{model.Id}/json", Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal("Template.json", response.Content.Headers.ContentDisposition?.FileName);
+        Assert.Contains(category.Id.ToString(), await response.Content.ReadAsStringAsync(Ct));
+    }
+
+    [Fact]
+    public async Task DownloadJson_is_forbidden_for_a_caller_holding_only_EditScoringModels()
+    {
+        var (model, _) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditScoringModels).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{model.Id}/json", Ct));
     }
 
     [Fact]

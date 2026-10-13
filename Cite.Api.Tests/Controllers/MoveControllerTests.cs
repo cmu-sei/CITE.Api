@@ -25,11 +25,13 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Unauthorized, await Client().GetAsync($"api/evaluations/{Guid.NewGuid()}/moves", Ct));
     }
 
-    [Fact]
-    public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_ObserveEvaluation_on_it()
+    [Theory]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         var moves = await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
 
@@ -56,6 +58,28 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
     }
 
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_a_system_permission(SystemPermission permission)
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
+
+        var moves = await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
+
+        Assert.Equal(graph.Move.Id, Assert.Single(moves).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_is_forbidden_while_none_of_its_teams_has_a_member_for_a_caller_holding_only_ExecuteEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
+    }
+
     /// <summary>Once anyone is on one of its teams, the moves are listed to a caller with no standing in the evaluation.</summary>
     [Fact]
     public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_ObserveEvaluation_only_on_another_evaluation_once_anyone_is_on_one_of_its_teams()
@@ -70,11 +94,13 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Move.Id, Assert.Single(moves).Id);
     }
 
-    [Fact]
-    public async Task Get_returns_the_move_to_a_caller_holding_ObserveEvaluations()
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    public async Task Get_returns_the_move_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(permission).SeedAsync();
 
         var move = await ReadAsync<Move>(await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
 
@@ -172,6 +198,32 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/moves", NewMove(Guid.NewGuid(), graph.Evaluation.Id, 1), Ct));
     }
 
+    [Fact]
+    public async Task Create_persists_the_move_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("New Move", (await context.Moves.SingleAsync(x => x.Id == id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Moves.AnyAsync(x => x.Id == id, Ct));
+    }
+
     /// <summary>A move number the evaluation already has is answered with a 500.</summary>
     [Fact]
     public async Task Create_answers_a_move_number_that_is_already_taken_with_a_server_error()
@@ -202,6 +254,32 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
 
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}",
+            NewMove(graph.Move.Id, graph.Evaluation.Id, 0) with { Description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(graph.Move.Description, (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Update_changes_the_move_for_a_caller_holding_EditEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}",
+            NewMove(graph.Move.Id, graph.Evaluation.Id, 0) with { Description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Changed", (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).Description);
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ViewEvaluations()
+    {
+        var graph = await Seed();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}",
             NewMove(graph.Move.Id, graph.Evaluation.Id, 0) with { Description = "Changed" }, Ct));
 
         await using var context = NewContext();
@@ -269,7 +347,44 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.True(await context.Moves.AnyAsync(x => x.Id == graph.Move.Id, Ct));
     }
 
+    /// <summary>A move created with its evaluation's id is deleted for a caller holding EditEvaluation on that evaluation.</summary>
+    // Same case as Delete_is_forbidden_for_a_caller_holding_EditEvaluation_on_the_moves_evaluation.
+    [Fact]
+    public async Task Delete_removes_a_move_whose_id_is_its_evaluations_id_for_a_caller_holding_EditEvaluation_there()
+    {
+        var (graph, move) = await SeedWithMoveIdOfItsEvaluation();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/moves/{move.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Moves.AnyAsync(x => x.Id == move.Id, Ct));
+    }
+
+    [Fact]
+    public async Task Delete_is_forbidden_on_a_move_whose_id_is_its_evaluations_id_for_a_caller_holding_only_ExecuteEvaluation_there()
+    {
+        var (graph, move) = await SeedWithMoveIdOfItsEvaluation();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ExecuteEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/moves/{move.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Moves.AnyAsync(x => x.Id == move.Id, Ct));
+    }
+
     private Task<EvaluationGraph> Seed() => TestScenario.SeedEvaluationAsync(Db, Ct);
+
+    /// <summary>A second move of a new evaluation, whose row carries the evaluation's own id.</summary>
+    private async Task<(EvaluationGraph Graph, MoveEntity Move)> SeedWithMoveIdOfItsEvaluation()
+    {
+        var graph = await Seed();
+        var move = TestData.Move(graph.Evaluation.Id, 1);
+        move.Id = graph.Evaluation.Id;
+        await Seed(move);
+
+        return (graph, move);
+    }
 
     private static MoveBody NewMove(Guid id, Guid evaluationId, int moveNumber) =>
         new(id, "New Move", moveNumber, TestData.DefaultDateCreated, evaluationId);
