@@ -160,12 +160,14 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
     }
 
-    /// <summary>An unknown scoring model id is answered with a 500.</summary>
     [Fact]
-    public async Task Get_answers_an_unknown_scoring_model_with_a_server_error()
+    public async Task Get_answers_an_unknown_scoring_model_with_not_found()
     {
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await RootClient.GetAsync($"api/scoringModels/{Guid.NewGuid()}", Ct));
-        Assert.Equal("Object reference not set to an instance of an object.", error.Detail);
+        var id = Guid.NewGuid();
+
+        var error = await AssertApiError(HttpStatusCode.NotFound, await RootClient.GetAsync($"api/scoringModels/{id}", Ct));
+
+        Assert.Equal($"ScoringModel not found with ID={id}", error.Title);
     }
 
     [Fact]
@@ -448,6 +450,93 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.NotEqual(model.Id, imported.Id);
         Assert.Equal("Template *copy by Importer*", imported.Description);
         Assert.Single(imported.ScoringCategories);
+    }
+
+    /// <summary>
+    /// A file whose id is a template the importer can view answers that template as stored: no copy is made.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_answers_the_existing_template_unchanged_to_a_caller_holding_CreateScoringModels_and_ViewScoringModels()
+    {
+        var (model, category) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels, SystemPermission.ViewScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.Equal((model.Id, "Template"), (imported.Id, imported.Description));
+        Assert.Equal(category.Id, Assert.Single(imported.ScoringCategories).Id);
+        await using var context = NewContext();
+        Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task UploadJson_answers_the_existing_template_unchanged_to_a_caller_holding_CreateScoringModels_and_ViewScoringModel_on_it()
+    {
+        var (model, category) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels)
+            .OnScoringModel(model.Id, permissions: [ScoringModelPermission.ViewScoringModel]).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.Equal((model.Id, "Template"), (imported.Id, imported.Description));
+        Assert.Equal(category.Id, Assert.Single(imported.ScoringCategories).Id);
+        await using var context = NewContext();
+        Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task UploadJson_imports_a_copy_for_a_caller_holding_CreateScoringModels_and_ViewScoringModel_only_on_another_scoring_model()
+    {
+        var (model, _) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels)
+            .OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.NotEqual(model.Id, imported.Id);
+        Assert.Equal("Template *copy by Importer*", imported.Description);
+        await using var context = NewContext();
+        Assert.Equal("Template *copy by Importer*", (await context.ScoringModels.SingleAsync(x => x.Id == imported.Id, Ct)).Description);
+    }
+
+    /// <summary>The copy keeps the file's description when no stored scoring model has it.</summary>
+    [Fact]
+    public async Task UploadJson_keeps_the_files_description_when_no_scoring_model_has_it()
+    {
+        var (model, _) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == model.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.Description, "Renamed"), Ct);
+        }
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.NotEqual(model.Id, imported.Id);
+        Assert.Equal("Template", imported.Description);
+        await using var context = NewContext();
+        Assert.Equal("Template", (await context.ScoringModels.SingleAsync(x => x.Id == imported.Id, Ct)).Description);
+    }
+
+    /// <summary>
+    /// Only a template is answered as stored: a file whose id is an evaluation's scoring model is imported as a
+    /// copy even for a caller who can view every scoring model.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_imports_a_copy_of_an_evaluations_scoring_model_for_a_caller_holding_CreateScoringModels_and_ViewScoringModels()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{graph.ScoringModel.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels, SystemPermission.ViewScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.NotEqual(graph.ScoringModel.Id, imported.Id);
+        Assert.Equal($"{graph.ScoringModel.Description} *copy by Importer*", imported.Description);
     }
 
     [Fact]
