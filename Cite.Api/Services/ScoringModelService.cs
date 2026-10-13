@@ -46,7 +46,7 @@ namespace Cite.Api.Services
     public class ScoringModelService : IScoringModelService
     {
         private readonly CiteContext _context;
-        private readonly IAuthorizationService _authorizationService;
+        private readonly ICiteAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
         private readonly IMapper _mapper;
         private readonly ILogger<IScoringModelService> _logger;
@@ -54,7 +54,7 @@ namespace Cite.Api.Services
 
         public ScoringModelService(
             CiteContext context,
-            IAuthorizationService authorizationService,
+            ICiteAuthorizationService authorizationService,
             IPrincipal user,
             IMapper mapper,
             ILogger<IScoringModelService> logger,
@@ -250,8 +250,21 @@ namespace Cite.Api.Services
                 ReferenceHandler = ReferenceHandler.Preserve
             };
             var scoringModelEntity = JsonSerializer.Deserialize<ScoringModelEntity>(scoringModelJson, options);
-            // make a copy and add it to the database
-            scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct);
+            // a template this user can see that already has the file's id is reused as is, not overwritten or copied
+            var existingScoringModel = await _context.ScoringModels
+                .AsNoTracking()
+                .Include(m => m.ScoringCategories)
+                .ThenInclude(sc => sc.ScoringOptions)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(m => m.Id == scoringModelEntity.Id && m.EvaluationId == null, ct);
+            if (existingScoringModel != null &&
+                await _authorizationService.AuthorizeAsync<ScoringModel>(existingScoringModel.Id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct))
+            {
+                return _mapper.Map<ScoringModel>(existingScoringModel);
+            }
+            // make a copy and add it to the database, keeping the file's description unless it is already in use
+            var descriptionInUse = await _context.ScoringModels.AnyAsync(m => m.Description == scoringModelEntity.Description, ct);
+            scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionInUse ? null : "");
 
             return _mapper.Map<ScoringModel>(scoringModelEntity);
         }
