@@ -35,7 +35,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Evaluation> CopyAsync(Guid evaluationId, CancellationToken ct);
         Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid evaluationId, CancellationToken ct);
         Task<Evaluation> UploadJsonAsync(FileForm form, CancellationToken ct);
-        Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct);
+        Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.UpdateEvaluationRequest evaluation, CancellationToken ct);
         Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct);
         Task<ViewModels.Evaluation> SetCurrentMoveAsync(Guid id, int moveNumber, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
@@ -52,6 +52,7 @@ namespace Cite.Api.Services
         private readonly IScoringModelService _scoringModelService;
         private readonly ITeamTypeService _teamTypeService;
         private readonly IUserClaimsService _userClaimsService;
+        private readonly ICiteAuthorizationService _authorizationService;
 
         public EvaluationService(
             CiteContext context,
@@ -62,6 +63,7 @@ namespace Cite.Api.Services
             IScoringModelService scoringModelService,
             ITeamTypeService teamTypeService,
             IUserClaimsService userClaimsService,
+            ICiteAuthorizationService authorizationService,
             ILogger<EvaluationService> logger)
         {
             _context = context;
@@ -72,6 +74,7 @@ namespace Cite.Api.Services
             _scoringModelService = scoringModelService;
             _teamTypeService = teamTypeService;
             _userClaimsService = userClaimsService;
+            _authorizationService = authorizationService;
             _logger = logger;
         }
 
@@ -160,6 +163,7 @@ namespace Cite.Api.Services
         {
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
+            await AuthorizeScoringModelCopyAsync(evaluation.ScoringModelId, ct);
 
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // create a scoring model copy
@@ -170,9 +174,8 @@ namespace Cite.Api.Services
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
             evaluation = await GetAsync(evaluationEntity.Id, ct);
-            // update the scoring model evaluation ID
-            newScoringModel.EvaluationId = evaluation.Id;
-            await _scoringModelService.UpdateAsync(newScoringModel.Id, newScoringModel, ct);
+            // make the copy the evaluation's live scoring model
+            await _scoringModelService.AttachToEvaluationAsync(newScoringModel.Id, evaluation.Id, ct);
             // create a default move, if necessary
             if (evaluation.Moves.Count() == 0)
             {
@@ -364,10 +367,13 @@ namespace Cite.Api.Services
                 throw new InvalidOperationException("Failed to deserialize evaluation JSON");
             }
 
-            // if the scoring model doesn't exist, create it
+            // if the scoring model doesn't exist, create it; one that exists is copied only for a caller who can view it
             var exists = await _context.ScoringModels.AnyAsync(m => m.Id == evaluationEntity.ScoringModelId, ct);
-
-            if (!exists)
+            if (exists)
+            {
+                await AuthorizeScoringModelCopyAsync(evaluationEntity.ScoringModelId, ct);
+            }
+            else
             {
                 if (evaluationEntity.ScoringModel == null)
                 {
@@ -413,7 +419,16 @@ namespace Cite.Api.Services
             return _mapper.Map<Evaluation>(evaluationEntity);
         }
 
-        public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.Evaluation evaluation, CancellationToken ct)
+        /// <summary>An evaluation copies its scoring model, so the caller must be able to view an existing one.</summary>
+        private async Task AuthorizeScoringModelCopyAsync(Guid scoringModelId, CancellationToken ct)
+        {
+            if (!await _context.ScoringModels.AnyAsync(m => m.Id == scoringModelId, ct))
+                throw new EntityNotFoundException<ScoringModel>("ScoringModel not found with ID=" + scoringModelId.ToString());
+            if (!await _authorizationService.AuthorizeAsync<ScoringModel>(scoringModelId, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct))
+                throw new ForbiddenException("The scoring model cannot be viewed by the caller.");
+        }
+
+        public async Task<ViewModels.Evaluation> UpdateAsync(Guid id, ViewModels.UpdateEvaluationRequest evaluation, CancellationToken ct)
         {
             var evaluationToUpdate = await _context.Evaluations.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (evaluationToUpdate == null)
@@ -426,7 +441,7 @@ namespace Cite.Api.Services
                 var evaluationTeamList = await _context.Teams
                     .Include(t => t.Memberships)
                     .ThenInclude(tu => tu.User)
-                    .Where(t => t.EvaluationId == evaluation.Id)
+                    .Where(t => t.EvaluationId == id)
                     .AsNoTracking()
                     .ToListAsync();
                 if (evaluationTeamList.Any())
@@ -465,18 +480,13 @@ namespace Cite.Api.Services
                 }
             }
             // okay to update this evaluation
-            evaluation.ModifiedBy = _user.GetId();
-            evaluation.Submissions = [];
-            evaluation.ScoringModel = null;
-            evaluation.Teams = [];
-            evaluation.Moves = [];
-            evaluation.SituationTime = evaluation.SituationTime.ToUniversalTime();
             _mapper.Map(evaluation, evaluationToUpdate);
+            evaluationToUpdate.SituationTime = evaluation.SituationTime.ToUniversalTime();
+            evaluationToUpdate.ModifiedBy = _user.GetId();
             _logger.LogDebug("Saving the Evaluation change");
             await _context.SaveChangesAsync(ct);
-            evaluation = await GetAsync(evaluationToUpdate.Id, ct);
 
-            return evaluation;
+            return await GetAsync(evaluationToUpdate.Id, ct);
         }
 
         public async Task<ViewModels.Evaluation> UpdateSituationAsync(Guid id, EvaluationSituation evaluationSituation, CancellationToken ct)

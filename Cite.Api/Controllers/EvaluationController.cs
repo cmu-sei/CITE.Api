@@ -174,7 +174,7 @@ namespace Cite.Api.Controllers
         [HttpPut("evaluations/{id}")]
         [ProducesResponseType(typeof(Evaluation), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateEvaluation")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Evaluation evaluation, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateEvaluationRequest evaluation, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();

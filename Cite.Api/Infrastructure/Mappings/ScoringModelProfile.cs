@@ -14,6 +14,9 @@ namespace Cite.Api.Infrastructure.Mappings
 
             CreateMap<ScoringModel, ScoringModelEntity>();
 
+            CreateMap<ScoringModelFields, ScoringModelEntity>()
+                .IncludeAllDerived();
+
             CreateMap<ScoringModelEntity, ScoringModelEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore())
                 .ForMember(e => e.ScoringCategories, opt => opt.Ignore())

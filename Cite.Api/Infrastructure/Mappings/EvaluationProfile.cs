@@ -16,6 +16,8 @@ namespace Cite.Api.Infrastructure.Mappings
                 .ForMember(e => e.Teams, opt => opt.Ignore())
                 .ForMember(e => e.Moves, opt => opt.Ignore());
 
+            CreateMap<UpdateEvaluationRequest, EvaluationEntity>();
+
             CreateMap<EvaluationEntity, EvaluationEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore())
                 .ForMember(e => e.Moves, opt => opt.Ignore())

@@ -104,12 +104,11 @@ namespace Cite.Api.Controllers
         [HttpPost("scoringModels")]
         [ProducesResponseType(typeof(ScoringModel), (int)HttpStatusCode.Created)]
         [SwaggerOperation(OperationId = "createScoringModel")]
-        public async Task<IActionResult> Create([FromBody] ScoringModel scoringModel, CancellationToken ct)
+        public async Task<IActionResult> Create([FromBody] CreateScoringModelRequest scoringModel, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync([SystemPermission.CreateScoringModels], ct))
                 throw new ForbiddenException();
 
-            scoringModel.CreatedBy = User.GetId();
             var createdScoringModel = await _scoringModelService.CreateAsync(scoringModel, ct);
             AddPermissions(createdScoringModel);
 
@@ -156,12 +155,11 @@ namespace Cite.Api.Controllers
         [HttpPut("scoringModels/{id}")]
         [ProducesResponseType(typeof(ScoringModel), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateScoringModel")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ScoringModel scoringModel, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateScoringModelRequest scoringModel, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<ScoringModel>(id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
                 throw new ForbiddenException();
 
-            scoringModel.ModifiedBy = User.GetId();
             var updatedScoringModel = await _scoringModelService.UpdateAsync(id, scoringModel, ct);
             AddPermissions(updatedScoringModel);
 

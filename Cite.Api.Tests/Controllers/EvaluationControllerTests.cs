@@ -201,7 +201,7 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var template = TestData.ScoringModel("Template");
         var category = TestData.ScoringCategory(template.Id);
         await Seed(template, category, TestData.ScoringOption(category.Id));
-        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ViewScoringModels).SeedAsync();
         var id = Guid.NewGuid();
 
         var response = await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct);
@@ -215,6 +215,42 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(0, Assert.Single(stored.Moves).MoveNumber);
         var owner = await context.EvaluationMemberships.SingleAsync(x => x.EvaluationId == id, Ct);
         Assert.Equal((actor.Id, TestData.EvaluationRoles.Owner), (owner.UserId.Value, owner.RoleId));
+    }
+
+    [Fact]
+    public async Task Create_copies_a_template_for_a_caller_holding_CreateEvaluations_and_ViewScoringModel_on_it()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).OnScoringModel(template.Id, permissions: [ScoringModelPermission.ViewScoringModel]).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+    }
+
+    /// <summary>The caller could otherwise copy any scoring model, and read its calculations from the copy.</summary>
+    [Fact]
+    public async Task Create_is_forbidden_on_a_template_the_caller_cannot_view_and_stores_nothing()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == id, Ct));
+        Assert.Equal(2, await context.ScoringModels.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_on_another_evaluations_scoring_model_for_a_caller_holding_only_CreateEvaluations()
+    {
+        var graph = await Seed("Victim");
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(Guid.NewGuid(), graph.ScoringModel.Id), Ct));
     }
 
     [Fact]
@@ -327,6 +363,21 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal("After", (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).Description);
+    }
+
+    /// <summary>The body points the evaluation at another evaluation's live scoring model; the stored model is kept.</summary>
+    [Fact]
+    public async Task Update_keeps_the_scoring_model_whatever_the_body_sends()
+    {
+        var graph = await Seed("Mine");
+        var other = await Seed("Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", Body(graph.Evaluation, "After") with { ScoringModelId = other.ScoringModel.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(graph.ScoringModel.Id, (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).ScoringModelId);
     }
 
     [Fact]
@@ -659,11 +710,11 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
-    public async Task UploadJson_imports_a_downloaded_evaluation_as_a_new_one_for_a_caller_holding_CreateEvaluations()
+    public async Task UploadJson_imports_a_downloaded_evaluation_as_a_new_one_for_a_caller_holding_CreateEvaluations_and_ViewScoringModels()
     {
         var graph = await Seed("Round Trip");
         var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
-        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ViewScoringModels).SeedAsync();
 
         var imported = await ReadAsync<Evaluation>(await Client(actor).PostAsync("api/evaluations/json", Upload(exported), Ct));
 
@@ -671,6 +722,20 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal("Round Trip - Importer", imported.Description);
         await using var context = NewContext();
         Assert.Equal(1, await context.Teams.CountAsync(x => x.EvaluationId == imported.Id, Ct));
+    }
+
+    /// <summary>The file names a scoring model that exists, which the caller cannot view: no row is created.</summary>
+    [Fact]
+    public async Task UploadJson_is_forbidden_on_an_existing_scoring_model_for_a_caller_holding_only_CreateEvaluations()
+    {
+        var graph = await Seed("Round Trip");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsync("api/evaluations/json", Upload(exported), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal((1, 1), (await context.Evaluations.CountAsync(Ct), await context.ScoringModels.CountAsync(Ct)));
     }
 
     [Fact]
