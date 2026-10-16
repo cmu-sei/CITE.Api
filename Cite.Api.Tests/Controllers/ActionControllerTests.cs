@@ -414,19 +414,43 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
         Assert.Equal(action.Description, (await context.Actions.SingleAsync(x => x.Id == action.Id, Ct)).Description);
     }
 
-    /// <summary>ManageTeam on the team named in the body lets a caller rewrite another team's action and take it over.</summary>
     [Fact]
-    public async Task Update_moves_another_teams_action_to_the_team_the_caller_manages()
+    public async Task Update_is_forbidden_for_a_caller_holding_ManageTeam_only_on_a_sibling_team_named_in_the_body()
     {
         var (graph, action) = await SeedWithAction();
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.ManageTeam).SeedAsync();
         var managed = actor.NewTeamIds[0];
 
-        var response = await Client(actor).PutAsJsonAsync($"api/actions/{action.Id}", NewAction(action.Id, graph) with { TeamId = managed }, Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/actions/{action.Id}", NewAction(action.Id, graph) with { TeamId = managed }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(graph.Team.Id, (await context.Actions.SingleAsync(x => x.Id == action.Id, Ct)).TeamId);
+    }
+
+    /// <summary>The body names another team, checks the action and nests a new evaluation; only the editable fields are applied.</summary>
+    [Fact]
+    public async Task Update_applies_only_the_editable_fields_for_a_caller_holding_ManageTeam_on_the_actions_team()
+    {
+        var (graph, action) = await SeedWithAction();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+        var nestedId = Guid.NewGuid();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/actions/{action.Id}", new
+        {
+            id = action.Id,
+            evaluationId = other.Evaluation.Id,
+            teamId = other.Team.Id,
+            evaluation = new { id = nestedId, description = "Nested", scoringModelId = other.ScoringModel.Id },
+            description = "Changed",
+            isChecked = true,
+        }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(managed, (await context.Actions.SingleAsync(x => x.Id == action.Id, Ct)).TeamId);
+        var stored = await context.Actions.SingleAsync(x => x.Id == action.Id, Ct);
+        Assert.Equal(("Changed", graph.Evaluation.Id, graph.Team.Id, false), (stored.Description, stored.EvaluationId, stored.TeamId, stored.IsChecked));
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == nestedId, Ct));
     }
 
     [Fact]

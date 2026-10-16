@@ -27,7 +27,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, bool includeCalculations, CancellationToken ct);
         Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct);
         Task<ViewModels.ScoringCategory> CreateAsync(ViewModels.ScoringCategory scoringCategory, CancellationToken ct);
-        Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.ScoringCategory scoringCategory, CancellationToken ct);
+        Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.UpdateScoringCategoryRequest scoringCategory, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -116,19 +116,24 @@ namespace Cite.Api.Services
             return scoringCategory;
         }
 
-        public async Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.ScoringCategory scoringCategory, CancellationToken ct)
+        public async Task<ViewModels.ScoringCategory> UpdateAsync(Guid id, ViewModels.UpdateScoringCategoryRequest scoringCategory, CancellationToken ct)
         {
             var scoringCategoryToUpdate = await _context.ScoringCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (scoringCategoryToUpdate == null)
                 throw new EntityNotFoundException<ScoringCategory>();
 
-            scoringCategory.ModifiedBy = _user.GetId();
-            _mapper.Map(scoringCategory, scoringCategoryToUpdate);
-            _context.ScoringCategories.Update(scoringCategoryToUpdate);
+            scoringCategoryToUpdate.DisplayOrder = scoringCategory.DisplayOrder;
+            scoringCategoryToUpdate.Description = scoringCategory.Description;
+            scoringCategoryToUpdate.CalculationEquation = scoringCategory.CalculationEquation;
+            scoringCategoryToUpdate.IsModifierRequired = scoringCategory.IsModifierRequired;
+            scoringCategoryToUpdate.ScoringWeight = scoringCategory.ScoringWeight;
+            scoringCategoryToUpdate.MoveNumberFirstDisplay = scoringCategory.MoveNumberFirstDisplay;
+            scoringCategoryToUpdate.MoveNumberLastDisplay = scoringCategory.MoveNumberLastDisplay;
+            scoringCategoryToUpdate.ScoringOptionSelection = scoringCategory.ScoringOptionSelection;
+            scoringCategoryToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
-            scoringCategory = await GetAsync(scoringCategoryToUpdate.Id, true, ct);
 
-            return scoringCategory;
+            return await GetAsync(scoringCategoryToUpdate.Id, true, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

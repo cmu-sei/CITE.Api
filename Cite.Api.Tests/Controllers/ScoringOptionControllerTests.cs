@@ -187,18 +187,62 @@ public class ScoringOptionControllerTests(DatabaseFixture fixture, CiteAppFactor
         Assert.Single(Factory.Hub<MainHub>().ToGroup(model.Id), x => x.Method == MainHubMethods.ScoringModelUpdated);
     }
 
-    /// <summary>EditScoringModel on the option's scoring model does not let its holder add an option there.</summary>
     [Fact]
-    public async Task Create_is_forbidden_for_a_caller_holding_EditScoringModel_on_the_scoring_model()
+    public async Task Create_persists_the_option_for_a_caller_holding_EditScoringModel_on_the_categorys_scoring_model()
     {
         var (model, category, _) = await SeedTemplate();
         var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
         var id = Guid.NewGuid();
 
-        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/scoringOptions", NewOption(id, category.Id), Ct));
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/scoringOptions", NewOption(id, category.Id), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(category.Id, (await context.ScoringOptions.SingleAsync(x => x.Id == id, Ct)).ScoringCategoryId);
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_for_a_caller_holding_EditScoringModel_only_on_another_scoring_model()
+    {
+        var (_, category, _) = await SeedTemplate();
+        var actor = await Actor().OnNewScoringModel(ScoringModelPermission.EditScoringModel).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/scoringOptions", NewOption(id, category.Id), Ct));
 
         await using var context = NewContext();
         Assert.False(await context.ScoringOptions.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    /// <summary>The body names a category of another model; the option stays in its own category.</summary>
+    [Fact]
+    public async Task Update_keeps_the_options_category_whatever_the_body_sends()
+    {
+        var (model, category, option) = await SeedTemplate();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/scoringOptions/{option.Id}",
+            new { id = option.Id, description = "Changed", value = 3.0, scoringCategoryId = other.Category.Id }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.ScoringOptions.SingleAsync(x => x.Id == option.Id, Ct);
+        Assert.Equal(("Changed", category.Id), (stored.Description, stored.ScoringCategoryId));
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_EditScoringModel_only_on_another_scoring_model_whose_option_id_is_in_the_body()
+    {
+        var (_, _, option) = await SeedTemplate();
+        var actor = await Actor().OnNewScoringModel(ScoringModelPermission.EditScoringModel).SeedAsync();
+        var mine = TestData.ScoringCategory(actor.NewScoringModelIds[0]);
+        var myOption = TestData.ScoringOption(mine.Id);
+        await Seed(mine, myOption);
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/scoringOptions/{option.Id}",
+            new { id = myOption.Id, description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(option.Description, (await context.ScoringOptions.SingleAsync(x => x.Id == option.Id, Ct)).Description);
     }
 
     /// <summary>A create naming an existing option's id is answered with a 500 for a caller holding EditScoringModel on that option's scoring model.</summary>

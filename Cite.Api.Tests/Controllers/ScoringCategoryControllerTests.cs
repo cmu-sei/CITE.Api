@@ -278,19 +278,41 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         Assert.Equal(category.Description, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).Description);
     }
 
-    /// <summary>EditScoringModel on the scoring model named in the body lets a caller take another model's category.</summary>
     [Fact]
-    public async Task Update_moves_another_models_category_into_the_model_the_caller_edits()
+    public async Task Update_is_forbidden_for_a_caller_holding_EditScoringModel_only_on_another_scoring_model_named_in_the_body()
     {
-        var (_, category) = await SeedTemplate();
+        var (model, category) = await SeedTemplate();
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.EditScoringModel).SeedAsync();
         var editable = actor.NewScoringModelIds[0];
 
-        var response = await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", NewCategory(category.Id, editable), Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", NewCategory(category.Id, editable), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(model.Id, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).ScoringModelId);
+    }
+
+    /// <summary>The body names another model and nests an option of another model's category; neither is applied.</summary>
+    [Fact]
+    public async Task Update_keeps_the_categorys_model_and_options_whatever_the_body_sends()
+    {
+        var (model, category) = await SeedTemplate();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", new
+        {
+            id = category.Id,
+            description = "Changed",
+            scoringModelId = other.ScoringModel.Id,
+            scoringOptions = new[] { new { id = other.Option.Id, description = "Hijacked", scoringCategoryId = category.Id } },
+        }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(editable, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).ScoringModelId);
+        var stored = await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct);
+        Assert.Equal(("Changed", model.Id), (stored.Description, stored.ScoringModelId));
+        var option = await context.ScoringOptions.SingleAsync(x => x.Id == other.Option.Id, Ct);
+        Assert.Equal((other.Category.Id, other.Option.Description), (option.ScoringCategoryId, option.Description));
     }
 
     [Fact]

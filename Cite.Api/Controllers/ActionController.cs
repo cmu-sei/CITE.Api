@@ -181,13 +181,12 @@ namespace Cite.Api.Controllers
         [HttpPut("actions/{id}")]
         [ProducesResponseType(typeof(ViewModels.Action), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateAction")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ViewModels.Action action, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateActionRequest action, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(action.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Team>(action.TeamId, [], [TeamPermission.ManageTeam], ct))
+            if (!await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<ViewModels.Action>(id, [], [TeamPermission.ManageTeam], ct))
                 throw new ForbiddenException();
 
-            action.ModifiedBy = User.GetId();
             var updatedAction = await _actionService.UpdateAsync(id, action, ct);
             return Ok(updatedAction);
         }

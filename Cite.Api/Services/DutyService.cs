@@ -25,7 +25,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Duty>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
         Task<ViewModels.Duty> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct);
-        Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.Duty duty, CancellationToken ct);
+        Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.UpdateDutyRequest duty, CancellationToken ct);
         Task<ViewModels.Duty> AddUserAsync(Guid dutyId, Guid userId, CancellationToken ct);
         Task<ViewModels.Duty> RemoveUserAsync(Guid dutyId, Guid userId, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
@@ -101,13 +101,16 @@ namespace Cite.Api.Services
             duty.Id = duty.Id != Guid.Empty ? duty.Id : Guid.NewGuid();
             duty.CreatedBy = _user.GetId();
             var dutyEntity = _mapper.Map<DutyEntity>(duty);
+            // the parents are named by id; a nested evaluation or team in the body is never stored
+            dutyEntity.Evaluation = null;
+            dutyEntity.Team = null;
             _context.Duties.Add(dutyEntity);
             await _context.SaveChangesAsync(ct);
 
             return _mapper.Map<ViewModels.Duty>(dutyEntity);
         }
 
-        public async Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.Duty duty, CancellationToken ct)
+        public async Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.UpdateDutyRequest duty, CancellationToken ct)
         {
             var dutyToUpdate = await _context.Duties
                 .Include(r => r.DutyUsers)

@@ -134,13 +134,12 @@ namespace Cite.Api.Controllers
         [HttpPut("duties/{id}")]
         [ProducesResponseType(typeof(ViewModels.Duty), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateDuty")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ViewModels.Duty duty, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateDutyRequest duty, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(duty.EvaluationId, [SystemPermission.EditEvaluations, SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Team>(duty.TeamId, [], [TeamPermission.ManageTeam], ct))
+            if (!await _authorizationService.AuthorizeAsync<Duty>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct) &&
+                !await _authorizationService.AuthorizeAsync<Duty>(id, [], [TeamPermission.ManageTeam], ct))
                 throw new ForbiddenException();
 
-            duty.ModifiedBy = User.GetId();
             var updatedDuty = await _dutyService.UpdateAsync(id, duty, ct);
             return Ok(updatedDuty);
         }

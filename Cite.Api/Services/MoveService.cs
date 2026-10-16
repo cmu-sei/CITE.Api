@@ -26,7 +26,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct);
         Task<ViewModels.Move> GetAsync(Guid id, bool hasPermission, CancellationToken ct);
         Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct);
-        Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.Move move, CancellationToken ct);
+        Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.UpdateMoveRequest move, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -84,28 +84,39 @@ namespace Cite.Api.Services
             var moveEntity = _mapper.Map<MoveEntity>(move);
             moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
             _context.Moves.Add(moveEntity);
-            await _context.SaveChangesAsync(ct);
+            await SaveMoveAsync(ct);
             move = await GetAsync(moveEntity.Id, true, ct);
 
             return move;
         }
 
-        public async Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.Move move, CancellationToken ct)
+        public async Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.UpdateMoveRequest move, CancellationToken ct)
         {
             var moveToUpdate = await _context.Moves.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (moveToUpdate == null)
                 throw new EntityNotFoundException<Move>();
 
-            move.ModifiedBy = _user.GetId();
-            _mapper.Map(move, moveToUpdate);
-            moveToUpdate.SituationTime = moveToUpdate.SituationTime.ToUniversalTime();
+            moveToUpdate.Description = move.Description;
+            moveToUpdate.MoveNumber = move.MoveNumber;
+            moveToUpdate.SituationTime = move.SituationTime.ToUniversalTime();
+            moveToUpdate.SituationDescription = move.SituationDescription;
+            moveToUpdate.ModifiedBy = _user.GetId();
+            await SaveMoveAsync(ct);
 
-            _context.Moves.Update(moveToUpdate);
-            await _context.SaveChangesAsync(ct);
+            return await GetAsync(moveToUpdate.Id, true, ct);
+        }
 
-            move = await GetAsync(moveToUpdate.Id, true, ct);
-
-            return move;
+        /// <summary>A move number is unique in its evaluation; a second move with the same number is a 409.</summary>
+        private async Task SaveMoveAsync(CancellationToken ct)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation })
+            {
+                throw new ConflictException("The evaluation already has a move with this move number.");
+            }
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

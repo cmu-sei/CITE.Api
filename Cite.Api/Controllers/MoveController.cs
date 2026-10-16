@@ -108,12 +108,11 @@ namespace Cite.Api.Controllers
         [HttpPut("moves/{id}")]
         [ProducesResponseType(typeof(Move), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateMove")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Move move, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateMoveRequest move, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(move.EvaluationId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<Move>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();
 
-            move.ModifiedBy = User.GetId();
             var updatedMove = await _moveService.UpdateAsync(id, move, ct);
             return Ok(updatedMove);
         }

@@ -194,18 +194,22 @@ public class SubmissionCategoryControllerTests(DatabaseFixture fixture, CiteAppF
         Assert.False(await context.SubmissionCategories.AnyAsync(x => x.Id == id, Ct));
     }
 
+    /// <summary>The score follows the selected options, and the category cannot move: nothing in the body is applied.</summary>
     [Fact]
-    public async Task Update_changes_the_score_for_a_caller_holding_EditEvaluation_on_the_evaluation()
+    public async Task Update_changes_nothing_for_a_caller_holding_EditEvaluation_on_the_evaluation()
     {
         var (graph, submission) = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var theirs = await TestScenario.SeedSubmissionAsync(Db, Ct, other, other.Team.Id);
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
 
         var response = await Client(actor).PutAsJsonAsync($"api/submissionCategories/{submission.Category.Id}",
-            new { id = submission.Category.Id, submissionId = submission.Submission.Id, scoringCategoryId = graph.Category.Id, score = 7.0 }, Ct);
+            new { id = submission.Category.Id, submissionId = theirs.Submission.Id, scoringCategoryId = other.Category.Id, score = 7.0 }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(7.0, (await context.SubmissionCategories.SingleAsync(x => x.Id == submission.Category.Id, Ct)).Score);
+        var stored = await context.SubmissionCategories.SingleAsync(x => x.Id == submission.Category.Id, Ct);
+        Assert.Equal((submission.Category.Score, submission.Submission.Id, graph.Category.Id), (stored.Score, stored.SubmissionId, stored.ScoringCategoryId));
     }
 
     [Fact]
@@ -275,16 +279,14 @@ public class SubmissionCategoryControllerTests(DatabaseFixture fixture, CiteAppF
     }
 
     [Fact]
-    public async Task Update_changes_the_score_for_a_caller_holding_EditEvaluations()
+    public async Task Update_answers_the_category_unchanged_for_a_caller_holding_EditEvaluations()
     {
-        var (graph, submission) = await Seed();
+        var (_, submission) = await Seed();
         var actor = await Actor().WithSystemPermissions(SystemPermission.EditEvaluations).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissionCategories/{submission.Category.Id}",
-            new { id = submission.Category.Id, submissionId = submission.Submission.Id, scoringCategoryId = graph.Category.Id, score = 7.0 }, Ct));
+        var read = await ReadAsync<SubmissionCategory>(await Client(actor).PutAsJsonAsync($"api/submissionCategories/{submission.Category.Id}", new { score = 7.0 }, Ct));
 
-        await using var context = NewContext();
-        Assert.Equal(7.0, (await context.SubmissionCategories.SingleAsync(x => x.Id == submission.Category.Id, Ct)).Score);
+        Assert.Equal(submission.Category.Score, read.Score);
     }
 
     [Fact]

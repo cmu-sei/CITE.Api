@@ -330,20 +330,34 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
-    /// <summary>ManageEvaluation on the evaluation of the category named in the body moves another evaluation's option into it.</summary>
     [Fact]
-    public async Task Update_moves_another_evaluations_option_into_a_category_of_the_evaluation_the_caller_manages()
+    public async Task Update_is_forbidden_for_a_caller_holding_ManageEvaluation_only_on_the_evaluation_of_the_category_in_the_body()
     {
         var (managed, mine) = await Seed();
         var (other, theirs) = await Seed();
         var actor = await Actor().OnEvaluation(managed.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
 
-        var response = await Client(actor).PutAsJsonAsync($"api/submissionOptions/{theirs.Option.Id}",
-            new { id = theirs.Option.Id, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{theirs.Option.Id}",
+            new { id = theirs.Option.Id, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct));
 
-        await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(mine.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == theirs.Option.Id, Ct)).SubmissionCategoryId);
+        Assert.Equal(theirs.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == theirs.Option.Id, Ct)).SubmissionCategoryId);
+    }
+
+    /// <summary>The body selects the option and names another category; the option is selected where it is.</summary>
+    [Fact]
+    public async Task Update_selects_the_option_in_its_own_category_for_a_caller_holding_ManageEvaluation()
+    {
+        var (graph, submission) = await Seed();
+        var (_, theirs) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}",
+            new { id = submission.Option.Id, isSelected = true, submissionCategoryId = theirs.Category.Id }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct);
+        Assert.Equal((true, submission.Category.Id), (stored.IsSelected, stored.SubmissionCategoryId));
     }
 
     [Fact]

@@ -224,14 +224,25 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.False(await context.Moves.AnyAsync(x => x.Id == id, Ct));
     }
 
-    /// <summary>A move number the evaluation already has is answered with a 500.</summary>
     [Fact]
-    public async Task Create_answers_a_move_number_that_is_already_taken_with_a_server_error()
+    public async Task Create_answers_a_move_number_that_is_already_taken_with_conflict()
     {
         var graph = await Seed();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await RootClient.PostAsJsonAsync("api/moves", NewMove(Guid.NewGuid(), graph.Evaluation.Id, 0), Ct));
-        Assert.StartsWith("An error occurred while saving the entity changes.", error.Detail);
+        await AssertApiError(HttpStatusCode.Conflict, await RootClient.PostAsJsonAsync("api/moves", NewMove(Guid.NewGuid(), graph.Evaluation.Id, 0), Ct));
+    }
+
+    [Fact]
+    public async Task Update_answers_a_move_number_that_is_already_taken_with_conflict()
+    {
+        var graph = await Seed();
+        var second = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(second);
+
+        await AssertApiError(HttpStatusCode.Conflict, await RootClient.PutAsJsonAsync($"api/moves/{second.Id}", NewMove(second.Id, graph.Evaluation.Id, 0), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(1, (await context.Moves.SingleAsync(x => x.Id == second.Id, Ct)).MoveNumber);
     }
 
     [Fact]
@@ -286,19 +297,31 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Move.Description, (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).Description);
     }
 
-    /// <summary>EditEvaluation on the evaluation named in the body lets a caller take a move of another evaluation.</summary>
     [Fact]
-    public async Task Update_moves_a_move_of_another_evaluation_into_the_one_the_caller_edits()
+    public async Task Update_is_forbidden_for_a_caller_holding_EditEvaluation_only_on_another_evaluation_named_in_the_body()
     {
         var graph = await Seed();
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.EditEvaluation).SeedAsync();
         var editable = actor.NewEvaluationIds[0];
 
-        var response = await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}", NewMove(graph.Move.Id, editable, 0), Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}", NewMove(graph.Move.Id, editable, 0), Ct));
 
-        await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(editable, (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).EvaluationId);
+        Assert.Equal(graph.Evaluation.Id, (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).EvaluationId);
+    }
+
+    [Fact]
+    public async Task Update_keeps_the_moves_evaluation_whatever_the_body_sends()
+    {
+        var graph = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/moves/{graph.Move.Id}", NewMove(graph.Move.Id, other.Evaluation.Id, 0) with { Description = "Changed" }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct);
+        Assert.Equal(("Changed", graph.Evaluation.Id), (stored.Description, stored.EvaluationId));
     }
 
     [Fact]

@@ -29,7 +29,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Action>> GetByEvaluationMoveTeamAsync(Guid evaluationId, int moveNumber, Guid teamId, CancellationToken ct);
         Task<ViewModels.Action> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Action> CreateAsync(ViewModels.Action action, CancellationToken ct);
-        Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct);
+        Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.UpdateActionRequest action, CancellationToken ct);
         Task<ViewModels.Action> SetIsCheckedAsync(Guid id, bool value, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
         Task<bool> LogXApiAsync(Uri verb, ActionEntity action, CancellationToken ct);
@@ -127,6 +127,9 @@ namespace Cite.Api.Services
             action.Id = action.Id != Guid.Empty ? action.Id : Guid.NewGuid();
             action.CreatedBy = _user.GetId();
             var actionEntity = _mapper.Map<ActionEntity>(action);
+            // the parents are named by id; a nested evaluation or team in the body is never stored
+            actionEntity.Evaluation = null;
+            actionEntity.Team = null;
 
             _context.Actions.Add(actionEntity);
             await _context.SaveChangesAsync(ct);
@@ -135,15 +138,17 @@ namespace Cite.Api.Services
             return _mapper.Map<ViewModels.Action>(actionEntity);
         }
 
-        public async Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.Action action, CancellationToken ct)
+        public async Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.UpdateActionRequest action, CancellationToken ct)
         {
             var actionToUpdate = await _context.Actions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (actionToUpdate == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
+            actionToUpdate.MoveNumber = action.MoveNumber;
+            actionToUpdate.InjectNumber = action.InjectNumber;
+            actionToUpdate.ActionNumber = action.ActionNumber;
+            actionToUpdate.Description = action.Description;
             actionToUpdate.ModifiedBy = _user.GetId();
-            _mapper.Map(action, actionToUpdate);
-            _context.Actions.Update(actionToUpdate);
             await _context.SaveChangesAsync(ct);
 
             return _mapper.Map<ViewModels.Action>(actionToUpdate);
