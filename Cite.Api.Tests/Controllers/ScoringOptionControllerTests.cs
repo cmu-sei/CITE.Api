@@ -77,37 +77,35 @@ public class ScoringOptionControllerTests(DatabaseFixture fixture, CiteAppFactor
         Assert.Equal(graph.Option.Id, Assert.Single(options).Id);
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task GetForScoringCategory_answers_a_caller_holding_ViewScoringModel_only_on_another_scoring_model_with_a_server_error()
+    public async Task GetForScoringCategory_is_forbidden_for_a_caller_holding_ViewScoringModel_only_on_another_scoring_model()
     {
         var (_, category, _) = await SeedTemplate();
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategory/{category.Id}/scoringOptions", Ct));
-        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategory/{category.Id}/scoringOptions", Ct));
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
-    [Fact]
-    public async Task GetForScoringCategory_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error()
+    [Theory]
+    [InlineData(EvaluationPermission.ParticipateInEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task GetForScoringCategory_lists_the_options_to_a_caller_holding_an_evaluation_permission(EvaluationPermission permission)
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategory/{graph.Category.Id}/scoringOptions", Ct));
-        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+        var options = await ReadAsync<List<ScoringOption>>(await Client(actor).GetAsync($"api/scoringCategory/{graph.Category.Id}/scoringOptions", Ct));
+
+        Assert.Equal(graph.Option.Id, Assert.Single(options).Id);
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task GetForScoringCategory_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    public async Task GetForScoringCategory_is_forbidden_for_a_caller_holding_ParticipateInEvaluation_only_on_another_evaluation()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ParticipateInEvaluation).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategory/{graph.Category.Id}/scoringOptions", Ct));
-        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategory/{graph.Category.Id}/scoringOptions", Ct));
     }
 
     [Fact]
@@ -143,37 +141,35 @@ public class ScoringOptionControllerTests(DatabaseFixture fixture, CiteAppFactor
         Assert.Equal(graph.Option.Value, read.Value);
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task Get_answers_a_caller_holding_ViewScoringModel_only_on_another_scoring_model_with_a_server_error()
+    public async Task Get_is_forbidden_for_a_caller_holding_ViewScoringModel_only_on_another_scoring_model()
     {
         var (_, _, option) = await SeedTemplate();
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringOptions/{option.Id}", Ct));
-        Assert.Equal("Handler for type ScoringOption is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringOptions/{option.Id}", Ct));
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
-    [Fact]
-    public async Task Get_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error()
+    [Theory]
+    [InlineData(EvaluationPermission.ParticipateInEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task Get_returns_the_option_to_a_caller_holding_an_evaluation_permission(EvaluationPermission permission)
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringOptions/{graph.Option.Id}", Ct));
-        Assert.Equal("Handler for type ScoringOption is not implemented.", error.Detail);
+        var read = await ReadAsync<ScoringOption>(await Client(actor).GetAsync($"api/scoringOptions/{graph.Option.Id}", Ct));
+
+        Assert.Equal(graph.Option.Value, read.Value);
     }
 
-    // Same case as ScoringCategoryControllerTests.GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task Get_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    public async Task Get_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringOptions/{graph.Option.Id}", Ct));
-        Assert.Equal("Handler for type ScoringOption is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringOptions/{graph.Option.Id}", Ct));
     }
 
     [Fact]

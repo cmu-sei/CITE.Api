@@ -88,6 +88,8 @@ namespace Cite.Api.Services
         public async Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct)
         {
             var item = await _context.ScoringCategories.Include(m => m.ScoringModel).AsNoTracking().SingleOrDefaultAsync(sc => sc.Id == id, ct);
+            if (item == null)
+                throw new EntityNotFoundException<ScoringCategoryEntity>("ScoringCategory not found with ID=" + id.ToString());
             if (!includeCalculations && item.ScoringModel.EvaluationId == null)
                 throw new ForbiddenException();
 

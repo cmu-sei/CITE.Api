@@ -699,12 +699,15 @@ namespace Cite.Api.Services
             var submissionId = typeof(T) switch
             {
                 var t when t == typeof(Submission) => id,
-                var t when t == typeof(SubmissionCategory) => await _context.SubmissionCategories.Where(m => m.Id == id).Select(m => m.SubmissionId).FirstOrDefaultAsync(),
-                var t when t == typeof(SubmissionOption) => await _context.SubmissionOptions.Where(m => m.Id == id).Select(m => m.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
-                var t when t == typeof(SubmissionComment) => await _context.SubmissionComments.Where(m => m.Id == id).Select(m => m.SubmissionOption.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
+                var t when t == typeof(SubmissionCategory) => await _context.SubmissionCategories.Where(m => m.Id == id).Select(m => m.SubmissionId).FirstOrDefaultAsync(ct),
+                var t when t == typeof(SubmissionOption) => await _context.SubmissionOptions.Where(m => m.Id == id).Select(m => m.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(ct),
+                var t when t == typeof(SubmissionComment) => await _context.SubmissionComments.Where(m => m.Id == id).Select(m => m.SubmissionOption.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(ct),
                 _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
             };
             var submission = await _context.Submissions.FirstOrDefaultAsync(m => m.Id == submissionId, ct);
+            if (submission == null)
+                throw new EntityNotFoundException<SubmissionEntity>($"{typeof(T).Name} not found with ID={id}");
+
             return await HasSpecificPermission(submission, specificPermission, ct);
         }
 

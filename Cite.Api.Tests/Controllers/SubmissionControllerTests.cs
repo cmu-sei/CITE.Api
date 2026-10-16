@@ -324,16 +324,13 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
     }
 
-    /// <summary>An unknown submission id is answered with a 500 for a caller the evaluation-wide check refuses.</summary>
     [Fact]
-    public async Task Get_answers_an_unknown_submission_with_a_server_error_for_a_team_member()
+    public async Task Get_answers_an_unknown_submission_with_not_found_for_a_team_member()
     {
         var graph = await Seed();
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/submissions/{Guid.NewGuid()}", Ct));
-
-        Assert.Equal("Nullable object must have a value.", error.Detail);
+        await AssertApiError(HttpStatusCode.NotFound, await Client(actor).GetAsync($"api/submissions/{Guid.NewGuid()}", Ct));
     }
 
     [Fact]
