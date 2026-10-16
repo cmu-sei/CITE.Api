@@ -40,6 +40,7 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
                 Name = "Owner",
                 Permissions = [
                     TeamPermission.ViewTeam,
+                    TeamPermission.ViewPastOfficialScore,
                     TeamPermission.EditTeamScore,
                     TeamPermission.SubmitTeamScore,
                     TeamPermission.ManageTeam
@@ -52,6 +53,7 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
                 Name = "Submitter",
                 Permissions = [
                     TeamPermission.ViewTeam,
+                    TeamPermission.ViewPastOfficialScore,
                     TeamPermission.EditTeamScore,
                     TeamPermission.SubmitTeamScore
                 ],
@@ -63,6 +65,7 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
                 Name = "Contributor",
                 Permissions = [
                     TeamPermission.ViewTeam,
+                    TeamPermission.ViewPastOfficialScore,
                     TeamPermission.EditTeamScore
                 ],
                 Description = "Can contribute answers for the Team"
@@ -72,7 +75,8 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
                 Id = TeamRoleDefaults.TeamMemberRoleId,
                 Name = "Member",
                 Permissions = [
-                    TeamPermission.ViewTeam
+                    TeamPermission.ViewTeam,
+                    TeamPermission.ViewPastOfficialScore
                 ],
                 Description = "Has read only access to the Team"
             }

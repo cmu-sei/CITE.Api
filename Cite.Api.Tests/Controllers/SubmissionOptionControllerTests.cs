@@ -194,17 +194,16 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
-    // Same case as SubmissionControllerTests.Get_returns_another_teams_submission_to_a_member_of_a_sibling_team_holding_ViewTeam.
     [Fact]
-    public async Task SetOptionTrue_selects_an_option_of_another_teams_submission_for_a_member_of_a_sibling_team_holding_EditTeamScore()
+    public async Task SetOptionTrue_is_forbidden_for_a_member_holding_EditTeamScore_only_on_a_sibling_team()
     {
         var (graph, submission) = await Seed();
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.EditTeamScore).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/submissionOptions/{submission.Option.Id}/select", null, Ct));
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/submissionOptions/{submission.Option.Id}/select", null, Ct));
 
         await using var context = NewContext();
-        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
+        Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
     [Fact]
