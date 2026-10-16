@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -52,7 +53,12 @@ namespace Cite.Api.Infrastructure.EventHandlers
             string[] modifiedProperties,
             CancellationToken cancellationToken)
         {
-            var groupIds = GetGroups(moveEntity);
+            // a future move reaches only the admin group; the evaluation's teams get it when it becomes current
+            var currentMoveNumber = await _db.Evaluations
+                .Where(e => e.Id == moveEntity.EvaluationId)
+                .Select(e => e.CurrentMoveNumber)
+                .SingleOrDefaultAsync(cancellationToken);
+            var groupIds = moveEntity.MoveNumber > currentMoveNumber ? [MainHub.ADMIN_DATA_GROUP] : GetGroups(moveEntity);
             var move = _mapper.Map<ViewModels.Move>(moveEntity);
             var tasks = new List<Task>();
 

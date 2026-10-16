@@ -181,6 +181,20 @@ public class SubmissionCategoryControllerTests(DatabaseFixture fixture, CiteAppF
     }
 
     [Fact]
+    public async Task Create_answers_a_scoring_category_of_another_scoring_model_with_conflict()
+    {
+        var (graph, submission) = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Conflict, await Client(actor).PostAsJsonAsync("api/submissionCategories", new { id, submissionId = submission.Submission.Id, scoringCategoryId = other.Category.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionCategories.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
     public async Task Create_is_forbidden_for_a_caller_holding_only_ViewEvaluation_on_the_evaluation()
     {
         var (graph, submission) = await Seed();

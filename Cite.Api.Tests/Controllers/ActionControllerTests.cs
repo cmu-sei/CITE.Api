@@ -356,6 +356,20 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
     }
 
     [Fact]
+    public async Task Create_answers_a_team_of_another_evaluation_with_conflict()
+    {
+        var graph = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Conflict, await Client(actor).PostAsJsonAsync("api/actions", NewAction(id, graph) with { TeamId = other.Team.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Actions.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
     public async Task Create_broadcasts_the_action_to_its_team()
     {
         var graph = await Seed();

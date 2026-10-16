@@ -373,6 +373,13 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct)
         {
+            // the references must belong to the evaluation the caller is authorized on
+            if (submission.EvaluationId != Guid.Empty)
+            {
+                await _context.EnsureScoringModelOfEvaluationAsync(submission.ScoringModelId, submission.EvaluationId, ct);
+                await _context.EnsureTeamInEvaluationAsync(submission.TeamId, submission.EvaluationId, ct);
+                await _context.EnsureUserOnTeamAsync(submission.UserId, submission.TeamId, ct);
+            }
             var requestedSubmissionEntity = await CreateNewSubmission(_context, submission, ct);
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
@@ -479,6 +486,8 @@ namespace Cite.Api.Services
             submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
             submissionEntity.Evaluation = null;
             submissionEntity.ScoringModel = null;
+            // the scoresheet is built from the scoring model, never taken from the body
+            submissionEntity.SubmissionCategories = new List<SubmissionCategoryEntity>();
             var scoringModelEntity = await citeContext.ScoringModels
                 .Include(sm => sm.ScoringCategories)
                 .ThenInclude(sc => sc.ScoringOptions)

@@ -51,16 +51,17 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct)
         {
+            var moves = _context.Moves.Where(move => move.EvaluationId == evaluationId);
             if (!hasPermission)
             {
-                if (!await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == evaluationId))
+                // a member of one of the evaluation's teams sees the moves up to the current one
+                if (!await IsOnATeamAsync(evaluationId, ct))
                     throw new ForbiddenException();
+                moves = moves.Where(move => move.MoveNumber <= move.Evaluation.CurrentMoveNumber);
             }
-            var moveEntities = await _context.Moves
-                .Where(move => move.EvaluationId == evaluationId)
-                .ToListAsync();
+            var moveEntities = await moves.ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();;
+            return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();
         }
 
         public async Task<ViewModels.Move> GetAsync(Guid id, bool hasPermission, CancellationToken ct)
@@ -68,13 +69,21 @@ namespace Cite.Api.Services
             var item = await _context.Moves
                 .Where(m => m.Id == id)
                 .Select(m => new { Move = m, EvaluationId = m.EvaluationId, CurrentMoveNumber = m.Evaluation.CurrentMoveNumber })
-                .SingleAsync(ct);
+                .SingleOrDefaultAsync(ct);
+            if (item == null)
+                throw new EntityNotFoundException<Move>();
             if (!hasPermission)
             {
-                if (!await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == item.EvaluationId) || item.Move.MoveNumber > item.CurrentMoveNumber)
+                if (!await IsOnATeamAsync(item.EvaluationId, ct) || item.Move.MoveNumber > item.CurrentMoveNumber)
                     throw new ForbiddenException();
             }
             return _mapper.Map<Move>(item.Move);
+        }
+
+        private Task<bool> IsOnATeamAsync(Guid evaluationId, CancellationToken ct)
+        {
+            var userId = _user.GetId();
+            return _context.TeamMemberships.AnyAsync(m => m.UserId == userId && m.Team.EvaluationId == evaluationId, ct);
         }
 
         public async Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct)

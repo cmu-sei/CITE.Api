@@ -541,6 +541,19 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal((1, "Move One Situation"), (stored.CurrentMoveNumber, stored.SituationDescription));
     }
 
+    /// <summary>Teams see moves up to the current one, so a move that becomes current is sent to the evaluation group.</summary>
+    [Fact]
+    public async Task SetCurrentMove_sends_the_move_that_becomes_current_to_the_evaluation_group()
+    {
+        var graph = await Seed();
+        var move = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(move);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/1", null, Ct));
+
+        Assert.Contains(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
+    }
+
     [Fact]
     public async Task SetCurrentMove_is_forbidden_for_a_caller_holding_only_ObserveEvaluation()
     {

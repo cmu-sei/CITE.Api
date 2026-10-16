@@ -80,18 +80,38 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
     }
 
-    /// <summary>Once anyone is on one of its teams, the moves are listed to a caller with no standing in the evaluation.</summary>
     [Fact]
-    public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_ObserveEvaluation_only_on_another_evaluation_once_anyone_is_on_one_of_its_teams()
+    public async Task GetByEvaluation_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation_when_others_are_on_its_teams()
     {
         var graph = await Seed();
         var member = TestData.User();
         await Seed(member, TestData.TeamMembership(graph.Team.Id, member.Id));
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
 
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_lists_only_the_moves_up_to_the_current_one_to_a_member_of_one_of_its_teams()
+    {
+        var graph = await Seed();
+        var future = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(future);
+        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
+
         var moves = await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
 
         Assert.Equal(graph.Move.Id, Assert.Single(moves).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluation_lists_the_future_moves_to_a_caller_holding_ViewEvaluation_on_it()
+    {
+        var graph = await Seed();
+        await Seed(TestData.Move(graph.Evaluation.Id, 1));
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        Assert.Equal(2, (await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct))).Count);
     }
 
     [Theory]
@@ -127,24 +147,43 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
     }
 
-    // Same case as GetByEvaluation_lists_the_moves_to_a_caller_holding_ObserveEvaluation_only_on_another_evaluation_once_anyone_is_on_one_of_its_teams.
     [Fact]
-    public async Task Get_returns_the_move_to_a_caller_holding_only_ExecuteEvaluations_once_anyone_is_on_one_of_its_teams()
+    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations_when_others_are_on_its_teams()
     {
         var graph = await Seed();
         var member = TestData.User();
         await Seed(member, TestData.TeamMembership(graph.Team.Id, member.Id));
         var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
 
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
+    }
+
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task Get_returns_a_future_move_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
+    {
+        var graph = await Seed();
+        var future = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(future);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/moves/{future.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_returns_the_current_move_to_a_member_of_one_of_its_teams()
+    {
+        var graph = await Seed();
+        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
+
         await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
     }
 
-    /// <summary>An unknown move id is answered with a 500.</summary>
     [Fact]
-    public async Task Get_answers_an_unknown_move_with_a_server_error()
+    public async Task Get_answers_an_unknown_move_with_not_found()
     {
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await RootClient.GetAsync($"api/moves/{Guid.NewGuid()}", Ct));
-        Assert.Equal("Sequence contains no elements.", error.Detail);
+        await AssertApiError(HttpStatusCode.NotFound, await RootClient.GetAsync($"api/moves/{Guid.NewGuid()}", Ct));
     }
 
     [Fact]
@@ -165,15 +204,29 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
-    public async Task Create_broadcasts_the_move_to_the_evaluation_group()
+    public async Task Create_broadcasts_a_move_up_to_the_current_one_to_the_evaluation_group()
     {
         var graph = await Seed();
+        graph.Evaluation.CurrentMoveNumber = 1;
+        await Db.SaveChangesAsync(Ct);
         var id = Guid.NewGuid();
 
         await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
 
         var broadcast = Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
         Assert.Equal(id, Assert.IsType<Move>(broadcast.Arguments[0]).Id);
+    }
+
+    /// <summary>A future move reaches only the admin group; teams get it when it becomes current.</summary>
+    [Fact]
+    public async Task Create_does_not_broadcast_a_future_move_to_the_evaluation_group()
+    {
+        var graph = await Seed();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(Guid.NewGuid(), graph.Evaluation.Id, 1), Ct));
+
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
+        Assert.Single(Factory.Hub<MainHub>().ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.MoveCreated);
     }
 
     [Fact]

@@ -73,6 +73,7 @@ namespace Cite.Api.Services
 
         public async Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct)
         {
+            await _context.EnsureScoringOptionOfSubmissionCategoryAsync(submissionOption.ScoringOptionId, submissionOption.SubmissionCategoryId, ct);
             submissionOption.Id = submissionOption.Id != Guid.Empty ? submissionOption.Id : Guid.NewGuid();
             submissionOption.CreatedBy = _user.GetId();
             var submissionOptionEntity = _mapper.Map<SubmissionOptionEntity>(submissionOption);

@@ -98,6 +98,7 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct)
         {
+            await _context.EnsureTeamInEvaluationAsync(duty.TeamId, duty.EvaluationId, ct);
             duty.Id = duty.Id != Guid.Empty ? duty.Id : Guid.NewGuid();
             duty.CreatedBy = _user.GetId();
             var dutyEntity = _mapper.Map<DutyEntity>(duty);

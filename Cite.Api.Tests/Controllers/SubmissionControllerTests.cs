@@ -444,6 +444,23 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(graph.Option.Id, Assert.Single(Assert.Single(stored.SubmissionCategories).SubmissionOptions).ScoringOptionId);
     }
 
+    [Theory]
+    [InlineData("scoringModel")]
+    [InlineData("team")]
+    public async Task Create_answers_a_reference_outside_the_evaluation_with_conflict(string reference)
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        var body = reference == "team"
+            ? NewSubmission(graph, 1) with { TeamId = other.Team.Id }
+            : NewSubmission(graph, 1) with { ScoringModelId = other.ScoringModel.Id };
+
+        await AssertApiError(HttpStatusCode.Conflict, await RootClient.PostAsJsonAsync("api/submissions", body, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Submissions.AnyAsync(x => x.MoveNumber == 1, Ct));
+    }
+
     [Fact]
     public async Task Create_broadcasts_the_teams_submission_to_the_team()
     {

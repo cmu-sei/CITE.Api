@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -94,6 +95,16 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 MainHubMethods.EvaluationUpdated,
                 notification.ModifiedProperties.Select(x => x.TitleCaseToCamelCase()).ToArray(),
                 cancellationToken);
+
+            // teams see moves up to the current one only, so a move that has just become visible is sent to them
+            if (notification.ModifiedProperties.Contains(nameof(EvaluationEntity.CurrentMoveNumber)))
+            {
+                var moves = await _db.Moves
+                    .Where(m => m.EvaluationId == notification.Entity.Id && m.MoveNumber <= notification.Entity.CurrentMoveNumber)
+                    .ToListAsync(cancellationToken);
+                var group = _mainHub.Clients.Group(notification.Entity.Id.ToString());
+                await Task.WhenAll(moves.Select(m => group.SendAsync(MainHubMethods.MoveUpdated, _mapper.Map<ViewModels.Move>(m), null, cancellationToken)));
+            }
         }
     }
 

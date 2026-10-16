@@ -62,7 +62,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getMove")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var hasPermission = await _authorizationService.AuthorizeAsync([SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], ct);
+            var hasPermission = await _authorizationService.AuthorizeAsync<Move>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct);
             var move = await _moveService.GetAsync(id, hasPermission, ct);
             if (move == null)
                 throw new EntityNotFoundException<Move>();
