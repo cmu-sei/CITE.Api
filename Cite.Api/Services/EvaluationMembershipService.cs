@@ -23,7 +23,7 @@ namespace Cite.Api.Services
         STT.Task<ViewModels.EvaluationMembership> GetAsync(Guid id, CancellationToken ct);
         STT.Task<IEnumerable<ViewModels.EvaluationMembership>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         STT.Task<ViewModels.EvaluationMembership> CreateAsync(ViewModels.EvaluationMembership evaluationMembership, CancellationToken ct);
-        STT.Task<ViewModels.EvaluationMembership> UpdateAsync(Guid id, ViewModels.EvaluationMembership evaluationMembership, CancellationToken ct);
+        STT.Task<ViewModels.EvaluationMembership> UpdateAsync(Guid id, ViewModels.UpdateEvaluationMembershipRequest evaluationMembership, CancellationToken ct);
         STT.Task DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -70,11 +70,11 @@ namespace Cite.Api.Services
 
             return evaluation;
         }
-        public async STT.Task<ViewModels.EvaluationMembership> UpdateAsync(Guid id, ViewModels.EvaluationMembership evaluationMembership, CancellationToken ct)
+        public async STT.Task<ViewModels.EvaluationMembership> UpdateAsync(Guid id, ViewModels.UpdateEvaluationMembershipRequest evaluationMembership, CancellationToken ct)
         {
             var evaluationMembershipToUpdate = await _context.EvaluationMemberships.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (evaluationMembershipToUpdate == null)
-                throw new EntityNotFoundException<SAVM.Evaluation>();
+                throw new EntityNotFoundException<SAVM.EvaluationMembership>();
 
             evaluationMembershipToUpdate.Role = null;
             evaluationMembershipToUpdate.RoleId = evaluationMembership.RoleId;

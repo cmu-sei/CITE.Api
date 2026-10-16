@@ -133,7 +133,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteMove")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<Move>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();
 
             await _moveService.DeleteAsync(id, ct);

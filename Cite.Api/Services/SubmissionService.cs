@@ -33,7 +33,7 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct);
         Task<SubmissionEntity> CreateNewSubmission(CiteContext citeContext, ViewModels.Submission submission, CancellationToken ct);
-        Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct);
+        Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.UpdateSubmissionRequest submission, CancellationToken ct);
         Task<ViewModels.Submission> SetOptionAsync(Guid id, bool value, CancellationToken ct);
         Task<ViewModels.Submission> ClearSelectionsAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> PresetSelectionsAsync(Guid id, CancellationToken ct);
@@ -362,19 +362,18 @@ namespace Cite.Api.Services
             return await GetAsync(requestedSubmissionEntity.Id, ct);
         }
 
-        public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct)
+        public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.UpdateSubmissionRequest submissionUpdate, CancellationToken ct)
         {
             var submissionToUpdate = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (submissionToUpdate == null)
                 throw new EntityNotFoundException<Submission>();
 
-            submission.ModifiedBy = _user.GetId();
-            _mapper.Map(submission, submissionToUpdate);
-
-            _context.Submissions.Update(submissionToUpdate);
+            // only the status changes; the score stays server-computed
+            submissionToUpdate.Status = submissionUpdate.Status.Value;
+            submissionToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
-            submission = await GetAsync(submissionToUpdate.Id, ct);
+            var submission = await GetAsync(submissionToUpdate.Id, ct);
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");

@@ -227,9 +227,8 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         Assert.Equal(2, await context.EvaluationMemberships.CountAsync(x => x.EvaluationId == evaluation.Id && x.UserId == membership.UserId, Ct));
     }
 
-    /// <summary>The membership is created on the evaluation the body names, whatever evaluation the route names.</summary>
     [Fact]
-    public async Task CreateMembership_adds_the_user_to_the_evaluation_in_the_body_rather_than_the_route()
+    public async Task CreateMembership_adds_the_user_to_the_evaluation_in_the_route_rather_than_the_body()
     {
         var routeEvaluation = await SeedEvaluation();
         var bodyEvaluation = await SeedEvaluation();
@@ -241,7 +240,23 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
 
         await AssertStatus(HttpStatusCode.Created, response);
         await using var context = NewContext();
-        Assert.Equal(bodyEvaluation.Id, (await context.EvaluationMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).EvaluationId);
+        Assert.Equal(routeEvaluation.Id, (await context.EvaluationMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).EvaluationId);
+    }
+
+    [Fact]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_ManageEvaluation_only_on_the_evaluation_in_the_body()
+    {
+        var routeEvaluation = await SeedEvaluation();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ManageEvaluation).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/evaluations/{routeEvaluation.Id}/memberships",
+            new { evaluationId = actor.NewEvaluationIds[0], userId = user.Id, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.False(await context.EvaluationMemberships.AnyAsync(x => x.UserId == user.Id, Ct));
     }
 
     [Fact]
@@ -258,21 +273,48 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         Assert.Equal(TestData.EvaluationRoles.Owner, (await context.EvaluationMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
     }
 
-    /// <summary>ManageEvaluation on the membership's evaluation does not let its holder change a role there.</summary>
     [Fact]
-    public async Task Update_is_forbidden_for_a_caller_holding_ManageEvaluation_on_the_memberships_evaluation()
+    public async Task Update_changes_the_role_for_a_caller_holding_ManageEvaluation_on_the_memberships_evaluation()
     {
         var (evaluation, membership) = await SeedWithMember();
         var actor = await Actor().OnEvaluation(evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
 
-        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}",
-            new { id = membership.Id, evaluationId = evaluation.Id, userId = membership.UserId, roleId = TestData.EvaluationRoles.Owner }, Ct);
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}", new { roleId = TestData.EvaluationRoles.Owner }, Ct);
 
-        await AssertStatus(HttpStatusCode.Forbidden, response);
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.EvaluationRoles.Owner, (await context.EvaluationMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    /// <summary>The body names the caller's own membership in the evaluation they manage; the route names a membership elsewhere.</summary>
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_ManageEvaluation_only_on_another_evaluation_named_in_the_body()
+    {
+        var (_, membership) = await SeedWithMember();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ManageEvaluation).SeedAsync();
+        var ownMembershipId = await ReadBack(c => c.EvaluationMemberships.Where(x => x.UserId == actor.Id).Select(x => x.Id).SingleAsync(Ct));
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}",
+            new { id = membership.Id, evaluationId = ownMembershipId, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        await using var context = NewContext();
+        Assert.Equal(TestData.EvaluationRoles.Member, (await context.EvaluationMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_answers_an_unknown_membership_with_not_found()
+    {
+        await AssertApiError(HttpStatusCode.NotFound, await RootClient.PutAsJsonAsync($"api/evaluations/memberships/{Guid.NewGuid()}", new { roleId = TestData.EvaluationRoles.Owner }, Ct));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_answers_an_unknown_membership_with_not_found()
+    {
+        await AssertApiError(HttpStatusCode.NotFound, await RootClient.DeleteAsync($"api/evaluations/memberships/{Guid.NewGuid()}", Ct));
     }
 
     /// <summary>A membership created with its evaluation's id is changed for a caller holding ManageEvaluation on that evaluation.</summary>
-    // Same case as Update_is_forbidden_for_a_caller_holding_ManageEvaluation_on_the_memberships_evaluation.
     [Fact]
     public async Task Update_changes_the_role_of_a_membership_whose_id_is_its_evaluations_id_for_a_caller_holding_ManageEvaluation_there()
     {

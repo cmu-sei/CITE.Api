@@ -325,14 +325,34 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Move.Id, Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveDeleted).Argument);
     }
 
-    /// <summary>EditEvaluation on the move's own evaluation does not let its holder delete the move.</summary>
     [Fact]
-    public async Task Delete_is_forbidden_for_a_caller_holding_EditEvaluation_on_the_moves_evaluation()
+    public async Task Delete_removes_the_move_for_a_caller_holding_EditEvaluation_on_the_moves_evaluation()
     {
         var graph = await Seed();
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/moves/{graph.Move.Id}", Ct));
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/moves/{graph.Move.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Moves.AnyAsync(x => x.Id == graph.Move.Id, Ct));
+    }
+
+    /// <summary>The caller edits an evaluation created with the id of a move in another evaluation.</summary>
+    [Fact]
+    public async Task Delete_is_forbidden_for_a_caller_holding_EditEvaluation_on_an_evaluation_whose_id_is_the_moves_id()
+    {
+        var graph = await Seed();
+        await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id, moveNumber: graph.Move.MoveNumber);
+        var lookalike = TestData.Evaluation(graph.ScoringModel.Id, "Lookalike");
+        lookalike.Id = graph.Move.Id;
+        await Seed(lookalike);
+        var actor = await Actor().OnEvaluation(lookalike.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/moves/{graph.Move.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.Moves.AnyAsync(x => x.Id == graph.Move.Id, Ct));
+        Assert.True(await context.Submissions.AnyAsync(x => x.EvaluationId == graph.Evaluation.Id, Ct));
     }
 
     [Fact]
@@ -348,7 +368,6 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     /// <summary>A move created with its evaluation's id is deleted for a caller holding EditEvaluation on that evaluation.</summary>
-    // Same case as Delete_is_forbidden_for_a_caller_holding_EditEvaluation_on_the_moves_evaluation.
     [Fact]
     public async Task Delete_removes_a_move_whose_id_is_its_evaluations_id_for_a_caller_holding_EditEvaluation_there()
     {

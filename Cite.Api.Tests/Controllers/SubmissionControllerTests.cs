@@ -444,18 +444,51 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Status);
     }
 
-    /// <summary>The score in the body is stored as sent, whatever the selected options add up to.</summary>
+    /// <summary>The body's score, place and scoresheet are ignored; only the status is applied.</summary>
     [Fact]
-    public async Task Update_stores_the_score_the_body_sends()
+    public async Task Update_applies_only_the_status_whatever_else_the_body_sends()
+    {
+        var graph = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other Evaluation");
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var victim = await SeedSubmission(other, other.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.SubmitTeamScore]).SeedAsync();
+        var before = await ReadBack(c => c.Submissions.AsNoTracking().SingleAsync(x => x.Id == submission.Submission.Id, Ct));
+
+        var response = await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", new
+        {
+            id = submission.Submission.Id,
+            status = "Complete",
+            score = 99.5,
+            evaluationId = other.Evaluation.Id,
+            teamId = other.Team.Id,
+            userId = actor.Id,
+            scoringModelId = other.ScoringModel.Id,
+            moveNumber = 7,
+            submissionCategories = new[] { new { id = victim.Category.Id, submissionId = submission.Submission.Id, scoringCategoryId = other.Category.Id, score = 42.0 } },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        var stored = await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct);
+        Assert.Equal(
+            (ItemStatus.Complete, before.Score, graph.Evaluation.Id, (Guid?)graph.Team.Id, (Guid?)null, graph.ScoringModel.Id, before.MoveNumber),
+            (stored.Status, stored.Score, stored.EvaluationId.Value, stored.TeamId, stored.UserId, stored.ScoringModelId, stored.MoveNumber));
+        var victimCategory = await context.SubmissionCategories.SingleAsync(x => x.Id == victim.Category.Id, Ct);
+        Assert.Equal((victim.Submission.Id, victim.Category.Score), (victimCategory.SubmissionId, victimCategory.Score));
+    }
+
+    [Fact]
+    public async Task Update_answers_a_body_without_a_status_with_bad_request()
     {
         var graph = await Seed();
         var submission = await SeedSubmission(graph, graph.Team.Id);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.SubmitTeamScore]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", Body(submission, graph) with { Score = 99.5 }, Ct));
+        await AssertProblem(HttpStatusCode.BadRequest, await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", new { score = 99.5 }, Ct));
 
         await using var context = NewContext();
-        Assert.Equal(99.5, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Score);
+        Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Status);
     }
 
     [Fact]

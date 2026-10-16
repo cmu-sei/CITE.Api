@@ -178,7 +178,7 @@ namespace Cite.Api.Controllers
         [HttpPut("submissions/{id}")]
         [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateSubmission")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Submission submission, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSubmissionRequest submission, CancellationToken ct)
         {
             if (!await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.Submit, ct))
                 throw new ForbiddenException();
