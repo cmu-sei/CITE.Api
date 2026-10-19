@@ -222,11 +222,13 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     public async Task Create_does_not_broadcast_a_future_move_to_the_evaluation_group()
     {
         var graph = await Seed();
+        var id = Guid.NewGuid();
 
-        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(Guid.NewGuid(), graph.Evaluation.Id, 1), Ct));
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
 
         Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
-        Assert.Single(Factory.Hub<MainHub>().ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.MoveCreated);
+        // the admin group is shared by every test's evaluation, so look for this move only
+        Assert.Single(Factory.Hub<MainHub>().ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.MoveCreated && ((Move)x.Arguments[0]).Id == id);
     }
 
     [Fact]
