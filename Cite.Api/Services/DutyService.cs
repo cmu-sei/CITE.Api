@@ -196,7 +196,9 @@ namespace Cite.Api.Services
             if (_xApiService.IsConfigured())
             {
                 var evaluation = await _context.Evaluations.Where(e => e.Id == duty.EvaluationId).FirstAsync();
-                var move = await _context.Moves.Where(m => m.MoveNumber == evaluation.CurrentMoveNumber).FirstAsync();
+                var move = await _context.Moves
+                    .Where(m => m.EvaluationId == evaluation.Id && m.MoveNumber == evaluation.CurrentMoveNumber)
+                    .FirstOrDefaultAsync(ct);
 
                 var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == duty.EvaluationId)).TeamId;
@@ -219,9 +221,9 @@ namespace Cite.Api.Services
                 var category = new Dictionary<String,String>();
 
                 var grouping = new Dictionary<String,String>();
-                grouping.Add("id", move.MoveNumber.ToString());
-                grouping.Add("name", $"Move {move.MoveNumber}");
-                grouping.Add("description", move.Description);
+                grouping.Add("id", evaluation.CurrentMoveNumber.ToString());
+                grouping.Add("name", $"Move {evaluation.CurrentMoveNumber}");
+                grouping.Add("description", move?.Description ?? "");
                 grouping.Add("type", $"evaluation/{evaluation.Id}/move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
 

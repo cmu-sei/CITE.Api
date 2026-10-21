@@ -16,28 +16,68 @@ namespace Cite.Api.Tests.Services;
 public class ActionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
 {
     private readonly IXApiService _xApi = Substitute.For<IXApiService>();
+    private List<Dictionary<string, string>> _grouping;
 
-    /// <summary>The statement's move grouping is taken from another evaluation's move with the current move number.</summary>
+    /// <summary>
+    /// The statement's move grouping is the action's own evaluation's current move, not another evaluation's
+    /// move with the same number (seeded first, so an unscoped lookup would find it).
+    /// </summary>
     [Fact]
-    public async Task SetIsCheckedAsync_groups_the_statement_under_another_evaluations_move()
+    public async Task SetIsCheckedAsync_groups_the_statement_under_its_own_evaluations_move()
     {
-        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        graph.Evaluation.CurrentMoveNumber = 3;
         var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
         await Seed(TestData.Move(other.Evaluation.Id, 3, "Other Evaluation's Move"));
-        var user = TestData.User();
-        var action = TestData.Action(graph.Evaluation.Id, graph.Team.Id);
-        await Seed(user, TestData.TeamMembership(graph.Team.Id, user.Id), action);
-        List<Dictionary<string, string>> grouping = null;
-        _xApi.IsConfigured().Returns(true);
-        await _xApi.CreateAsync(Arg.Any<Uri>(), Arg.Any<Dictionary<string, string>>(), Arg.Any<Dictionary<string, string>>(),
-            Arg.Any<Dictionary<string, string>>(), Arg.Do<List<Dictionary<string, string>>>(x => grouping = x),
-            Arg.Any<Dictionary<string, string>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        graph.Evaluation.CurrentMoveNumber = 3;
+        await Seed(TestData.Move(graph.Evaluation.Id, 3, "This Evaluation's Move"));
+        var (user, action) = await SeedAction(graph);
+        CaptureGrouping();
 
         await using var context = NewContext();
         await Service(context, user).SetIsCheckedAsync(action.Id, true, Ct);
 
-        Assert.Equal("Other Evaluation's Move", Assert.Single(grouping)["description"]);
+        var grouping = Assert.Single(_grouping);
+        Assert.Equal("3", grouping["id"]);
+        Assert.Equal("This Evaluation's Move", grouping["description"]);
+    }
+
+    /// <summary>
+    /// An evaluation with no move at its current move number still logs the statement, grouped under the move
+    /// number with no description, rather than borrowing another evaluation's move or failing.
+    /// </summary>
+    [Fact]
+    public async Task SetIsCheckedAsync_groups_by_move_number_when_the_evaluation_has_no_such_move()
+    {
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        await Seed(TestData.Move(other.Evaluation.Id, 3, "Other Evaluation's Move"));
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        graph.Evaluation.CurrentMoveNumber = 3;
+        var (user, action) = await SeedAction(graph);
+        CaptureGrouping();
+
+        await using var context = NewContext();
+        await Service(context, user).SetIsCheckedAsync(action.Id, true, Ct);
+
+        var grouping = Assert.Single(_grouping);
+        Assert.Equal("3", grouping["id"]);
+        Assert.Equal("Move 3", grouping["name"]);
+        Assert.Equal("", grouping["description"]);
+    }
+
+    private async Task<(UserEntity User, ActionEntity Action)> SeedAction(EvaluationGraph graph)
+    {
+        var user = TestData.User();
+        var action = TestData.Action(graph.Evaluation.Id, graph.Team.Id);
+        await Seed(user, TestData.TeamMembership(graph.Team.Id, user.Id), action);
+        return (user, action);
+    }
+
+    private void CaptureGrouping()
+    {
+        _xApi.IsConfigured().Returns(true);
+        _xApi.CreateAsync(Arg.Any<Uri>(), Arg.Any<Dictionary<string, string>>(), Arg.Any<Dictionary<string, string>>(),
+            Arg.Any<Dictionary<string, string>>(), Arg.Do<List<Dictionary<string, string>>>(x => _grouping = x),
+            Arg.Any<Dictionary<string, string>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
     }
 
     private ActionService Service(Cite.Api.Data.CiteContext context, UserEntity user) =>

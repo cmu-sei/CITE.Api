@@ -1006,7 +1006,9 @@ namespace Cite.Api.Services
                     // TODO make this async
                     submission = _mapper.Map<Submission>(_context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First());
                 }
-                var move = _mapper.Map<Move>(_context.Moves.Where(m => m.MoveNumber == submission.MoveNumber).First());
+                var move = _mapper.Map<Move>(await _context.Moves
+                    .Where(m => m.EvaluationId == submission.EvaluationId && m.MoveNumber == submission.MoveNumber)
+                    .FirstOrDefaultAsync(ct));
 
                 var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;
@@ -1060,9 +1062,9 @@ namespace Cite.Api.Services
                 }
                 // TODO maybe add all scoring categories
                 var grouping = new Dictionary<String, String>();
-                grouping.Add("id", move.MoveNumber.ToString());
-                grouping.Add("name", $"Move {move.MoveNumber}");
-                grouping.Add("description", move.Description);
+                grouping.Add("id", submission.MoveNumber.ToString());
+                grouping.Add("name", $"Move {submission.MoveNumber}");
+                grouping.Add("description", move?.Description ?? "");
                 grouping.Add("type", $"evaluation/{evaluation.Id}/move");
                 grouping.Add("activityType", "http://id.tincanapi.com/activitytype/collection-simple");
                 grouping.Add("moreInfo", "");
@@ -1095,7 +1097,9 @@ namespace Cite.Api.Services
                     ? "Team"
                     : "Official";
 
-            return $"{scope} Submission — Move {submission.MoveNumber}: {move.Description}";
+            return move == null
+                ? $"{scope} Submission — Move {submission.MoveNumber}"
+                : $"{scope} Submission — Move {submission.MoveNumber}: {move.Description}";
         }
 
         public async Task CreateMoveSubmissions(MoveEntity move, CiteContext citeContext, CancellationToken ct)
