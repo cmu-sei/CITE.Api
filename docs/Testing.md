@@ -6,7 +6,9 @@ The suite is built on xUnit v3 and NSubstitute and runs against a real PostgreSQ
 
 Defects the tests found are characterized by ordinary passing tests and described in `agent-docs/api-test-bugs/cite.api.md` in the workspace, never in test comments.
 
-Every authorization call site needs, for each permission value it reads, an allowed test whose caller holds exactly that value (never `Root`), and a near-miss denied test for each tier it reads (the system permission, and the evaluation, team or scoring model permission); the standard's `check-repo.js gates`, run by `verify.sh`, fails any gate without an allowed case and a near miss. The few gates the harness cannot meet are listed, each with its reason, in `agent-docs/api-test-gaps/cite.api.txt` in the workspace (today the scoring option reads and the second tier of the scoring category list and get, whose near misses and evaluation-permission callers are answered with a 500 the defect document describes), never in a file in this repository.
+Every authorization call site needs, for each permission value it reads, an allowed test whose caller holds exactly that value (never `Root`), and a near-miss denied test for each tier it reads (the system permission, and the evaluation, team or scoring model permission); the standard's `check-repo.js gates`, run by `verify.sh`, fails any gate without an allowed case and a near miss. Gates the harness cannot meet are listed with their reasons in `agent-docs/api-test-gaps/cite.api.txt` in the workspace, never in a file in this repository.
+
+The standard also runs `check-repo.js scan`, with an instrumented test run that proves each claimed production defect site is reached. Every blocking site has a `Site:` key in `agent-docs/api-test-bugs/cite.api.md` naming its characterization test, or a reason in `agent-docs/api-test-gaps/cite.api.txt` showing why it cannot fail. Production files are restored byte-for-byte after the probe run.
 
 # Running the tests
 
@@ -62,9 +64,11 @@ Follow `CONVENTIONS.md` section 2 of the standard. Put the file where the code u
 ```
 Cite.Api.Tests/
   AssemblyFixtures.cs
-  Controllers/        one <Controller>Tests.cs per controller, UnknownIdResponseTests
+  Controllers/        one <Controller>Tests.cs per controller; UnknownIdResponseTests,
+                      ClientIdCreateTests, ParentIdUpdateTests, EnumRangeTests
   Hubs/               MainHubTests (HubHarness), MainHubConnectionTests (a real connection)
-  Infrastructure/     Authorization/ (requirement handlers), Extensions/ (ScopePolicyTests: the cite scope), EventHandlers/ (membership broadcasts, on a test-owned HubRecorder),
+  Infrastructure/     Authorization/ (requirement handlers), Extensions/ (ScopePolicyTests,
+                      DatabaseExtensionsTests: startup seed data), EventHandlers/ (membership broadcasts, on a test-owned HubRecorder),
                       Filters/ (MalformedRequestTests), MappingConfigurationTests
   Services/           services driven directly: UserClaimsService, GalleryService (its own
                       StubHttpMessageHandler), ActionService and DutyService (xAPI, with a test-owned

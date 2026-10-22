@@ -25,6 +25,7 @@ public static class TestData
     public static class EvaluationRoles
     {
         public static readonly Guid Owner = EvaluationRoleDefaults.EvaluationOwnerRoleId;
+        public static readonly Guid Viewer = EvaluationRoleDefaults.EvaluationViewerRoleId;
         public static readonly Guid Member = EvaluationRoleDefaults.EvaluationMemberRoleId;
     }
 
