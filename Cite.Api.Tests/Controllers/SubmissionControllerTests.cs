@@ -121,7 +121,7 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         graph.ScoringModel.UseUserScore = true;
         graph.ScoringModel.UseTeamScore = true;
         await Db.SaveChangesAsync(Ct);
-        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: []).SeedAsync();
         await SeedSubmission(graph, graph.Team.Id);
         var mine = await SeedSubmission(graph, graph.Team.Id, actor.Id);
 

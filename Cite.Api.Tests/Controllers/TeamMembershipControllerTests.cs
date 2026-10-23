@@ -186,6 +186,22 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Equal(0, (await context.Submissions.SingleAsync(x => x.UserId == user.Id, Ct)).MoveNumber);
     }
 
+    /// <summary>The admin UI adds a member without naming a role; the membership gets the Member role.</summary>
+    [Fact]
+    public async Task CreateMembership_without_a_role_gives_the_user_the_Member_role()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        Assert.Equal(TestData.TeamRoles.Member, (await ReadAsync<TeamMembership>(response)).RoleId);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
     // Same case as Update_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role.
     /// <summary>A caller holding only ManageTeam gives another user the Owner role, which also grants EditTeamScore and SubmitTeamScore.</summary>
     [Fact]
@@ -317,6 +333,20 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal(managerRole.Id, (await context.TeamMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_without_a_role_gives_the_member_the_Member_role()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.Owner), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
     }
 
     [Fact]

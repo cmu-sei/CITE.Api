@@ -1134,8 +1134,10 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuid_generate_v4()");
 
-                    b.Property<Guid?>("RoleId")
+                    b.Property<Guid>("RoleId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("b52ef031-65ee-4597-b768-b73480e6de67"))
                         .HasColumnName("role_id");
 
                     b.Property<Guid>("TeamId")
@@ -1726,7 +1728,9 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                 {
                     b.HasOne("Cite.Api.Data.Models.TeamRoleEntity", "Role")
                         .WithMany()
-                        .HasForeignKey("RoleId");
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")
                         .WithMany("Memberships")
