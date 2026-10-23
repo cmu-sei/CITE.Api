@@ -150,9 +150,65 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
 
         Assert.Equal(
-            [harness.UserId.ToString(), graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString(),
+            [harness.UserId.ToString(), graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX,
+                graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString(),
                 graph.Evaluation.Id.ToString() + MainHub.PAST_OFFICIAL_SCORE_POSTFIX, graph.Evaluation.Id.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX],
             Joined(harness));
+    }
+
+    /// <summary>The all-moves group carries moves ahead of the current one, read by the same permissions as MoveController.</summary>
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
+    public async Task SwitchTeam_joins_the_all_moves_group_for_a_caller_holding_an_evaluation_permission_that_reads_every_move(EvaluationPermission permission)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder().WithEvaluation(graph.Evaluation.Id, permission);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, Joined(harness));
+    }
+
+    [Theory]
+    [InlineData(SystemPermission.ViewEvaluations)]
+    [InlineData(SystemPermission.ObserveEvaluations)]
+    [InlineData(SystemPermission.ExecuteEvaluations)]
+    public async Task SwitchTeam_joins_the_all_moves_group_for_a_caller_holding_a_system_permission_that_reads_every_move(SystemPermission permission)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder().WithSystemPermissions(permission);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, Joined(harness));
+    }
+
+    [Fact]
+    public async Task SwitchTeam_leaves_a_caller_holding_only_EditEvaluations_out_of_the_all_moves_group()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder().WithSystemPermissions(SystemPermission.EditEvaluations);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.DoesNotContain(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, Joined(harness));
+    }
+
+    [Fact]
+    public async Task SwitchTeam_leaves_a_caller_holding_EditEvaluation_out_of_the_all_moves_group()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder().WithEvaluation(graph.Evaluation.Id, EvaluationPermission.EditEvaluation);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.DoesNotContain(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, Joined(harness));
     }
 
     [Fact]
@@ -191,6 +247,7 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
             .Where(x => x.GetMethodInfo().Name == nameof(IGroupManager.RemoveFromGroupAsync))
             .Select(x => (string)x.GetArguments()[1]);
         Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX, left);
+        Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, left);
         Assert.Contains(graph.Team.Id.ToString(), left);
     }
 

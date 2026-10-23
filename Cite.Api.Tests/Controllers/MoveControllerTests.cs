@@ -194,9 +194,10 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
 
         var broadcast = Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
         Assert.Equal(id, Assert.IsType<Move>(broadcast.Arguments[0]).Id);
+        Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated);
     }
 
-    /// <summary>A future move reaches only the admin group; teams get it when it becomes current.</summary>
+    /// <summary>A future move reaches the admin group and the evaluation's all-moves group; teams get it when it becomes current.</summary>
     [Fact]
     public async Task Create_does_not_broadcast_a_future_move_to_the_evaluation_group()
     {
@@ -206,6 +207,7 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
 
         Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
+        Assert.Equal(id, Assert.IsType<Move>(Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated).Arguments[0]).Id);
         // the admin group is shared by every test's evaluation, so look for this move only
         Assert.Single(Factory.Hub<MainHub>().ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.MoveCreated && ((Move)x.Arguments[0]).Id == id);
     }

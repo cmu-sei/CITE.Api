@@ -36,6 +36,7 @@ namespace Cite.Api.Hubs
         public const string USER_GROUP = "AdminUserGroup";
         public const string OFFICIAL_SCORE_POSTFIX = "OfficialScore";
         public const string PAST_OFFICIAL_SCORE_POSTFIX = "PastOfficialScore";
+        public const string ALL_MOVES_POSTFIX = "AllMoves";
 
         public MainHub(
             ITeamService teamService,
@@ -139,11 +140,19 @@ namespace Cite.Api.Hubs
             var evaluation = await context.Evaluations.SingleAsync(e => e.Id == evaluationId);
             var teamGroups = new[] { teamId.ToString(), evaluationId.ToString(), evaluation.ScoringModelId.ToString() };
             var officialGroups = new[] { evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX, evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX };
+            var allMovesGroup = evaluationId.ToString() + ALL_MOVES_POSTFIX;
             if (!checkAccess)
             {
                 idList.AddRange(teamGroups);
                 idList.AddRange(officialGroups);
+                idList.Add(allMovesGroup);
                 return idList;
+            }
+
+            // moves ahead of the current one follow the same permissions as MoveController's reads
+            if (await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], _ct))
+            {
+                idList.Add(allMovesGroup);
             }
 
             // an observer of the evaluation can follow any of its teams

@@ -41,6 +41,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
         {
             var groupIds = new List<string>();
             groupIds.Add(moveEntity.EvaluationId.ToString());
+            groupIds.Add(moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX);
             // the admin data group gets everything
             groupIds.Add(MainHub.ADMIN_DATA_GROUP);
 
@@ -53,12 +54,14 @@ namespace Cite.Api.Infrastructure.EventHandlers
             string[] modifiedProperties,
             CancellationToken cancellationToken)
         {
-            // a future move reaches only the admin group; the evaluation's teams get it when it becomes current
+            // a future move reaches only those who can read every move; the evaluation's teams get it when it becomes current
             var currentMoveNumber = await _db.Evaluations
                 .Where(e => e.Id == moveEntity.EvaluationId)
                 .Select(e => e.CurrentMoveNumber)
                 .SingleOrDefaultAsync(cancellationToken);
-            var groupIds = moveEntity.MoveNumber > currentMoveNumber ? [MainHub.ADMIN_DATA_GROUP] : GetGroups(moveEntity);
+            var groupIds = moveEntity.MoveNumber > currentMoveNumber
+                ? [moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX, MainHub.ADMIN_DATA_GROUP]
+                : GetGroups(moveEntity);
             var move = _mapper.Map<ViewModels.Move>(moveEntity);
             var tasks = new List<Task>();
 
