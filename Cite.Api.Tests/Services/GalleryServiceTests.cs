@@ -37,7 +37,7 @@ public class GalleryServiceTests(DatabaseFixture fixture) : DatabaseTestBase(fix
         var evaluationId = await SeedEvaluationWithExhibit();
 
         await using var context = NewContext();
-        await Assert.ThrowsAsync<Exception>(() => Service(context).GetMyUnreadArticleCountAsync(evaluationId, Ct));
+        await Assert.ThrowsAsync<Exception>(() => Service(context).GetMyUnreadArticleCountAsync(evaluationId, true, Ct));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class GalleryServiceTests(DatabaseFixture fixture) : DatabaseTestBase(fix
         StubIdentityProvider();
 
         await using var context = NewContext();
-        var unread = await Service(context).GetMyUnreadArticleCountAsync(evaluationId, Ct);
+        var unread = await Service(context).GetMyUnreadArticleCountAsync(evaluationId, true, Ct);
 
         Assert.Null(unread.Count);
         Assert.Single(_logger.Entries, x => x.Level == LogLevel.Error);

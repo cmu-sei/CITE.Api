@@ -228,7 +228,7 @@ public static class TestData
         new(userId, dutyId) { Id = Guid.NewGuid() };
 
     public static TeamMembershipEntity TeamMembership(Guid teamId, Guid userId, Guid? roleId = null) =>
-        new() { Id = Guid.NewGuid(), TeamId = teamId, UserId = userId, RoleId = roleId };
+        new() { Id = Guid.NewGuid(), TeamId = teamId, UserId = userId, RoleId = roleId ?? TeamRoles.Member };
 
     public static EvaluationMembershipEntity EvaluationMembership(Guid evaluationId, Guid? userId, Guid roleId, Guid? groupId = null) =>
         new() { Id = Guid.NewGuid(), EvaluationId = evaluationId, UserId = userId, GroupId = groupId, RoleId = roleId };

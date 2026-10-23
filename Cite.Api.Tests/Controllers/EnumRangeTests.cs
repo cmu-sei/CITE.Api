@@ -23,7 +23,6 @@ public class EnumRangeTests(DatabaseFixture fixture, CiteAppFactory factory) : A
     [InlineData("model-status", "PUT")]
     [InlineData("model-display", "POST")]
     [InlineData("model-display", "PUT")]
-    [InlineData("submission-status", "PUT")]
     public async Task Write_stores_and_returns_an_undefined_enum_value(string field, string method)
     {
         var arranged = await Body(field, method);
@@ -35,6 +34,20 @@ public class EnumRangeTests(DatabaseFixture fixture, CiteAppFactory factory) : A
         var body = await ReadAsync<System.Text.Json.JsonElement>(response);
         Assert.Equal(Undefined, body.GetProperty(arranged.Property).GetInt32());
         Assert.Equal(Undefined, await ReadBack(db => Stored(db, field, arranged.Id)));
+    }
+
+    /// <summary>A submission update binds only its status, which must be a defined value.</summary>
+    [Fact]
+    public async Task Update_submission_rejects_an_undefined_status_and_keeps_the_stored_one()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var submission = await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id, Root.Id);
+        var before = await ReadBack(db => Stored(db, "submission-status", submission.Submission.Id));
+
+        var response = await RootClient.PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", new { id = submission.Submission.Id, status = Undefined }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        Assert.Equal(before, await ReadBack(db => Stored(db, "submission-status", submission.Submission.Id)));
     }
 
     private async Task<(Guid Id, string Route, object Body, string Property, HttpStatusCode Status)> Body(string field, string method)
@@ -53,9 +66,6 @@ public class EnumRangeTests(DatabaseFixture fixture, CiteAppFactory factory) : A
                 return (id, create ? "api/scoringModels" : $"api/scoringModels/{id}", new { id, description = "Undefined Status", status = Undefined, calculationEquation = "{sum}" }, "status", status);
             case "model-display":
                 return (id, create ? "api/scoringModels" : $"api/scoringModels/{id}", new { id, description = "Undefined Display", status = "Active", rightSideDisplay = Undefined, calculationEquation = "{sum}" }, "rightSideDisplay", status);
-            case "submission-status":
-                var submission = await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id, Root.Id);
-                return (submission.Submission.Id, $"api/submissions/{submission.Submission.Id}", new { id = submission.Submission.Id, evaluationId = graph.Evaluation.Id, scoringModelId = graph.ScoringModel.Id, teamId = graph.Team.Id, userId = Root.Id, status = Undefined }, "status", status);
             default:
                 throw new ArgumentOutOfRangeException(nameof(field));
         }

@@ -287,19 +287,29 @@ public class DutyControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(duty.Name, (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
     }
 
-    /// <summary>ManageTeam on the team named in the body lets a caller rename another team's duty.</summary>
     [Fact]
-    public async Task Update_renames_another_teams_duty_for_a_caller_managing_the_team_in_the_body()
+    public async Task Update_is_forbidden_for_a_caller_holding_ManageTeam_only_on_a_sibling_team_named_in_the_body()
     {
         var (graph, duty, _) = await SeedWithAssignedDuty();
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.ManageTeam).SeedAsync();
 
-        var response = await Client(actor).PutAsJsonAsync($"api/duties/{duty.Id}",
-            new { id = duty.Id, evaluationId = graph.Evaluation.Id, teamId = actor.NewTeamIds[0], name = "Taken" }, Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/duties/{duty.Id}",
+            new { id = duty.Id, evaluationId = graph.Evaluation.Id, teamId = actor.NewTeamIds[0], name = "Taken" }, Ct));
 
-        await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal("Taken", (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
+        Assert.Equal(duty.Name, (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
+    }
+
+    [Fact]
+    public async Task Update_renames_the_duty_from_a_body_with_only_a_name_for_a_caller_holding_ManageTeam_on_its_team()
+    {
+        var (graph, duty, _) = await SeedWithAssignedDuty();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/duties/{duty.Id}", new { name = "Renamed" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("Renamed", (await context.Duties.SingleAsync(x => x.Id == duty.Id, Ct)).Name);
     }
 
     [Fact]

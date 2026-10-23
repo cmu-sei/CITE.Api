@@ -99,13 +99,13 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
-    public async Task GetMineByEvaluation_lists_the_callers_and_their_teams_submissions()
+    public async Task GetMineByEvaluation_lists_the_callers_and_their_teams_submissions_to_a_member_holding_ViewTeam()
     {
         var graph = await Seed();
         graph.ScoringModel.UseUserScore = true;
         graph.ScoringModel.UseTeamScore = true;
         await Db.SaveChangesAsync(Ct);
-        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
         var team = await SeedSubmission(graph, graph.Team.Id);
         var mine = await SeedSubmission(graph, graph.Team.Id, actor.Id);
 
@@ -114,15 +114,51 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(new[] { team.Submission.Id, mine.Submission.Id }.Order(), submissions.Select(x => x.Id).Order());
     }
 
-    /// <summary>A caller on none of the evaluation's teams is answered with a 500.</summary>
     [Fact]
-    public async Task GetMineByEvaluation_answers_a_caller_on_none_of_its_teams_with_a_server_error()
+    public async Task GetMineByEvaluation_leaves_out_the_teams_submission_for_a_member_without_ViewTeam()
     {
         var graph = await Seed();
+        graph.ScoringModel.UseUserScore = true;
+        graph.ScoringModel.UseTeamScore = true;
+        await Db.SaveChangesAsync(Ct);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: []).SeedAsync();
+        await SeedSubmission(graph, graph.Team.Id);
+        var mine = await SeedSubmission(graph, graph.Team.Id, actor.Id);
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/my-submissions", Ct));
+
+        Assert.Equal(mine.Submission.Id, Assert.Single(submissions).Id);
+    }
+
+    [Theory]
+    [InlineData(TeamPermission.ViewPastOfficialScore, true, false)]
+    [InlineData(TeamPermission.ViewCurrentOfficialScore, false, true)]
+    [InlineData(TeamPermission.EditOfficialScore, false, true)]
+    [InlineData(TeamPermission.ViewTeam, false, false)]
+    public async Task GetMineByEvaluation_lists_the_official_submissions_the_members_team_permission_reads(TeamPermission permission, bool past, bool current)
+    {
+        var graph = await Seed();
+        graph.ScoringModel.UseOfficialScore = true;
+        await Db.SaveChangesAsync(Ct);
+        var pastOfficial = await SeedSubmission(graph);
+        await SeedMoveAndAdvance(graph, 1);
+        var currentOfficial = await SeedSubmission(graph, moveNumber: 1);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [permission]).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/my-submissions", Ct));
+
+        var ids = submissions.Select(x => x.Id).ToList();
+        Assert.Equal((past, current), (ids.Contains(pastOfficial.Submission.Id), ids.Contains(currentOfficial.Submission.Id)));
+    }
+
+    [Fact]
+    public async Task GetMineByEvaluation_answers_a_caller_on_none_of_its_teams_with_an_empty_list()
+    {
+        var graph = await Seed();
+        await SeedSubmission(graph, graph.Team.Id);
         var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/my-submissions", Ct));
-        Assert.Equal("Sequence contains no elements.", error.Detail);
+        Assert.Empty(await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/my-submissions", Ct)));
     }
 
     [Fact]
@@ -135,6 +171,51 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
 
         Assert.Equal(submission.Submission.Id, Assert.Single(submissions).Id);
+    }
+
+    [Fact]
+    public async Task GetByEvaluationTeam_lists_only_the_callers_own_user_submission_to_a_member_holding_ViewTeam()
+    {
+        var graph = await Seed();
+        var teammate = TestData.User(name: "Teammate");
+        await Seed(teammate);
+        var team = await SeedSubmission(graph, graph.Team.Id);
+        await SeedSubmission(graph, graph.Team.Id, teammate.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+        var mine = await SeedSubmission(graph, graph.Team.Id, actor.Id);
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+
+        Assert.Equal(new[] { team.Submission.Id, mine.Submission.Id }.Order(), submissions.Select(x => x.Id).Order());
+    }
+
+    /// <summary>The team in the route belongs to another evaluation: nothing of either evaluation is returned.</summary>
+    [Fact]
+    public async Task GetByEvaluationTeam_answers_a_team_of_another_evaluation_with_not_found()
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        graph.ScoringModel.UseOfficialScore = true;
+        await Db.SaveChangesAsync(Ct);
+        await SeedSubmission(other);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.NotFound, await Client(actor).GetAsync($"api/evaluations/{other.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+    }
+
+    /// <summary>The team-type average depends only on ShowTeamTypeAverage, not on the official score contributor flag.</summary>
+    [Fact]
+    public async Task GetByEvaluationTeam_includes_the_team_type_average_for_a_team_type_that_is_not_an_official_score_contributor()
+    {
+        var graph = await Seed();
+        graph.TeamType.ShowTeamTypeAverage = true;
+        await Db.SaveChangesAsync(Ct);
+        await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+
+        Assert.Contains(submissions, x => x.UserId == null && x.TeamId == null && x.GroupId == graph.TeamType.Id);
     }
 
     [Fact]
@@ -265,75 +346,89 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
     }
 
-    /// <summary>A member of a sibling team reads another team's submission with the ViewTeam of their own team.</summary>
     [Fact]
-    public async Task Get_returns_another_teams_submission_to_a_member_of_a_sibling_team_holding_ViewTeam()
+    public async Task Get_is_forbidden_for_a_member_holding_ViewTeam_only_on_a_sibling_team()
     {
         var graph = await Seed();
         var submission = await SeedSubmission(graph, graph.Team.Id);
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.ViewTeam).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{submission.Submission.Id}", Ct));
     }
 
-    /// <summary>A member holding only ViewPastOfficialScore is refused the official submission of a past move.</summary>
     [Fact]
-    public async Task Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore()
+    public async Task Get_returns_a_past_official_submission_to_a_member_holding_only_ViewPastOfficialScore()
     {
         var graph = await Seed();
         var past = await SeedSubmission(graph);
         await SeedMoveAndAdvance(graph, 1);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewPastOfficialScore]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{past.Submission.Id}", Ct));
+        Assert.Equal(past.Submission.Id, (await ReadAsync<Submission>(await Client(actor).GetAsync($"api/submissions/{past.Submission.Id}", Ct))).Id);
     }
 
-    // Same case as Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore.
     [Fact]
-    public async Task Get_returns_a_past_official_submission_to_a_member_holding_only_ViewCurrentOfficialScore()
+    public async Task Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewCurrentOfficialScore()
     {
         var graph = await Seed();
         var past = await SeedSubmission(graph);
         await SeedMoveAndAdvance(graph, 1);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewCurrentOfficialScore]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/submissions/{past.Submission.Id}", Ct));
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{past.Submission.Id}", Ct));
     }
 
-    // Same case as Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore.
     [Fact]
-    public async Task Get_returns_the_current_moves_official_submission_to_a_member_holding_only_ViewPastOfficialScore()
+    public async Task Get_is_forbidden_on_the_current_moves_official_submission_for_a_member_holding_only_ViewPastOfficialScore()
     {
         var graph = await Seed();
         var current = await SeedSubmission(graph);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewPastOfficialScore]).SeedAsync();
 
-        var returned = await ReadAsync<Submission>(await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
-
-        Assert.Equal(current.Submission.Id, returned.Id);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
     }
 
-    // Same case as Get_is_forbidden_on_a_past_official_submission_for_a_member_holding_only_ViewPastOfficialScore.
     [Fact]
-    public async Task Get_is_forbidden_on_the_current_moves_official_submission_for_a_member_holding_only_ViewCurrentOfficialScore()
+    public async Task Get_is_forbidden_on_a_future_moves_official_submission_for_a_member_holding_ViewCurrentOfficialScore()
+    {
+        var graph = await Seed();
+        await Seed(TestData.Move(graph.Evaluation.Id, 1));
+        var future = await SeedSubmission(graph, moveNumber: 1);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewCurrentOfficialScore, TeamPermission.ViewPastOfficialScore]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{future.Submission.Id}", Ct));
+    }
+
+    [Theory]
+    [InlineData(TeamPermission.ViewCurrentOfficialScore)]
+    [InlineData(TeamPermission.EditOfficialScore)]
+    public async Task Get_returns_the_current_moves_official_submission_to_a_member_holding_a_current_official_score_permission(TeamPermission permission)
     {
         var graph = await Seed();
         var current = await SeedSubmission(graph);
-        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewCurrentOfficialScore]).SeedAsync();
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [permission]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
+        Assert.Equal(current.Submission.Id, (await ReadAsync<Submission>(await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct))).Id);
     }
 
-    /// <summary>An unknown submission id is answered with a 500 for a caller the evaluation-wide check refuses.</summary>
+    /// <summary>The official submission belongs to the evaluation, so a permission held on any of the caller's teams in it counts.</summary>
     [Fact]
-    public async Task Get_answers_an_unknown_submission_with_a_server_error_for_a_team_member()
+    public async Task Get_returns_the_current_moves_official_submission_to_a_member_holding_the_permission_on_a_second_team()
+    {
+        var graph = await Seed();
+        var current = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).OnNewTeam(graph.Evaluation.Id, TeamPermission.ViewCurrentOfficialScore).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/submissions/{current.Submission.Id}", Ct));
+    }
+
+    [Fact]
+    public async Task Get_answers_an_unknown_submission_with_not_found_for_a_team_member()
     {
         var graph = await Seed();
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/submissions/{Guid.NewGuid()}", Ct));
-
-        Assert.Equal("Nullable object must have a value.", error.Detail);
+        await AssertApiError(HttpStatusCode.NotFound, await Client(actor).GetAsync($"api/submissions/{Guid.NewGuid()}", Ct));
     }
 
     [Fact]
@@ -347,6 +442,23 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await using var context = NewContext();
         var stored = await context.Submissions.Include(x => x.SubmissionCategories).ThenInclude(x => x.SubmissionOptions).SingleAsync(x => x.Id == created.Id, Ct);
         Assert.Equal(graph.Option.Id, Assert.Single(Assert.Single(stored.SubmissionCategories).SubmissionOptions).ScoringOptionId);
+    }
+
+    [Theory]
+    [InlineData("scoringModel")]
+    [InlineData("team")]
+    public async Task Create_answers_a_reference_outside_the_evaluation_with_conflict(string reference)
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        var body = reference == "team"
+            ? NewSubmission(graph, 1) with { TeamId = other.Team.Id }
+            : NewSubmission(graph, 1) with { ScoringModelId = other.ScoringModel.Id };
+
+        await AssertApiError(HttpStatusCode.Conflict, await RootClient.PostAsJsonAsync("api/submissions", body, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Submissions.AnyAsync(x => x.MoveNumber == 1, Ct));
     }
 
     [Fact]
@@ -447,18 +559,51 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Status);
     }
 
-    /// <summary>The score in the body is stored as sent, whatever the selected options add up to.</summary>
+    /// <summary>The body's score, place and scoresheet are ignored; only the status is applied.</summary>
     [Fact]
-    public async Task Update_stores_the_score_the_body_sends()
+    public async Task Update_applies_only_the_status_whatever_else_the_body_sends()
+    {
+        var graph = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other Evaluation");
+        var submission = await SeedSubmission(graph, graph.Team.Id);
+        var victim = await SeedSubmission(other, other.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.SubmitTeamScore]).SeedAsync();
+        var before = await ReadBack(c => c.Submissions.AsNoTracking().SingleAsync(x => x.Id == submission.Submission.Id, Ct));
+
+        var response = await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", new
+        {
+            id = submission.Submission.Id,
+            status = "Complete",
+            score = 99.5,
+            evaluationId = other.Evaluation.Id,
+            teamId = other.Team.Id,
+            userId = actor.Id,
+            scoringModelId = other.ScoringModel.Id,
+            moveNumber = 7,
+            submissionCategories = new[] { new { id = victim.Category.Id, submissionId = submission.Submission.Id, scoringCategoryId = other.Category.Id, score = 42.0 } },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        var stored = await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct);
+        Assert.Equal(
+            (ItemStatus.Complete, before.Score, graph.Evaluation.Id, (Guid?)graph.Team.Id, (Guid?)null, graph.ScoringModel.Id, before.MoveNumber),
+            (stored.Status, stored.Score, stored.EvaluationId.Value, stored.TeamId, stored.UserId, stored.ScoringModelId, stored.MoveNumber));
+        var victimCategory = await context.SubmissionCategories.SingleAsync(x => x.Id == victim.Category.Id, Ct);
+        Assert.Equal((victim.Submission.Id, victim.Category.Score), (victimCategory.SubmissionId, victimCategory.Score));
+    }
+
+    [Fact]
+    public async Task Update_answers_a_body_without_a_status_with_bad_request()
     {
         var graph = await Seed();
         var submission = await SeedSubmission(graph, graph.Team.Id);
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.SubmitTeamScore]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", Body(submission, graph) with { Score = 99.5 }, Ct));
+        await AssertProblem(HttpStatusCode.BadRequest, await Client(actor).PutAsJsonAsync($"api/submissions/{submission.Submission.Id}", new { score = 99.5 }, Ct));
 
         await using var context = NewContext();
-        Assert.Equal(99.5, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Score);
+        Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == submission.Submission.Id, Ct)).Status);
     }
 
     [Fact]
@@ -661,9 +806,8 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal("Before", (await context.SubmissionComments.SingleAsync(x => x.Id == comment.Id, Ct)).Comment);
     }
 
-    /// <summary>A comment of another evaluation's submission is changed through a submission the caller may score.</summary>
     [Fact]
-    public async Task ChangeSubmissionComment_changes_a_comment_of_another_evaluations_submission()
+    public async Task ChangeSubmissionComment_answers_a_comment_of_another_submission_with_not_found()
     {
         var graph = await Seed();
         var other = await Seed("Other");
@@ -676,9 +820,58 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var response = await Client(actor).PutAsJsonAsync($"api/submissions/{mine.Submission.Id}/comments/{comment.Id}",
             new { id = comment.Id, submissionOptionId = theirs.Option.Id, comment = "Overwritten" }, Ct);
 
-        await AssertStatus(HttpStatusCode.OK, response);
+        await AssertApiError(HttpStatusCode.NotFound, response);
         await using var context = NewContext();
-        Assert.Equal("Overwritten", (await context.SubmissionComments.SingleAsync(x => x.Id == comment.Id, Ct)).Comment);
+        Assert.Equal("Theirs", (await context.SubmissionComments.SingleAsync(x => x.Id == comment.Id, Ct)).Comment);
+    }
+
+    [Fact]
+    public async Task RemoveSubmissionComment_answers_a_comment_of_another_submission_with_not_found()
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        var mine = await SeedSubmission(graph, graph.Team.Id);
+        var theirs = await SeedSubmission(other, other.Team.Id);
+        var comment = TestData.SubmissionComment(theirs.Option.Id, "Theirs");
+        await Seed(comment);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.NotFound, await Client(actor).DeleteAsync($"api/submissions/{mine.Submission.Id}/comments/{comment.Id}", Ct));
+
+        await using var context = NewContext();
+        Assert.True(await context.SubmissionComments.AnyAsync(x => x.Id == comment.Id, Ct));
+    }
+
+    [Fact]
+    public async Task AddSubmissionComment_answers_an_option_of_another_submission_with_conflict()
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        var mine = await SeedSubmission(graph, graph.Team.Id);
+        var theirs = await SeedSubmission(other, other.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Conflict, await Client(actor).PostAsJsonAsync($"api/submissions/{mine.Submission.Id}/Comments",
+            new { submissionOptionId = theirs.Option.Id, comment = "Planted" }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionComments.AnyAsync(x => x.SubmissionOptionId == theirs.Option.Id, Ct));
+    }
+
+    [Fact]
+    public async Task AddSubmissionComment_ignores_a_comment_id_in_the_body()
+    {
+        var graph = await Seed();
+        var mine = await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
+        var chosenId = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PostAsJsonAsync($"api/submissions/{mine.Submission.Id}/Comments",
+            new { id = chosenId, submissionOptionId = mine.Option.Id, comment = "Note" }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionComments.AnyAsync(x => x.Id == chosenId, Ct));
+        Assert.Equal("Note", (await context.SubmissionComments.SingleAsync(x => x.SubmissionOptionId == mine.Option.Id, Ct)).Comment);
     }
 
     [Fact]

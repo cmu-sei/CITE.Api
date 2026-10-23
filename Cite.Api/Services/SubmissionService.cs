@@ -29,11 +29,11 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Submission>> GetAsync(SubmissionGet queryParameters, CancellationToken ct);
         Task<IEnumerable<ViewModels.Submission>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
         Task<IEnumerable<ViewModels.Submission>> GetMineByEvaluationAsync(Guid evaluationId, CancellationToken ct);
-        Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct);
+        Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, bool asObserver, CancellationToken ct);
         Task<ViewModels.Submission> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct);
         Task<SubmissionEntity> CreateNewSubmission(CiteContext citeContext, ViewModels.Submission submission, CancellationToken ct);
-        Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct);
+        Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.UpdateSubmissionRequest submission, CancellationToken ct);
         Task<ViewModels.Submission> SetOptionAsync(Guid id, bool value, CancellationToken ct);
         Task<ViewModels.Submission> ClearSelectionsAsync(Guid id, CancellationToken ct);
         Task<ViewModels.Submission> PresetSelectionsAsync(Guid id, CancellationToken ct);
@@ -41,7 +41,10 @@ namespace Cite.Api.Services
         Task<ViewModels.Submission> GetTeamAverageAsync(SubmissionEntity submission, CancellationToken ct);
         Task<ViewModels.Submission> GetTypeAverageAsync(Submission submission, CancellationToken ct);
         Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct);
-        Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct);
+        Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, UpdateSubmissionCommentRequest submissionComment, CancellationToken ct);
+        Task<SubmissionCommentEntity> AddCommentEntityAsync(Guid submissionId, Guid submissionOptionId, string comment, CancellationToken ct);
+        Task<SubmissionCommentEntity> UpdateCommentEntityAsync(Guid submissionId, Guid submissionCommentId, string comment, CancellationToken ct);
+        Task DeleteCommentEntityAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
         Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct);
         Task<bool> LogXApiAsync(Uri verb, Submission submission, SubmissionOption submissionOption, CancellationToken ct, string response = null);
         Task<bool> LogCommentXApiAsync(Uri verb, Guid submissionOptionId, string response, CancellationToken ct);
@@ -148,66 +151,63 @@ namespace Cite.Api.Services
             var team = await _context.TeamMemberships
                 .Where(tu => tu.UserId == userId && tu.Team.EvaluationId == evaluationId)
                 .Include(tu => tu.Team.TeamType)
-                .Select(tu => tu.Team).FirstAsync();
+                .Select(tu => tu.Team).FirstOrDefaultAsync(ct);
+            if (team == null)
+                return [];
+
             var teamId = team.Id;
-            var isContributor = team.TeamType.IsOfficialScoreContributor;
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
-            var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId)).ScoringModel;
-            var submissionEntities = _context.Submissions
+            var currentMoveNumber = (await _context.Evaluations.FindAsync([evaluationId], ct)).CurrentMoveNumber;
+            var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId, ct)).ScoringModel;
+            // the same rules HasSpecificPermission applies to a single submission
+            var canViewTeam = await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct);
+            var official = await GetOfficialScoreAccessAsync(evaluationId, userId, ct);
+            var useUserScore = scoringModel.UseUserScore;
+            var useTeamScore = scoringModel.UseTeamScore && canViewTeam;
+            var viewPastOfficial = scoringModel.UseOfficialScore && official.ViewPast;
+            var viewCurrentOfficial = scoringModel.UseOfficialScore && official.ViewCurrent;
+            var submissionEntityList = await _context.Submissions
                 .Include(sm => sm.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
-                .Where(sm =>
-                    (sm.UserId == userId && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
-                    (sm.UserId == null && sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
-                    (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber) ||
-                    (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor)
-                );
-            if (!scoringModel.UseUserScore)
-            {
-                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == userId));
-            }
-            if (!scoringModel.UseTeamScore)
-            {
-                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == teamId));
-            }
-            if (!isContributor)
-            {
-                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == null && sm.MoveNumber == currentMoveNumber));
-            }
-            if (!scoringModel.UseOfficialScore)
-            {
-                submissionEntities = submissionEntities.Where(sm => !(sm.UserId == null && sm.TeamId == null));
-            }
-            var submissionEntityList = await submissionEntities
-                .ToListAsync();
+                .Where(sm => sm.EvaluationId == evaluationId && (
+                    (useUserScore && sm.UserId == userId && sm.TeamId == teamId) ||
+                    (useTeamScore && sm.UserId == null && sm.TeamId == teamId) ||
+                    (viewPastOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber < currentMoveNumber) ||
+                    (viewCurrentOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber == currentMoveNumber)))
+                .ToListAsync(ct);
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
-            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
-            if (averageSubmissions.Any())
+            if (canViewTeam)
             {
+                var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
                 submissions.AddRange(averageSubmissions);
             }
 
             return submissions;
         }
 
-        public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, CancellationToken ct)
+        public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationTeamAsync(Guid evaluationId, Guid teamId, bool asObserver, CancellationToken ct)
         {
             var userId = _user.GetId();
             var team = await _context.Teams
                 .Include(t => t.TeamType)
-                .SingleOrDefaultAsync(t => t.Id == teamId);
-            var isContributor = team.TeamType.IsOfficialScoreContributor;
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
+                .SingleOrDefaultAsync(t => t.Id == teamId && t.EvaluationId == evaluationId, ct);
+            if (team == null)
+                throw new EntityNotFoundException<Team>("Team not found in the evaluation");
+
+            var currentMoveNumber = (await _context.Evaluations.FindAsync([evaluationId], ct)).CurrentMoveNumber;
             var scoringModel = await _context.ScoringModels.Where(m => m.EvaluationId == evaluationId).AsNoTracking().FirstOrDefaultAsync(ct);
-            var submissionEntities = await _context.Submissions.Where(sm =>
-                (sm.TeamId == teamId && sm.EvaluationId == evaluationId) ||
-                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber < currentMoveNumber && scoringModel.UseOfficialScore) ||
-                (sm.UserId == null && sm.TeamId == null && sm.EvaluationId == evaluationId && sm.MoveNumber == currentMoveNumber && isContributor && scoringModel.UseOfficialScore))
+            // an observer sees the whole team; a team member sees what HasSpecificPermission lets them see
+            var official = asObserver ? (ViewPast: true, ViewCurrent: true) : await GetOfficialScoreAccessAsync(evaluationId, userId, ct);
+            var viewPastOfficial = scoringModel.UseOfficialScore && official.ViewPast;
+            var viewCurrentOfficial = scoringModel.UseOfficialScore && official.ViewCurrent;
+            var submissionEntities = await _context.Submissions.Where(sm => sm.EvaluationId == evaluationId && (
+                (sm.TeamId == teamId && (asObserver || sm.UserId == null || sm.UserId == userId)) ||
+                (viewPastOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber < currentMoveNumber) ||
+                (viewCurrentOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber == currentMoveNumber)))
                 .Include(sm => sm.SubmissionCategories)
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
-                .ToListAsync();
+                .ToListAsync(ct);
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
             var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, team.TeamType.ShowTeamTypeAverage, ct);
             if (averageSubmissions.Any())
@@ -216,6 +216,24 @@ namespace Cite.Api.Services
             }
 
             return submissions;
+        }
+
+        /// <summary>Whether any of the user's teams in the evaluation can read the past and the current official score.</summary>
+        private async Task<(bool ViewPast, bool ViewCurrent)> GetOfficialScoreAccessAsync(Guid evaluationId, Guid userId, CancellationToken ct)
+        {
+            var teamIds = await _context.TeamMemberships
+                .Where(m => m.UserId == userId && m.Team.EvaluationId == evaluationId)
+                .Select(m => m.TeamId)
+                .ToListAsync(ct);
+            var viewPast = false;
+            var viewCurrent = false;
+            foreach (var teamId in teamIds)
+            {
+                viewPast = viewPast || await _authorizationService.AuthorizeAsync<Team>(teamId, [], OfficialScorePermissions(0, 1, SpecificPermission.View), ct);
+                viewCurrent = viewCurrent || await _authorizationService.AuthorizeAsync<Team>(teamId, [], OfficialScorePermissions(0, 0, SpecificPermission.View), ct);
+            }
+
+            return (viewPast, viewCurrent);
         }
 
         private async Task<IEnumerable<ViewModels.Submission>> GetTeamAndTypeAveragesAsync(
@@ -262,7 +280,8 @@ namespace Cite.Api.Services
             {
                 var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
             }
-            if (team.TeamType != null && team.TeamType.IsOfficialScoreContributor)
+            // the caller decides whether the team type's average is shown (ShowTeamTypeAverage)
+            if (team.TeamType != null)
             {
                 // calculate the average of teams in the team type
                 var teamIds = await _context.Teams.Where(t => t.TeamTypeId == team.TeamTypeId).Select(t => t.Id).ToListAsync(ct);
@@ -354,6 +373,13 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct)
         {
+            // the references must belong to the evaluation the caller is authorized on
+            if (submission.EvaluationId != Guid.Empty)
+            {
+                await _context.EnsureScoringModelOfEvaluationAsync(submission.ScoringModelId, submission.EvaluationId, ct);
+                await _context.EnsureTeamInEvaluationAsync(submission.TeamId, submission.EvaluationId, ct);
+                await _context.EnsureUserOnTeamAsync(submission.UserId, submission.TeamId, ct);
+            }
             var requestedSubmissionEntity = await CreateNewSubmission(_context, submission, ct);
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/initiated");
@@ -362,19 +388,18 @@ namespace Cite.Api.Services
             return await GetAsync(requestedSubmissionEntity.Id, ct);
         }
 
-        public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.Submission submission, CancellationToken ct)
+        public async Task<ViewModels.Submission> UpdateAsync(Guid id, ViewModels.UpdateSubmissionRequest submissionUpdate, CancellationToken ct)
         {
             var submissionToUpdate = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (submissionToUpdate == null)
                 throw new EntityNotFoundException<Submission>();
 
-            submission.ModifiedBy = _user.GetId();
-            _mapper.Map(submission, submissionToUpdate);
-
-            _context.Submissions.Update(submissionToUpdate);
+            // only the status changes; the score stays server-computed
+            submissionToUpdate.Status = submissionUpdate.Status.Value;
+            submissionToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
-            submission = await GetAsync(submissionToUpdate.Id, ct);
+            var submission = await GetAsync(submissionToUpdate.Id, ct);
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");
@@ -461,6 +486,8 @@ namespace Cite.Api.Services
             submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
             submissionEntity.Evaluation = null;
             submissionEntity.ScoringModel = null;
+            // the scoresheet is built from the scoring model, never taken from the body
+            submissionEntity.SubmissionCategories = new List<SubmissionCategoryEntity>();
             var scoringModelEntity = await citeContext.ScoringModels
                 .Include(sm => sm.ScoringCategories)
                 .ThenInclude(sc => sc.ScoringOptions)
@@ -618,43 +645,61 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.Submission> AddCommentAsync(Guid submissionId, SubmissionComment submissionComment, CancellationToken ct)
         {
-            var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
-            if (submissionEntity == null)
-                throw new EntityNotFoundException<Submission>();
-
-            // Add the submission comment
-            submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
-            submissionComment.CreatedBy = _user.GetId();
-            var submissionCommentEntity = _mapper.Map<SubmissionCommentEntity>(submissionComment);
-            _context.SubmissionComments.Add(submissionCommentEntity);
-            // update and return the submission
-            submissionEntity.ModifiedBy = submissionComment.CreatedBy;
-            await _context.SaveChangesAsync(ct);
-
-            await LogCommentXApiAsync(
-                new Uri("https://w3id.org/xapi/dod-isd/verbs/stated"),
-                submissionCommentEntity.SubmissionOptionId,
-                submissionComment.Comment,
-                ct);
-
+            await AddCommentEntityAsync(submissionId, submissionComment.SubmissionOptionId, submissionComment.Comment, ct);
             return await GetAsync(submissionId, ct);
         }
 
-        public async Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<ViewModels.Submission> UpdateCommentAsync(Guid submissionId, Guid submissionCommentId, UpdateSubmissionCommentRequest submissionComment, CancellationToken ct)
+        {
+            await UpdateCommentEntityAsync(submissionId, submissionCommentId, submissionComment.Comment, ct);
+            return await GetAsync(submissionId, ct);
+        }
+
+        public async Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct)
+        {
+            await DeleteCommentEntityAsync(submissionId, submissionCommentId, ct);
+            return await GetAsync(submissionId, ct);
+        }
+
+        // The comment writes the nested and the standalone comment routes share. Each one is scoped to the
+        // submission the caller is authorized on: an option or comment of another submission is not touched.
+
+        public async Task<SubmissionCommentEntity> AddCommentEntityAsync(Guid submissionId, Guid submissionOptionId, string comment, CancellationToken ct)
         {
             var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
             if (submissionEntity == null)
                 throw new EntityNotFoundException<Submission>();
+            if (!await _context.SubmissionOptions.AnyAsync(o => o.Id == submissionOptionId && o.SubmissionCategory.SubmissionId == submissionId, ct))
+                throw new ConflictException("The submission option is not part of the submission.");
 
-            var submissionCommentToUpdate = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
-            if (submissionCommentToUpdate == null)
-                throw new EntityNotFoundException<SubmissionComment>();
+            var userId = _user.GetId();
+            var submissionCommentEntity = new SubmissionCommentEntity
+            {
+                Id = Guid.NewGuid(),
+                SubmissionOptionId = submissionOptionId,
+                Comment = comment,
+                CreatedBy = userId,
+            };
+            _context.SubmissionComments.Add(submissionCommentEntity);
+            submissionEntity.ModifiedBy = userId;
+            await _context.SaveChangesAsync(ct);
 
-            submissionComment.ModifiedBy = _user.GetId();
-            _mapper.Map(submissionComment, submissionCommentToUpdate);
-            _context.SubmissionComments.Update(submissionCommentToUpdate);
-            // update and return the submission
-            submissionEntity.ModifiedBy = submissionComment.CreatedBy;
+            await LogCommentXApiAsync(
+                new Uri("https://w3id.org/xapi/dod-isd/verbs/stated"),
+                submissionOptionId,
+                comment,
+                ct);
+
+            return submissionCommentEntity;
+        }
+
+        public async Task<SubmissionCommentEntity> UpdateCommentEntityAsync(Guid submissionId, Guid submissionCommentId, string comment, CancellationToken ct)
+        {
+            var submissionCommentToUpdate = await FindCommentInSubmissionAsync(submissionId, submissionCommentId, ct);
+            var userId = _user.GetId();
+            submissionCommentToUpdate.Comment = comment;
+            submissionCommentToUpdate.ModifiedBy = userId;
+            submissionCommentToUpdate.SubmissionOption.SubmissionCategory.Submission.ModifiedBy = userId;
             await _context.SaveChangesAsync(ct);
 
             await LogCommentXApiAsync(
@@ -663,26 +708,17 @@ namespace Cite.Api.Services
                 submissionCommentToUpdate.Comment,
                 ct);
 
-            return await GetAsync(submissionId, ct);
+            return submissionCommentToUpdate;
         }
 
-        public async Task<ViewModels.Submission> DeleteCommentAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct)
+        public async Task DeleteCommentEntityAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct)
         {
-            var submissionEntity = await _context.Submissions.SingleOrDefaultAsync(v => v.Id == submissionId, ct);
-            if (submissionEntity == null)
-                throw new EntityNotFoundException<Submission>();
-
-            var submissionCommentEntity = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == submissionCommentId, ct);
-            if (submissionCommentEntity == null)
-                throw new EntityNotFoundException<SubmissionComment>();
-
+            var submissionCommentEntity = await FindCommentInSubmissionAsync(submissionId, submissionCommentId, ct);
             var submissionOptionId = submissionCommentEntity.SubmissionOptionId;
             var response = submissionCommentEntity.Comment;
 
-            // delete the comment
             _context.SubmissionComments.Remove(submissionCommentEntity);
-            // update and return the submission
-            submissionEntity.ModifiedBy = _user.GetId();
+            submissionCommentEntity.SubmissionOption.SubmissionCategory.Submission.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
             await LogCommentXApiAsync(
@@ -690,8 +726,17 @@ namespace Cite.Api.Services
                 submissionOptionId,
                 response,
                 ct);
+        }
 
-            return await GetAsync(submissionId, ct);
+        private async Task<SubmissionCommentEntity> FindCommentInSubmissionAsync(Guid submissionId, Guid submissionCommentId, CancellationToken ct)
+        {
+            var submissionComment = await _context.SubmissionComments
+                .Include(c => c.SubmissionOption.SubmissionCategory.Submission)
+                .SingleOrDefaultAsync(c => c.Id == submissionCommentId && c.SubmissionOption.SubmissionCategory.SubmissionId == submissionId, ct);
+            if (submissionComment == null)
+                throw new EntityNotFoundException<SubmissionComment>();
+
+            return submissionComment;
         }
 
         public async Task<bool> HasSpecificPermission<T>(Guid id, SpecificPermission specificPermission, CancellationToken ct)
@@ -699,73 +744,77 @@ namespace Cite.Api.Services
             var submissionId = typeof(T) switch
             {
                 var t when t == typeof(Submission) => id,
-                var t when t == typeof(SubmissionCategory) => await _context.SubmissionCategories.Where(m => m.Id == id).Select(m => m.SubmissionId).FirstOrDefaultAsync(),
-                var t when t == typeof(SubmissionOption) => await _context.SubmissionOptions.Where(m => m.Id == id).Select(m => m.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
-                var t when t == typeof(SubmissionComment) => await _context.SubmissionComments.Where(m => m.Id == id).Select(m => m.SubmissionOption.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(),
+                var t when t == typeof(SubmissionCategory) => await _context.SubmissionCategories.Where(m => m.Id == id).Select(m => m.SubmissionId).FirstOrDefaultAsync(ct),
+                var t when t == typeof(SubmissionOption) => await _context.SubmissionOptions.Where(m => m.Id == id).Select(m => m.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(ct),
+                var t when t == typeof(SubmissionComment) => await _context.SubmissionComments.Where(m => m.Id == id).Select(m => m.SubmissionOption.SubmissionCategory.SubmissionId).FirstOrDefaultAsync(ct),
                 _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
             };
             var submission = await _context.Submissions.FirstOrDefaultAsync(m => m.Id == submissionId, ct);
+            if (submission == null)
+                throw new EntityNotFoundException<SubmissionEntity>($"{typeof(T).Name} not found with ID={id}");
+
             return await HasSpecificPermission(submission, specificPermission, ct);
         }
 
         public async Task<bool> HasSpecificPermission(SubmissionEntity submission, SpecificPermission specificPermission, CancellationToken ct)
         {
-            var hasAccess = false;
             var userId = _user.GetId();
-            var isUserSubmission = submission.UserId != null;
-            var isTeamSubmission = !isUserSubmission && submission.TeamId != null;
-            var isOfficialSubmission = !isUserSubmission && !isTeamSubmission;
-            if (isUserSubmission)
+            // a user's submission belongs to that user alone
+            if (submission.UserId != null)
+                return submission.UserId == userId;
+
+            // a team's submission is decided by the team that owns it
+            if (submission.TeamId != null)
             {
-                // User can do everything with their submission
-                hasAccess = submission.UserId == userId;
-            }
-            else
-            {
-                var teamMembership = await _context.TeamMemberships.FirstOrDefaultAsync(m => m.UserId == userId && m.Team.EvaluationId == submission.EvaluationId);
-                // must be a team member to do anything else
-                if (teamMembership != null)
+                TeamPermission teamPermission = specificPermission switch
                 {
-                    if (isOfficialSubmission)
-                    {
-                        if (specificPermission == SpecificPermission.View)
-                        {
-                            var currentMoveNumber = (await _context.Evaluations.FindAsync(submission.EvaluationId)).CurrentMoveNumber;
-                            if (submission.MoveNumber < currentMoveNumber)
-                            {
-                                // has access to current official score
-                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewCurrentOfficialScore], ct);
-                            }
-                            else
-                            {
-                                // has access to previous official score
-                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewPastOfficialScore], ct);
-                            }
-                        }
-                        else
-                        {
-                            hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.EditOfficialScore], ct);
-                        }
-                    }
-                    else
-                    {
-                        switch (specificPermission)
-                        {
-                            case SpecificPermission.View:
-                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ViewTeam], ct);
-                                break;
-                            case SpecificPermission.Score:
-                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.EditTeamScore], ct);
-                                break;
-                            case SpecificPermission.Submit:
-                                hasAccess = await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.SubmitTeamScore], ct);
-                                break;
-                        }
-                    }
-                }
+                    SpecificPermission.View => TeamPermission.ViewTeam,
+                    SpecificPermission.Score => TeamPermission.EditTeamScore,
+                    _ => TeamPermission.SubmitTeamScore,
+                };
+                return await _authorizationService.AuthorizeAsync<Team>(submission.TeamId, [], [teamPermission], ct);
             }
 
-            return hasAccess;
+            // the official submission belongs to the evaluation, so any of the caller's teams in it can grant access
+            if (submission.EvaluationId == null)
+                return false;
+
+            var currentMoveNumber = await _context.Evaluations
+                .Where(e => e.Id == submission.EvaluationId)
+                .Select(e => e.CurrentMoveNumber)
+                .SingleAsync(ct);
+            var permissions = OfficialScorePermissions(submission.MoveNumber, currentMoveNumber, specificPermission);
+            if (permissions.Length == 0)
+                return false;
+
+            var teamIds = await _context.TeamMemberships
+                .Where(m => m.UserId == userId && m.Team.EvaluationId == submission.EvaluationId)
+                .Select(m => m.TeamId)
+                .ToListAsync(ct);
+            foreach (var teamId in teamIds)
+            {
+                if (await _authorizationService.AuthorizeAsync<Team>(teamId, [], permissions, ct))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// The team permissions that grant an operation on the official submission of a move. A past move's
+        /// official score is read with ViewPastOfficialScore, the current move's with ViewCurrentOfficialScore
+        /// or EditOfficialScore, and a future move's not at all. Scoring and submitting need EditOfficialScore.
+        /// </summary>
+        public static TeamPermission[] OfficialScorePermissions(int moveNumber, int currentMoveNumber, SpecificPermission specificPermission)
+        {
+            if (specificPermission != SpecificPermission.View)
+                return [TeamPermission.EditOfficialScore];
+            if (moveNumber < currentMoveNumber)
+                return [TeamPermission.ViewPastOfficialScore];
+            if (moveNumber == currentMoveNumber)
+                return [TeamPermission.ViewCurrentOfficialScore, TeamPermission.EditOfficialScore];
+
+            return [];
         }
 
         private IEnumerable<SubmissionCategoryEntity> CreateSubmissionCategories(

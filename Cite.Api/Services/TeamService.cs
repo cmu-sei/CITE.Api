@@ -30,8 +30,8 @@ namespace Cite.Api.Services
         Task<IEnumerable<Team>> GetByUserAsync(Guid userId, CancellationToken ct);
         Task<IEnumerable<Team>> GetByTypeAsync(Guid groupId, CancellationToken ct);
         Task<IEnumerable<Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct);
-        Task<Team> CreateAsync(Team team, CancellationToken ct);
-        Task<Team> UpdateAsync(Guid id, Team team, CancellationToken ct);
+        Task<Team> CreateAsync(CreateTeamRequest team, CancellationToken ct);
+        Task<Team> UpdateAsync(Guid id, UpdateTeamRequest team, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -116,11 +116,18 @@ namespace Cite.Api.Services
             return _mapper.Map<IEnumerable<Team>>(items);
         }
 
-        public async Task<Team> CreateAsync(Team team, CancellationToken ct)
+        public async Task<Team> CreateAsync(CreateTeamRequest team, CancellationToken ct)
         {
-            team.Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid();
-            team.CreatedBy = _user.GetId();
-            var teamEntity = _mapper.Map<TeamEntity>(team);
+            var teamEntity = new TeamEntity
+            {
+                Id = team.Id != Guid.Empty ? team.Id : Guid.NewGuid(),
+                Name = team.Name,
+                ShortName = team.ShortName,
+                EvaluationId = team.EvaluationId,
+                TeamTypeId = team.TeamTypeId,
+                HideScoresheet = team.HideScoresheet,
+                CreatedBy = _user.GetId(),
+            };
 
             _context.Teams.Add(teamEntity);
             await _context.SaveChangesAsync(ct);
@@ -128,25 +135,26 @@ namespace Cite.Api.Services
             return await GetAsync(teamEntity.Id, ct);
         }
 
-        public async Task<Team> UpdateAsync(Guid id, Team team, CancellationToken ct)
+        public async Task<Team> UpdateAsync(Guid id, UpdateTeamRequest team, CancellationToken ct)
         {
             var teamToUpdate = await _context.Teams.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (teamToUpdate == null)
                 throw new EntityNotFoundException<Team>();
 
             var teamTypeChanged = team.TeamTypeId != teamToUpdate.TeamTypeId;
-            team.ModifiedBy = _user.GetId();
-            _mapper.Map(team, teamToUpdate);
-            teamToUpdate.TeamType = null;
-            _context.Teams.Update(teamToUpdate);
+            teamToUpdate.Name = team.Name;
+            teamToUpdate.ShortName = team.ShortName;
+            teamToUpdate.TeamTypeId = team.TeamTypeId;
+            teamToUpdate.HideScoresheet = team.HideScoresheet;
+            teamToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
             if (teamTypeChanged)
             {
-                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} changed to TeamType {team.TeamTypeId} by {_user.GetId()}");
+                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {teamToUpdate.EvaluationId} changed to TeamType {team.TeamTypeId} by {_user.GetId()}");
             }
             else
             {
-                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {team.EvaluationId} updated by {_user.GetId()}");
+                _logger.LogWarning($"Team {teamToUpdate.Name} ({teamToUpdate.Id}) in Evaluation {teamToUpdate.EvaluationId} updated by {_user.GetId()}");
             }
             return await GetAsync(id, ct);
         }

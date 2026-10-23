@@ -194,17 +194,16 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
-    // Same case as SubmissionControllerTests.Get_returns_another_teams_submission_to_a_member_of_a_sibling_team_holding_ViewTeam.
     [Fact]
-    public async Task SetOptionTrue_selects_an_option_of_another_teams_submission_for_a_member_of_a_sibling_team_holding_EditTeamScore()
+    public async Task SetOptionTrue_is_forbidden_for_a_member_holding_EditTeamScore_only_on_a_sibling_team()
     {
         var (graph, submission) = await Seed();
         var actor = await Actor().OnNewTeam(graph.Evaluation.Id, TeamPermission.EditTeamScore).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/submissionOptions/{submission.Option.Id}/select", null, Ct));
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsync($"api/submissionOptions/{submission.Option.Id}/select", null, Ct));
 
         await using var context = NewContext();
-        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
+        Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
     [Fact]
@@ -248,6 +247,20 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         await AssertStatus(HttpStatusCode.Created, response);
         await using var context = NewContext();
         Assert.True(await context.SubmissionOptions.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Fact]
+    public async Task Create_answers_a_scoring_option_of_another_scoring_category_with_conflict()
+    {
+        var (graph, submission) = await Seed();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct, "Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Conflict, await Client(actor).PostAsJsonAsync("api/submissionOptions", new { id, submissionCategoryId = submission.Category.Id, scoringOptionId = other.Option.Id }, Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.SubmissionOptions.AnyAsync(x => x.Id == id, Ct));
     }
 
     [Fact]
@@ -331,20 +344,34 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.False((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
     }
 
-    /// <summary>ManageEvaluation on the evaluation of the category named in the body moves another evaluation's option into it.</summary>
     [Fact]
-    public async Task Update_moves_another_evaluations_option_into_a_category_of_the_evaluation_the_caller_manages()
+    public async Task Update_is_forbidden_for_a_caller_holding_ManageEvaluation_only_on_the_evaluation_of_the_category_in_the_body()
     {
         var (managed, mine) = await Seed();
         var (other, theirs) = await Seed();
         var actor = await Actor().OnEvaluation(managed.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
 
-        var response = await Client(actor).PutAsJsonAsync($"api/submissionOptions/{theirs.Option.Id}",
-            new { id = theirs.Option.Id, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{theirs.Option.Id}",
+            new { id = theirs.Option.Id, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct));
 
-        await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(mine.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == theirs.Option.Id, Ct)).SubmissionCategoryId);
+        Assert.Equal(theirs.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == theirs.Option.Id, Ct)).SubmissionCategoryId);
+    }
+
+    /// <summary>The body selects the option and names another category; the option is selected where it is.</summary>
+    [Fact]
+    public async Task Update_selects_the_option_in_its_own_category_for_a_caller_holding_ManageEvaluation()
+    {
+        var (graph, submission) = await Seed();
+        var (_, theirs) = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}",
+            new { id = submission.Option.Id, isSelected = true, submissionCategoryId = theirs.Category.Id }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct);
+        Assert.Equal((true, submission.Category.Id), (stored.IsSelected, stored.SubmissionCategoryId));
     }
 
     [Fact]

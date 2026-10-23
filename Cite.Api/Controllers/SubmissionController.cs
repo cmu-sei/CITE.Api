@@ -108,11 +108,11 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getByEvaluationTeam")]
         public async Task<IActionResult> GetByEvaluationTeam(Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct) &&
-                !await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct))
+            var asObserver = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], ct);
+            if (!asObserver && !await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct))
                 throw new ForbiddenException();
 
-            var list = await _submissionService.GetByEvaluationTeamAsync(evaluationId, teamId, ct);
+            var list = await _submissionService.GetByEvaluationTeamAsync(evaluationId, teamId, asObserver, ct);
             return Ok(list);
         }
 
@@ -178,7 +178,7 @@ namespace Cite.Api.Controllers
         [HttpPut("submissions/{id}")]
         [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateSubmission")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Submission submission, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSubmissionRequest submission, CancellationToken ct)
         {
             if (!await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.Submit, ct))
                 throw new ForbiddenException();
@@ -286,7 +286,7 @@ namespace Cite.Api.Controllers
         [HttpPut("submissions/{submissionId}/comments/{submissionCommentId}")]
         [ProducesResponseType(typeof(Submission), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "changeSubmissionComment")]
-        public async Task<IActionResult> ChangeSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<IActionResult> ChangeSubmissionComment([FromRoute] Guid submissionId, [FromRoute] Guid submissionCommentId, [FromBody] UpdateSubmissionCommentRequest submissionComment, CancellationToken ct)
         {
             if (!await _submissionService.HasSpecificPermission<Submission>(submissionId, SpecificPermission.Score, ct))
                 throw new ForbiddenException();

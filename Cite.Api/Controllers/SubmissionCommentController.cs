@@ -92,7 +92,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createSubmissionComment")]
         public async Task<IActionResult> Create([FromBody] SubmissionComment submissionComment, CancellationToken ct)
         {
-            if (!await _submissionService.HasSpecificPermission<SubmissionOption>(submissionComment.SubmissionOptionId, SpecificPermission.View, ct))
+            if (!await _submissionService.HasSpecificPermission<SubmissionOption>(submissionComment.SubmissionOptionId, SpecificPermission.Score, ct))
                 throw new ForbiddenException();
 
             var createdSubmissionComment = await _submissionCommentService.CreateAsync(submissionComment, ct);
@@ -114,9 +114,9 @@ namespace Cite.Api.Controllers
         [HttpPut("submissionComments/{id}")]
         [ProducesResponseType(typeof(SubmissionComment), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateSubmissionComment")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSubmissionCommentRequest submissionComment, CancellationToken ct)
         {
-            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
+            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.Score, ct))
                 throw new ForbiddenException();
 
             var updatedSubmissionComment = await _submissionCommentService.UpdateAsync(id, submissionComment, ct);
@@ -138,7 +138,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "deleteSubmissionComment")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         {
-            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
+            if (!await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.Score, ct))
                 throw new ForbiddenException();
 
             await _submissionCommentService.DeleteAsync(id, ct);

@@ -123,8 +123,8 @@ public sealed class TestActorBuilder(CiteContext db, CancellationToken ct)
 
     /// <summary>
     /// A membership on an existing team: a seeded role (<c>TestData.TeamRoles</c>), exactly
-    /// <paramref name="permissions"/> by way of a minted role, or neither, which leaves the membership's role
-    /// null as <c>TeamMembershipService.CreateAsync</c> can.
+    /// <paramref name="permissions"/> by way of a minted role, or neither, which gives the seeded Member role
+    /// as <c>TeamMembershipService.CreateAsync</c> does for a request without a role.
     /// </summary>
     /// <remarks>
     /// A team membership is more than its role: services read <c>team_memberships</c> directly to decide

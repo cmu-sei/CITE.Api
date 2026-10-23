@@ -28,7 +28,7 @@ namespace Cite.Api.Data.Models
 
         public Guid UserId { get; set; }
         public virtual UserEntity User { get; set; }
-        public Guid? RoleId { get; set; }
+        public Guid RoleId { get; set; } = TeamRoleDefaults.TeamMemberRoleId;
         public TeamRoleEntity Role { get; set; }
     }
 
@@ -37,6 +37,8 @@ namespace Cite.Api.Data.Models
         public void Configure(EntityTypeBuilder<TeamMembershipEntity> builder)
         {
             builder.HasIndex(e => new { e.TeamId, e.UserId }).IsUnique();
+
+            builder.Property(x => x.RoleId).HasDefaultValue(TeamRoleDefaults.TeamMemberRoleId);
 
             builder
                 .HasOne(tu => tu.Team)

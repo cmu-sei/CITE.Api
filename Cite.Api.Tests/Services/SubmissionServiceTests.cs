@@ -7,6 +7,7 @@ using Cite.Api.Infrastructure.Options;
 using Cite.Api.Services;
 using Cite.Api.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
+using Cite.Api.ViewModels;
 using SubmissionComment = Cite.Api.ViewModels.SubmissionComment;
 
 namespace Cite.Api.Tests.Services;
@@ -48,7 +49,7 @@ public class SubmissionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
 
         await using var context = NewContext();
         await Service(context, user).UpdateCommentAsync(submission.Submission.Id, comment.Id,
-            new SubmissionComment { Id = comment.Id, Comment = "Revised", SubmissionOptionId = submission.Option.Id }, Ct);
+            new UpdateSubmissionCommentRequest { Comment = "Revised" }, Ct);
 
         Assert.Equal("https://w3id.org/xapi/dod-isd/verbs/edited", _verb.ToString());
         Assert.Equal("Revised", _activity["result"]);

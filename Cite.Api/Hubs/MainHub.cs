@@ -35,6 +35,8 @@ namespace Cite.Api.Hubs
         public const string ROLE_GROUP = "AdminRoleGroup";
         public const string USER_GROUP = "AdminUserGroup";
         public const string OFFICIAL_SCORE_POSTFIX = "OfficialScore";
+        public const string PAST_OFFICIAL_SCORE_POSTFIX = "PastOfficialScore";
+        public const string ALL_MOVES_POSTFIX = "AllMoves";
 
         public MainHub(
             ITeamService teamService,
@@ -77,17 +79,17 @@ namespace Cite.Api.Hubs
             {
                 var oldTeamId = args[0];
                 var newTeamId = args[1];
-                // leave the old team
-                var idList = await GetTeamIdList(oldTeamId);
+                // leave every group the old team could have added, whatever the caller can do now
+                var idList = await GetTeamIdList(oldTeamId, checkAccess: false);
                 foreach (var id in idList)
                 {
-                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, id.ToString());
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, id);
                 }
-                // join the new team
-                idList = await GetTeamIdList(newTeamId);
+                // join the new team's groups the caller is allowed to read
+                idList = await GetTeamIdList(newTeamId, checkAccess: true);
                 foreach (var id in idList)
                 {
-                    await Groups.AddToGroupAsync(Context.ConnectionId, id.ToString());
+                    await Groups.AddToGroupAsync(Context.ConnectionId, id);
                 }
             }
         }
@@ -121,44 +123,76 @@ namespace Cite.Api.Hubs
             return idList;
         }
 
-        private async Task<List<string>> GetTeamIdList(Guid teamId)
+        private async Task<List<string>> GetTeamIdList(Guid teamId, bool checkAccess)
         {
             var idList = new List<string>();
             // add the user's ID
-            var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
-            idList.Add(userId);
+            var userId = Guid.Parse(Context.User.Identities.First().Claims.First(c => c.Type == "sub").Value);
+            idList.Add(userId.ToString());
 
-            // make sure that the user has access to the requested team
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<CiteContext>();
+            var team = await context.Teams.SingleOrDefaultAsync(t => t.Id == teamId);
+            if (team == null || team.EvaluationId == null)
+                return idList;
 
-            var team = await context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
-            var isObserver = await context.EvaluationMemberships
-                .Where(er =>
-                    er.EvaluationId == team.EvaluationId &&
-                    er.UserId == Guid.Parse(userId) &&
-                    (er.Role.AllPermissions || er.Role.Permissions.Contains(EvaluationPermission.ObserveEvaluation)))
-                .AnyAsync();
-            if (team != null)
+            var evaluationId = team.EvaluationId.Value;
+            var evaluation = await context.Evaluations.SingleAsync(e => e.Id == evaluationId);
+            var teamGroups = new[] { teamId.ToString(), evaluationId.ToString(), evaluation.ScoringModelId.ToString() };
+            var officialGroups = new[] { evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX, evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX };
+            var allMovesGroup = evaluationId.ToString() + ALL_MOVES_POSTFIX;
+            if (!checkAccess)
             {
-                var teamMembership = await context.TeamMemberships
-                    .Include(tu => tu.Team)
-                    .ThenInclude(t => t.TeamType)
-                    .SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
-                if (teamMembership != null && (teamMembership.TeamId == teamId || isObserver))
-                {
-                    idList.Add(teamId.ToString());
-                    idList.Add(team.EvaluationId.ToString());
-                    var scoringModelId = (await context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
-                    idList.Add(scoringModelId.ToString());
-                    if (teamMembership.Team.TeamType.IsOfficialScoreContributor)
-                    {
-                        idList.Add(team.EvaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
-                    }
-                }
+                idList.AddRange(teamGroups);
+                idList.AddRange(officialGroups);
+                idList.Add(allMovesGroup);
+                return idList;
+            }
+
+            // moves ahead of the current one follow the same permissions as MoveController's reads
+            if (await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], _ct))
+            {
+                idList.Add(allMovesGroup);
+            }
+
+            // an observer of the evaluation can follow any of its teams
+            var isObserver = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], _ct);
+            var isMember = await context.TeamMemberships.AnyAsync(m => m.TeamId == teamId && m.UserId == userId);
+            if (isObserver || (isMember && await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], _ct)))
+            {
+                idList.AddRange(teamGroups);
+            }
+            else
+            {
+                return idList;
+            }
+
+            // official scores follow the same permissions as SubmissionService.HasSpecificPermission
+            var callerTeamIds = await context.TeamMemberships
+                .Where(m => m.UserId == userId && m.Team.EvaluationId == evaluationId)
+                .Select(m => m.TeamId)
+                .ToListAsync();
+            if (isObserver || await AnyTeamHasAsync(callerTeamIds, SubmissionService.OfficialScorePermissions(0, 1, SpecificPermission.View)))
+            {
+                idList.Add(evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX);
+            }
+            if (isObserver || await AnyTeamHasAsync(callerTeamIds, SubmissionService.OfficialScorePermissions(0, 0, SpecificPermission.View)))
+            {
+                idList.Add(evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
             }
 
             return idList;
+        }
+
+        private async Task<bool> AnyTeamHasAsync(IEnumerable<Guid> teamIds, TeamPermission[] permissions)
+        {
+            foreach (var teamId in teamIds)
+            {
+                if (await _authorizationService.AuthorizeAsync<Team>(teamId, [], permissions, _ct))
+                    return true;
+            }
+
+            return false;
         }
 
         private async Task<List<string>> GetAdminIdList()
