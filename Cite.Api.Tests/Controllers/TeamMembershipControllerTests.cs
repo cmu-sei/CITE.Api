@@ -186,6 +186,7 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Equal(0, (await context.Submissions.SingleAsync(x => x.UserId == user.Id, Ct)).MoveNumber);
     }
 
+    // Same case as Update_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role.
     /// <summary>A caller holding only ManageTeam gives another user the Owner role, which also grants EditTeamScore and SubmitTeamScore.</summary>
     [Fact]
     public async Task CreateMembership_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role()
@@ -318,7 +319,6 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Equal(managerRole.Id, (await context.TeamMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
     }
 
-    // Same case as CreateMembership_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role.
     [Fact]
     public async Task Update_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role()
     {

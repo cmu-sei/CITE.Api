@@ -136,6 +136,43 @@ public class EvaluationMembershipControllerTests(DatabaseFixture fixture, CiteAp
         Assert.Equal(managerRole.Id, (await context.EvaluationMemberships.SingleAsync(x => x.UserId == user.Id, Ct)).RoleId);
     }
 
+    /// <summary>The membership is authorized by its stored evaluation, so an evaluation id in the body grants nothing.</summary>
+    [Fact]
+    public async Task Update_refuses_a_Viewer_raising_their_own_role_by_naming_an_owned_evaluation_in_the_body()
+    {
+        var owned = await TestScenario.SeedEvaluationAsync(Db, Ct, "Owned");
+        var viewed = await TestScenario.SeedEvaluationAsync(Db, Ct, "Viewed");
+        var actor = await Actor()
+            .OnEvaluation(owned.Evaluation.Id, roleId: TestData.EvaluationRoles.Owner)
+            .OnEvaluation(viewed.Evaluation.Id, roleId: TestData.EvaluationRoles.Viewer)
+            .SeedAsync();
+        var ownedMembership = await ReadBack(db => db.EvaluationMemberships.SingleAsync(x => x.EvaluationId == owned.Evaluation.Id && x.UserId == actor.Id, Ct));
+        var viewedMembership = await ReadBack(db => db.EvaluationMemberships.SingleAsync(x => x.EvaluationId == viewed.Evaluation.Id && x.UserId == actor.Id, Ct));
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{viewedMembership.Id}",
+            new { id = viewedMembership.Id, evaluationId = ownedMembership.Id, userId = actor.Id, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        var stored = await ReadBack(db => db.EvaluationMemberships.SingleAsync(x => x.Id == viewedMembership.Id, Ct));
+        Assert.Equal((viewed.Evaluation.Id, TestData.EvaluationRoles.Viewer), (stored.EvaluationId, stored.RoleId));
+    }
+
+    // Same case as CreateMembership_lets_a_caller_holding_only_ManageEvaluation_grant_the_Owner_role.
+    [Fact]
+    public async Task Update_grants_the_evaluation_Owner_role_to_a_caller_holding_only_ManageEvaluation_when_the_membership_id_matches_the_evaluation()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+        var membership = TestData.EvaluationMembership(graph.Evaluation.Id, actor.Id, TestData.EvaluationRoles.Member);
+        membership.Id = graph.Evaluation.Id;
+        await Seed(membership);
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/memberships/{membership.Id}", new { id = membership.Id, evaluationId = graph.Evaluation.Id, userId = actor.Id, roleId = TestData.EvaluationRoles.Owner }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(TestData.EvaluationRoles.Owner, await ReadBack(db => db.EvaluationMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
     /// <summary>A caller holding only ManageEvaluation gives another user the Owner role, which holds every evaluation permission.</summary>
     [Fact]
     public async Task CreateMembership_lets_a_caller_holding_only_ManageEvaluation_grant_the_Owner_role()

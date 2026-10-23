@@ -121,6 +121,7 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
         Assert.Equal(managerRole.Id, (await context.ScoringModelMemberships.SingleAsync(x => x.ScoringModelId == model.Id && x.UserId == user.Id, Ct)).RoleId);
     }
 
+    // Same case as Update_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role.
     /// <summary>A caller holding only ManageScoringModel gives another user the Owner role, which holds every scoring model permission.</summary>
     [Fact]
     public async Task CreateMembership_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role()
@@ -244,7 +245,6 @@ public class ScoringModelMembershipControllerTests(DatabaseFixture fixture, Cite
         Assert.Equal(managerRole.Id, (await context.ScoringModelMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
     }
 
-    // Same case as CreateMembership_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role.
     [Fact]
     public async Task Update_lets_a_caller_holding_only_ManageScoringModel_grant_the_Owner_role()
     {

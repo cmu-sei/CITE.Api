@@ -122,7 +122,7 @@ namespace Cite.Api.Services
             {
                 await _context.SaveChangesAsync(ct);
             }
-            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation })
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_moves_evaluation_id_move_number" })
             {
                 throw new ConflictException("The evaluation already has a move with this move number.");
             }
