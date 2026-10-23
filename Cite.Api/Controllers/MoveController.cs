@@ -43,7 +43,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getByEvaluation")]
         public async Task<IActionResult> GetByEvaluation(Guid evaluationId, CancellationToken ct)
         {
-            var hasPermission = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct);
+            var hasPermission = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], ct);
             var list = await _moveService.GetByEvaluationAsync(evaluationId, hasPermission, ct);
             return Ok(list);
         }
@@ -62,7 +62,7 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "getMove")]
         public async Task<IActionResult> Get(Guid id, CancellationToken ct)
         {
-            var hasPermission = await _authorizationService.AuthorizeAsync<Move>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation], ct);
+            var hasPermission = await _authorizationService.AuthorizeAsync<Move>(id, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], ct);
             var move = await _moveService.GetAsync(id, hasPermission, ct);
             if (move == null)
                 throw new EntityNotFoundException<Move>();

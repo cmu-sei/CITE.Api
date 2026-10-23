@@ -28,6 +28,7 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     [Theory]
     [InlineData(EvaluationPermission.ObserveEvaluation)]
     [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
     public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
@@ -61,6 +62,7 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     [Theory]
     [InlineData(SystemPermission.ViewEvaluations)]
     [InlineData(SystemPermission.ObserveEvaluations)]
+    [InlineData(SystemPermission.ExecuteEvaluations)]
     public async Task GetByEvaluation_lists_the_moves_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
@@ -69,15 +71,6 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         var moves = await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
 
         Assert.Equal(graph.Move.Id, Assert.Single(moves).Id);
-    }
-
-    [Fact]
-    public async Task GetByEvaluation_is_forbidden_while_none_of_its_teams_has_a_member_for_a_caller_holding_only_ExecuteEvaluations()
-    {
-        var graph = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
-
-        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct));
     }
 
     [Fact]
@@ -104,12 +97,16 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Move.Id, Assert.Single(moves).Id);
     }
 
-    [Fact]
-    public async Task GetByEvaluation_lists_the_future_moves_to_a_caller_holding_ViewEvaluation_on_it()
+    /// <summary>Advancing moves (ExecuteEvaluation) needs the moves ahead of the current one, as viewing and observing do.</summary>
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
+    public async Task GetByEvaluation_lists_the_future_moves_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
         await Seed(TestData.Move(graph.Evaluation.Id, 1));
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
         Assert.Equal(2, (await ReadAsync<List<Move>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/moves", Ct))).Count);
     }
@@ -117,6 +114,7 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     [Theory]
     [InlineData(SystemPermission.ViewEvaluations)]
     [InlineData(SystemPermission.ObserveEvaluations)]
+    [InlineData(SystemPermission.ExecuteEvaluations)]
     public async Task Get_returns_the_move_to_a_caller_holding_a_system_permission(SystemPermission permission)
     {
         var graph = await Seed();
@@ -138,29 +136,10 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/moves/{future.Id}", Ct));
     }
 
-    [Fact]
-    public async Task Get_is_forbidden_while_none_of_its_teams_has_a_member_for_a_caller_holding_only_ExecuteEvaluations()
-    {
-        var graph = await Seed();
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
-
-        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
-    }
-
-    [Fact]
-    public async Task Get_is_forbidden_for_a_caller_holding_only_ExecuteEvaluations_when_others_are_on_its_teams()
-    {
-        var graph = await Seed();
-        var member = TestData.User();
-        await Seed(member, TestData.TeamMembership(graph.Team.Id, member.Id));
-        var actor = await Actor().WithSystemPermissions(SystemPermission.ExecuteEvaluations).SeedAsync();
-
-        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/moves/{graph.Move.Id}", Ct));
-    }
-
     [Theory]
     [InlineData(EvaluationPermission.ViewEvaluation)]
     [InlineData(EvaluationPermission.ObserveEvaluation)]
+    [InlineData(EvaluationPermission.ExecuteEvaluation)]
     public async Task Get_returns_a_future_move_to_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
     {
         var graph = await Seed();
