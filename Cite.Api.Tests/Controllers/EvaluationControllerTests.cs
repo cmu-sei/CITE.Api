@@ -218,6 +218,22 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task Create_gives_the_evaluations_scoring_model_the_templates_severity_levels()
+    {
+        var template = TestData.ScoringModel("Template");
+        template.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF", Description = "Quiet" }];
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == id, Ct);
+        var level = Assert.Single(stored.ScoringModel.SeverityLevels);
+        Assert.Equal(("Calm", "#FFFFFF", "Quiet"), (level.Name, level.Color, level.Description));
+    }
+
+    [Fact]
     public async Task Create_broadcasts_the_new_evaluation_to_its_group()
     {
         var template = TestData.ScoringModel("Template");
@@ -268,6 +284,25 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.NotEqual(graph.Team.Id, Assert.Single(stored.Teams).Id);
         Assert.Single(stored.Moves);
         Assert.Equal(copy.Id, stored.ScoringModel.EvaluationId);
+    }
+
+    [Fact]
+    public async Task Copy_gives_the_copied_scoring_model_the_severity_levels()
+    {
+        var graph = await Seed("Source");
+        await using (var context = NewContext())
+        {
+            var model = await context.ScoringModels.SingleAsync(x => x.Id == graph.ScoringModel.Id, Ct);
+            model.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF" }, new() { Name = "Storm", MinimumScore = 60, Color = "#000000" }];
+            await context.SaveChangesAsync(Ct);
+        }
+
+        var copy = await ReadAsync<Evaluation>(await RootClient.PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        await using var check = NewContext();
+        var stored = await check.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.NotEqual(graph.ScoringModel.Id, stored.ScoringModel.Id);
+        Assert.Equal([("Calm", 0.0), ("Storm", 60.0)], stored.ScoringModel.SeverityLevels.Select(x => (x.Name, x.MinimumScore)));
     }
 
     [Fact]

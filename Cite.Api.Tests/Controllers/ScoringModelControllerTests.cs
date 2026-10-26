@@ -552,9 +552,179 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal(1, await context.ScoringModels.CountAsync(Ct));
     }
 
-    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate()
+    [Fact]
+    public async Task Update_saves_the_severity_levels_sent_with_the_scoring_model()
+    {
+        var (model, _) = await SeedTemplate();
+
+        var response = await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}", new
+        {
+            id = model.Id,
+            description = "Template",
+            status = "Active",
+            severityLevels = new[]
+            {
+                new { name = "Quiet", minimumScore = 0.0, color = "#ffffff", description = "Nothing to report" },
+                new { name = "Loud", minimumScore = 50.0, color = "#8B0000", description = "Act now" },
+            },
+        }, Ct);
+
+        var read = await ReadAsync<ScoringModel>(response);
+        Assert.Equal(["Quiet", "Loud"], read.SeverityLevels.Select(x => x.Name));
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct);
+        Assert.Equal(
+            [("Quiet", 0.0, "#ffffff", "Nothing to report"), ("Loud", 50.0, "#8B0000", "Act now")],
+            stored.SeverityLevels.Select(x => (x.Name, x.MinimumScore, x.Color, x.Description)));
+    }
+
+    /// <summary>A caller that predates severity levels, and so leaves them out, doesn't erase the saved ones.</summary>
+    [Fact]
+    public async Task Update_without_severity_levels_keeps_the_saved_ones()
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}",
+            new { id = model.Id, description = "Renamed", status = "Active" }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct);
+        Assert.Equal("Renamed", stored.Description);
+        Assert.Equal(["Low", "High"], stored.SeverityLevels.Select(x => x.Name));
+    }
+
+    [Fact]
+    public async Task Update_with_an_empty_list_clears_the_severity_levels()
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}",
+            new { id = model.Id, description = "Template", status = "Active", severityLevels = Array.Empty<object>() }, Ct));
+
+        await using var context = NewContext();
+        Assert.Empty((await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).SeverityLevels);
+    }
+
+    [Theory]
+    [InlineData("", "#000000", 0.0)]
+    [InlineData("Low", "black", 0.0)]
+    [InlineData("Low", "#000000", 50.0)]
+    public async Task Update_refuses_severity_levels_without_a_name_with_a_bad_color_or_sharing_a_minimum_score(string name, string color, double minimumScore)
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+
+        var response = await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}", new
+        {
+            id = model.Id,
+            description = "Renamed",
+            status = "Active",
+            severityLevels = new[]
+            {
+                new { name, minimumScore, color, description = "" },
+                new { name = "High", minimumScore = 50.0, color = "#FF0000", description = "" },
+            },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct);
+        Assert.Equal("Template", stored.Description);
+        Assert.Equal(["Low", "High"], stored.SeverityLevels.Select(x => x.Name));
+    }
+
+    [Fact]
+    public async Task Create_saves_the_severity_levels_sent_with_the_scoring_model()
+    {
+        var created = await ReadAsync<ScoringModel>(await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            description = "Leveled Model",
+            status = "Active",
+            severityLevels = new[] { new { name = "Only", minimumScore = 0.0, color = "#00FF00", description = "" } },
+        }, Ct));
+
+        Assert.Equal("Only", Assert.Single(created.SeverityLevels).Name);
+    }
+
+    [Fact]
+    public async Task Get_answers_an_empty_list_for_a_scoring_model_saved_before_severity_levels()
+    {
+        var (model, _) = await SeedTemplate();
+        await using (var context = NewContext())
+        {
+            await context.Database.ExecuteSqlAsync($"UPDATE scoring_models SET severity_levels = NULL WHERE id = {model.Id}", Ct);
+        }
+
+        var read = await ReadAsync<ScoringModel>(await RootClient.GetAsync($"api/scoringModels/{model.Id}", Ct));
+
+        Assert.Empty(read.SeverityLevels);
+    }
+
+    [Fact]
+    public async Task Copy_copies_the_severity_levels()
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.Equal([("Low", 0.0), ("High", 50.0)], stored.SeverityLevels.Select(x => (x.Name, x.MinimumScore)));
+    }
+
+    [Fact]
+    public async Task Copy_of_a_scoring_model_saved_before_severity_levels_has_none()
+    {
+        var (model, _) = await SeedTemplate();
+        await using (var context = NewContext())
+        {
+            await context.Database.ExecuteSqlAsync($"UPDATE scoring_models SET severity_levels = NULL WHERE id = {model.Id}", Ct);
+        }
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Empty(copy.SeverityLevels);
+    }
+
+    [Fact]
+    public async Task UploadJson_imports_the_severity_levels_of_a_downloaded_model()
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.NotEqual(model.Id, imported.Id);
+        Assert.Equal(["Low", "High"], imported.SeverityLevels.Select(x => x.Name));
+    }
+
+    /// <summary>A file exported before severity levels existed has no severityLevels property.</summary>
+    [Fact]
+    public async Task UploadJson_imports_a_file_without_severity_levels_with_none()
+    {
+        var (model, _) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        Assert.True(json.Remove(nameof(ScoringModelEntity.SeverityLevels)));
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.NotEqual(model.Id, imported.Id);
+        Assert.Empty(imported.SeverityLevels);
+    }
+
+    private static List<SeverityLevelEntity> SeverityLevels() =>
+    [
+        new() { Name = "Low", MinimumScore = 0, Color = "#00FF00", Description = "Fine" },
+        new() { Name = "High", MinimumScore = 50, Color = "#FF0000", Description = "Not fine" },
+    ];
+
+    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate(List<SeverityLevelEntity> severityLevels = null)
     {
         var model = TestData.ScoringModel("Template");
+        model.SeverityLevels = severityLevels ?? [];
         var category = TestData.ScoringCategory(model.Id);
         await Seed(model, category, TestData.ScoringOption(category.Id));
 
