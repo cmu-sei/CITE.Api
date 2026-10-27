@@ -17,6 +17,11 @@ namespace Cite.Api.ViewModels
         public int DisplayOrder { get; set; }
         public string Description { get; set; }
         public string CalculationEquation { get; set; }
+        /// <summary>
+        /// The category has a calculation equation, so it is scored. Read only: set from the equation
+        /// before it is redacted, so callers who cannot see the equation can still tell scored categories apart.
+        /// </summary>
+        public bool IsScored { get; set; }
         public bool IsModifierRequired { get; set; }
         public double ScoringWeight { get; set; }
         public int MoveNumberFirstDisplay { get; set; }

@@ -10,7 +10,9 @@ namespace Cite.Api.Infrastructure.Mappings
     {
         public ScoringCategoryProfile()
         {
-            CreateMap<ScoringCategoryEntity, ScoringCategory>();
+            // a category is scored exactly when SubmissionService would calculate its score
+            CreateMap<ScoringCategoryEntity, ScoringCategory>()
+                .ForMember(c => c.IsScored, opt => opt.MapFrom(e => !string.IsNullOrWhiteSpace(e.CalculationEquation)));
 
             CreateMap<ScoringCategory, ScoringCategoryEntity>();
 

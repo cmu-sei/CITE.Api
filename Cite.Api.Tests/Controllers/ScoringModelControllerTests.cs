@@ -117,7 +117,24 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         var read = await ReadAsync<ScoringModel>(await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
 
         var category = Assert.Single(read.ScoringCategories);
-        Assert.Equal(("Redacted", 0.0), (category.CalculationEquation, category.ScoringWeight));
+        Assert.Equal(("Redacted", 0.0, true), (category.CalculationEquation, category.ScoringWeight, category.IsScored));
+    }
+
+    /// <summary>The scoresheet and reports show category scores and point values only on scored categories.</summary>
+    [Fact]
+    public async Task Get_tells_a_member_of_one_of_its_teams_which_categories_are_scored_with_the_equations_redacted()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var unscored = TestData.ScoringCategory(graph.ScoringModel.Id, "Unscored Category", 2);
+        unscored.CalculationEquation = null;
+        await Seed(unscored);
+        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
+
+        var read = await ReadAsync<ScoringModel>(await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
+
+        Assert.Equal(
+            [(graph.Category.Id, "Redacted", true), (unscored.Id, "Redacted", false)],
+            read.ScoringCategories.OrderBy(c => c.DisplayOrder).Select(c => (c.Id, c.CalculationEquation, c.IsScored)));
     }
 
     [Fact]
@@ -129,7 +146,7 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         var read = await ReadAsync<ScoringModel>(await Client(actor).GetAsync($"api/scoringModels/{graph.ScoringModel.Id}", Ct));
 
         var category = Assert.Single(read.ScoringCategories);
-        Assert.Equal(("Redacted", 0.0), (category.CalculationEquation, category.ScoringWeight));
+        Assert.Equal(("Redacted", 0.0, true), (category.CalculationEquation, category.ScoringWeight, category.IsScored));
     }
 
     [Fact]
