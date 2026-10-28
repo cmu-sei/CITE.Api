@@ -39,8 +39,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
         protected string[] GetGroups(MoveEntity moveEntity)
         {
+            // the two move groups are disjoint, so a connection gets each move once
             var groupIds = new List<string>();
-            groupIds.Add(moveEntity.EvaluationId.ToString());
+            groupIds.Add(moveEntity.EvaluationId.ToString() + MainHub.CURRENT_MOVES_POSTFIX);
             groupIds.Add(moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX);
             // the admin data group gets everything
             groupIds.Add(MainHub.ADMIN_DATA_GROUP);
@@ -59,7 +60,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 .Where(e => e.Id == moveEntity.EvaluationId)
                 .Select(e => e.CurrentMoveNumber)
                 .SingleOrDefaultAsync(cancellationToken);
-            var groupIds = moveEntity.MoveNumber > currentMoveNumber
+            var isFuture = moveEntity.MoveNumber > currentMoveNumber;
+            var groupIds = isFuture
                 ? [moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX, MainHub.ADMIN_DATA_GROUP]
                 : GetGroups(moveEntity);
             var move = _mapper.Map<ViewModels.Move>(moveEntity);
@@ -68,6 +70,13 @@ namespace Cite.Api.Infrastructure.EventHandlers
             foreach (var groupId in groupIds)
             {
                 tasks.Add(_mainHub.Clients.Group(groupId).SendAsync(method, move, modifiedProperties, cancellationToken));
+            }
+
+            // a move renumbered past the current one is withdrawn from the teams that could see it
+            if (isFuture && modifiedProperties != null && modifiedProperties.Contains(nameof(MoveEntity.MoveNumber).TitleCaseToCamelCase()))
+            {
+                tasks.Add(_mainHub.Clients.Group(moveEntity.EvaluationId.ToString() + MainHub.CURRENT_MOVES_POSTFIX)
+                    .SendAsync(MainHubMethods.MoveDeleted, moveEntity.Id, cancellationToken));
             }
 
             await Task.WhenAll(tasks);

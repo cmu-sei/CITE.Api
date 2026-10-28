@@ -541,9 +541,9 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal((1, "Move One Situation"), (stored.CurrentMoveNumber, stored.SituationDescription));
     }
 
-    /// <summary>Teams see moves up to the current one, so a move that becomes current is sent to the evaluation group.</summary>
+    /// <summary>Teams see moves up to the current one, so a move that becomes current is sent to the teams' move group, and only there.</summary>
     [Fact]
-    public async Task SetCurrentMove_sends_the_move_that_becomes_current_to_the_evaluation_group()
+    public async Task SetCurrentMove_sends_the_move_that_becomes_current_to_the_teams_move_group()
     {
         var graph = await Seed();
         var move = TestData.Move(graph.Evaluation.Id, 1);
@@ -551,7 +551,26 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
 
         await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/1", null, Ct));
 
-        Assert.Contains(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
+        Assert.Contains(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveUpdated);
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveUpdated);
+    }
+
+    /// <summary>Setting the current move back withdraws the moves after it from the teams, which can no longer read them.</summary>
+    [Fact]
+    public async Task SetCurrentMove_back_withdraws_the_later_moves_from_the_teams_move_group()
+    {
+        var graph = await Seed();
+        var move = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(move);
+        graph.Evaluation.CurrentMoveNumber = 1;
+        await Db.SaveChangesAsync(Ct);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/0", null, Ct));
+
+        var teams = Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX);
+        Assert.Contains(teams, x => x.Method == MainHubMethods.MoveDeleted && (Guid)x.Arguments[0] == move.Id);
+        Assert.DoesNotContain(teams, x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
     }
 
     [Fact]

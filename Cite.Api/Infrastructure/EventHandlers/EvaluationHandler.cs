@@ -96,14 +96,18 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 notification.ModifiedProperties.Select(x => x.TitleCaseToCamelCase()).ToArray(),
                 cancellationToken);
 
-            // teams see moves up to the current one only, so a move that has just become visible is sent to them
+            // teams see moves up to the current one only. The event does not say what the current move was, so the teams'
+            // group is sent the moves now visible and told to drop the rest, whichever way the current move went; the
+            // all-moves and admin groups already hold every move.
             if (notification.ModifiedProperties.Contains(nameof(EvaluationEntity.CurrentMoveNumber)))
             {
                 var moves = await _db.Moves
-                    .Where(m => m.EvaluationId == notification.Entity.Id && m.MoveNumber <= notification.Entity.CurrentMoveNumber)
+                    .Where(m => m.EvaluationId == notification.Entity.Id)
                     .ToListAsync(cancellationToken);
-                var group = _mainHub.Clients.Group(notification.Entity.Id.ToString());
-                await Task.WhenAll(moves.Select(m => group.SendAsync(MainHubMethods.MoveUpdated, _mapper.Map<ViewModels.Move>(m), null, cancellationToken)));
+                var group = _mainHub.Clients.Group(notification.Entity.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX);
+                await Task.WhenAll(moves.Select(m => m.MoveNumber <= notification.Entity.CurrentMoveNumber
+                    ? group.SendAsync(MainHubMethods.MoveUpdated, _mapper.Map<ViewModels.Move>(m), null, cancellationToken)
+                    : group.SendAsync(MainHubMethods.MoveDeleted, m.Id, cancellationToken)));
             }
         }
     }

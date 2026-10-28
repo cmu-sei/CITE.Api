@@ -183,7 +183,7 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
-    public async Task Create_broadcasts_a_move_up_to_the_current_one_to_the_evaluation_group()
+    public async Task Create_broadcasts_a_move_up_to_the_current_one_to_the_teams_move_group()
     {
         var graph = await Seed();
         graph.Evaluation.CurrentMoveNumber = 1;
@@ -192,21 +192,23 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
 
         await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
 
-        var broadcast = Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
+        var broadcast = Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated);
         Assert.Equal(id, Assert.IsType<Move>(broadcast.Arguments[0]).Id);
         Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated);
+        // the evaluation group is joined by both move audiences, so a move sent there too would arrive twice
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
     }
 
     /// <summary>A future move reaches the admin group and the evaluation's all-moves group; teams get it when it becomes current.</summary>
     [Fact]
-    public async Task Create_does_not_broadcast_a_future_move_to_the_evaluation_group()
+    public async Task Create_does_not_broadcast_a_future_move_to_the_teams_move_group()
     {
         var graph = await Seed();
         var id = Guid.NewGuid();
 
         await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/moves", NewMove(id, graph.Evaluation.Id, 1), Ct));
 
-        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveCreated);
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated);
         Assert.Equal(id, Assert.IsType<Move>(Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveCreated).Arguments[0]).Id);
         // the admin group is shared by every test's evaluation, so look for this move only
         Assert.Single(Factory.Hub<MainHub>().ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.MoveCreated && ((Move)x.Arguments[0]).Id == id);
@@ -294,6 +296,19 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal("Changed", (await context.Moves.SingleAsync(x => x.Id == graph.Move.Id, Ct)).Description);
     }
 
+    /// <summary>A visible move renumbered past the current one is withdrawn from the teams, which can no longer read it.</summary>
+    [Fact]
+    public async Task Update_renumbering_a_move_past_the_current_one_withdraws_it_from_the_teams_move_group()
+    {
+        var graph = await Seed();
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/moves/{graph.Move.Id}", NewMove(graph.Move.Id, graph.Evaluation.Id, 2), Ct));
+
+        var teams = Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX);
+        Assert.Equal(graph.Move.Id, Assert.Single(teams, x => x.Method == MainHubMethods.MoveDeleted).Argument);
+        Assert.DoesNotContain(teams, x => x.Method == MainHubMethods.MoveUpdated);
+    }
+
     [Fact]
     public async Task Update_is_forbidden_for_a_caller_holding_only_ViewEvaluation()
     {
@@ -375,13 +390,14 @@ public class MoveControllerTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     [Fact]
-    public async Task Delete_broadcasts_the_id_to_the_evaluation_group()
+    public async Task Delete_broadcasts_the_id_to_both_move_groups()
     {
         var graph = await Seed();
 
         await AssertStatus(HttpStatusCode.NoContent, await RootClient.DeleteAsync($"api/moves/{graph.Move.Id}", Ct));
 
-        Assert.Equal(graph.Move.Id, Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveDeleted).Argument);
+        Assert.Equal(graph.Move.Id, Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveDeleted).Argument);
+        Assert.Equal(graph.Move.Id, Assert.Single(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveDeleted).Argument);
     }
 
     [Fact]

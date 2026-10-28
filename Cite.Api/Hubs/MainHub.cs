@@ -40,6 +40,8 @@ namespace Cite.Api.Hubs
         public const string OFFICIAL_SCORE_POSTFIX = "OfficialScore";
         public const string PAST_OFFICIAL_SCORE_POSTFIX = "PastOfficialScore";
         public const string ALL_MOVES_POSTFIX = "AllMoves";
+        // moves up to the current one, for the team's viewers who cannot read every move; disjoint from ALL_MOVES_POSTFIX
+        public const string CURRENT_MOVES_POSTFIX = "CurrentMoves";
 
         public MainHub(
             ITeamService teamService,
@@ -149,16 +151,19 @@ namespace Cite.Api.Hubs
             var teamGroups = new[] { teamId.ToString(), evaluationId.ToString(), evaluation.ScoringModelId.ToString() };
             var officialGroups = new[] { evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX, evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX };
             var allMovesGroup = evaluationId.ToString() + ALL_MOVES_POSTFIX;
+            var currentMovesGroup = evaluationId.ToString() + CURRENT_MOVES_POSTFIX;
             if (!checkAccess)
             {
                 idList.AddRange(teamGroups);
                 idList.AddRange(officialGroups);
                 idList.Add(allMovesGroup);
+                idList.Add(currentMovesGroup);
                 return idList;
             }
 
             // moves ahead of the current one follow the same permissions as MoveController's reads
-            if (await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], _ct))
+            var readsEveryMove = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], _ct);
+            if (readsEveryMove)
             {
                 idList.Add(allMovesGroup);
             }
@@ -169,6 +174,11 @@ namespace Cite.Api.Hubs
             if (isObserver || (isMember && await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], _ct)))
             {
                 idList.AddRange(teamGroups);
+                // a viewer who reads every move gets moves through the all-moves group alone
+                if (!readsEveryMove)
+                {
+                    idList.Add(currentMovesGroup);
+                }
             }
             else
             {

@@ -89,7 +89,8 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
 
         Assert.Equal(
-            [harness.UserId.ToString(), graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString()],
+            [harness.UserId.ToString(), graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString(),
+                graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX],
             Joined(harness));
     }
 
@@ -123,6 +124,26 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         await Hub(harness, claimsFromDatabase: true).SwitchTeam([graph.Team.Id, graph.Team.Id]);
 
         Assert.Equal([harness.UserId.ToString()], Joined(harness));
+    }
+
+    /// <summary>Moves reach a caller through one group only: the all-moves group for one who reads every move.</summary>
+    [Fact]
+    public async Task SwitchTeam_leaves_a_caller_who_reads_every_move_out_of_the_current_moves_group()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder()
+            .WithTeam(graph.Team.Id, TeamPermission.ViewTeam)
+            .WithEvaluation(graph.Evaluation.Id, EvaluationPermission.ViewEvaluation);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+        await Seed(TestData.User(harness.UserId), TestData.TeamMembership(graph.Team.Id, harness.UserId));
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        var joined = Joined(harness);
+        Assert.Equal((true, false, true), (
+            joined.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX),
+            joined.Contains(graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX),
+            joined.Contains(graph.Team.Id.ToString())));
     }
 
     [Fact]
@@ -284,6 +305,7 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
             .Select(x => (string)x.GetArguments()[1]);
         Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX, left);
         Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, left);
+        Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX, left);
         Assert.Contains(graph.Team.Id.ToString(), left);
     }
 
