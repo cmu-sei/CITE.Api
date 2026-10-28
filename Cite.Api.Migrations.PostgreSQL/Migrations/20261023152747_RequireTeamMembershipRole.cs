@@ -34,7 +34,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                 column: "role_id",
                 principalTable: "team_roles",
                 principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />

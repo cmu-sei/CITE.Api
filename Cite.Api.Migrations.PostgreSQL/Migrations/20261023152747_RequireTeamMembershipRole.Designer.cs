@@ -1732,7 +1732,7 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                     b.HasOne("Cite.Api.Data.Models.TeamRoleEntity", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")

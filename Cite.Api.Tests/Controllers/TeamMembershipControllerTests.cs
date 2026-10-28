@@ -1,6 +1,7 @@
 // Copyright 2026 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
@@ -200,6 +201,20 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         await AssertStatus(HttpStatusCode.Created, response);
         Assert.Equal(TestData.TeamRoles.Member, (await ReadAsync<TeamMembership>(response)).RoleId);
         Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    /// <summary>The foreign key refuses the delete, so removing a role cannot take every member who holds it off their team.</summary>
+    [Fact]
+    public async Task Deleting_a_team_role_held_by_a_membership_is_refused_and_keeps_the_membership()
+    {
+        var (_, membership) = await SeedWithMember();
+        var role = TestData.TeamRole(TeamPermission.ViewTeam);
+        await Seed(role);
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, role.Id), Ct));
+
+        await Assert.ThrowsAnyAsync<DbException>(() => ReadBack(db => db.TeamRoles.Where(x => x.Id == role.Id).ExecuteDeleteAsync(Ct)));
+
+        Assert.True(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct)));
     }
 
     // Same case as Update_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role.

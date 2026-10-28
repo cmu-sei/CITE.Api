@@ -40,6 +40,13 @@ namespace Cite.Api.Data.Models
 
             builder.Property(x => x.RoleId).HasDefaultValue(TeamRoleDefaults.TeamMemberRoleId);
 
+            // a role still held by a membership cannot be deleted, rather than taking every member off their team
+            builder
+                .HasOne(tu => tu.Role)
+                .WithMany()
+                .HasForeignKey(tu => tu.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             builder
                 .HasOne(tu => tu.Team)
                 .WithMany(t => t.Memberships)
