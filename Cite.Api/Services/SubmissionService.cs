@@ -209,7 +209,8 @@ namespace Cite.Api.Services
                 .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync(ct);
             var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
-            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, team.TeamType.ShowTeamTypeAverage, ct);
+            // the type average also needs the team type's ShowTeamTypeAverage, which GetTeamAndTypeAveragesAsync checks
+            var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
             if (averageSubmissions.Any())
             {
                 submissions.AddRange(averageSubmissions);

@@ -203,11 +203,12 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertApiError(HttpStatusCode.NotFound, await Client(actor).GetAsync($"api/evaluations/{other.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
     }
 
-    /// <summary>The team-type average depends only on ShowTeamTypeAverage, not on the official score contributor flag.</summary>
+    /// <summary>The team-type average depends on the scoring model's UseTypeAverageScore and the team type's ShowTeamTypeAverage, not on the official score contributor flag.</summary>
     [Fact]
     public async Task GetByEvaluationTeam_includes_the_team_type_average_for_a_team_type_that_is_not_an_official_score_contributor()
     {
         var graph = await Seed();
+        graph.ScoringModel.UseTypeAverageScore = true;
         graph.TeamType.ShowTeamTypeAverage = true;
         await Db.SaveChangesAsync(Ct);
         await SeedSubmission(graph, graph.Team.Id);
@@ -216,6 +217,22 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
 
         Assert.Contains(submissions, x => x.UserId == null && x.TeamId == null && x.GroupId == graph.TeamType.Id);
+    }
+
+    /// <summary>The average is built from other teams' scores, so a scoring model that turns it off keeps it out, as GetMineByEvaluation does.</summary>
+    [Fact]
+    public async Task GetByEvaluationTeam_leaves_out_the_team_type_average_when_the_scoring_model_does_not_use_it()
+    {
+        var graph = await Seed();
+        graph.ScoringModel.UseTypeAverageScore = false;
+        graph.TeamType.ShowTeamTypeAverage = true;
+        await Db.SaveChangesAsync(Ct);
+        await SeedSubmission(graph, graph.Team.Id);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/teams/{graph.Team.Id}/submissions", Ct));
+
+        Assert.DoesNotContain(submissions, x => x.UserId == null && x.TeamId == null && x.GroupId == graph.TeamType.Id);
     }
 
     [Fact]
