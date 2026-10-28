@@ -263,44 +263,33 @@ namespace Cite.Api.Services
             }
             if (useTypeAverage && team.TeamType != null && team.TeamType.ShowTeamTypeAverage)
             {
-                averageSubmissions.AddRange(await GetTypeAveragesAsync(evaluationId, team, ct));
+                averageSubmissions.AddRange(await GetTypeAveragesAsync(evaluationId, team, currentMoveNumber, ct));
             }
 
             return averageSubmissions;
         }
 
+        /// <summary>The average of the team type's team submissions for each move; the caller decides whether it is shown.</summary>
         private async Task<IEnumerable<ViewModels.Submission>> GetTypeAveragesAsync(
-            Guid evaluationId, TeamEntity team, CancellationToken ct)
+            Guid evaluationId, TeamEntity team, int currentMoveNumber, CancellationToken ct)
         {
-            var currentMoveNumber = (await _context.Evaluations.FindAsync(evaluationId)).CurrentMoveNumber;
             var averageSubmissions = new List<Submission>();
-            // get the submission entities
+            // calculate the average of teams in the team type
+            var teamIds = await _context.Teams.Where(t => t.TeamTypeId == team.TeamTypeId).Select(t => t.Id).ToListAsync(ct);
             var submissionEntities = await _context.Submissions.Where(sm =>
-                (sm.UserId != null && sm.TeamId == team.Id && sm.EvaluationId == evaluationId)).ToListAsync(ct);
+                (sm.UserId == null && teamIds.Contains((Guid)sm.TeamId) && sm.EvaluationId == evaluationId)).ToListAsync(ct);
             for (var move = 0; move <= currentMoveNumber; move++)
             {
                 var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
-            }
-            // the caller decides whether the team type's average is shown (ShowTeamTypeAverage)
-            if (team.TeamType != null)
-            {
-                // calculate the average of teams in the team type
-                var teamIds = await _context.Teams.Where(t => t.TeamTypeId == team.TeamTypeId).Select(t => t.Id).ToListAsync(ct);
-                submissionEntities = await _context.Submissions.Where(sm =>
-                    (sm.UserId == null && teamIds.Contains((Guid)sm.TeamId) && sm.EvaluationId == evaluationId)).ToListAsync(ct);
-                for (var move = 0; move <= currentMoveNumber; move++)
+                var teamTypeAverageSubmission = CreateAverageSubmission(moveSubmissions);
+                if (teamTypeAverageSubmission != null)
                 {
-                    var moveSubmissions = submissionEntities.Where(s => s.MoveNumber == move).ToList();
-                    var teamTypeAverageSubmission = CreateAverageSubmission(moveSubmissions);
-                    if (teamTypeAverageSubmission != null)
-                    {
-                        teamTypeAverageSubmission.Id = Guid.NewGuid();
-                        teamTypeAverageSubmission.UserId = null;
-                        teamTypeAverageSubmission.TeamId = null;
-                        teamTypeAverageSubmission.GroupId = team.TeamTypeId;
-                        teamTypeAverageSubmission.MoveNumber = move;
-                        averageSubmissions.Add(teamTypeAverageSubmission);
-                    }
+                    teamTypeAverageSubmission.Id = Guid.NewGuid();
+                    teamTypeAverageSubmission.UserId = null;
+                    teamTypeAverageSubmission.TeamId = null;
+                    teamTypeAverageSubmission.GroupId = team.TeamTypeId;
+                    teamTypeAverageSubmission.MoveNumber = move;
+                    averageSubmissions.Add(teamTypeAverageSubmission);
                 }
             }
 

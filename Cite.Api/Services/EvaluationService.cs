@@ -163,6 +163,8 @@ namespace Cite.Api.Services
         {
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
+            if (!await _context.ScoringModels.AnyAsync(m => m.Id == evaluation.ScoringModelId, ct))
+                throw new EntityNotFoundException<ScoringModel>("ScoringModel not found with ID=" + evaluation.ScoringModelId.ToString());
             await AuthorizeScoringModelCopyAsync(evaluation.ScoringModelId, ct);
 
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
@@ -420,10 +422,9 @@ namespace Cite.Api.Services
         }
 
         /// <summary>An evaluation copies its scoring model, so the caller must be able to view an existing one.</summary>
+        /// <summary>Refuses to copy an existing scoring model the caller cannot view; the callers check that it exists.</summary>
         private async Task AuthorizeScoringModelCopyAsync(Guid scoringModelId, CancellationToken ct)
         {
-            if (!await _context.ScoringModels.AnyAsync(m => m.Id == scoringModelId, ct))
-                throw new EntityNotFoundException<ScoringModel>("ScoringModel not found with ID=" + scoringModelId.ToString());
             if (!await _authorizationService.AuthorizeAsync<ScoringModel>(scoringModelId, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct))
                 throw new ForbiddenException("The scoring model cannot be viewed by the caller.");
         }
