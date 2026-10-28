@@ -53,6 +53,22 @@ public class ParentIdUpdateTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Null(await ReadBack(db => db.ScoringModels.Where(x => x.Id == model.Id).Select(x => x.EvaluationId).SingleAsync(Ct)));
     }
 
+    /// <summary>
+    /// The back-reference is what marks a model as an evaluation's own copy rather than a template, for authorization
+    /// and for the scoring category reads, so a body cannot clear it.
+    /// </summary>
+    [Fact]
+    public async Task Update_keeps_the_evaluation_of_an_evaluations_scoring_model_when_the_body_clears_it()
+    {
+        var graph = await Graph("Source");
+        var actor = await Actor().OnScoringModel(graph.ScoringModel.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringModels/{graph.ScoringModel.Id}", new { id = graph.ScoringModel.Id, description = graph.ScoringModel.Description, status = "Active", evaluationId = (Guid?)null }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(graph.Evaluation.Id, await ReadBack(db => db.ScoringModels.Where(x => x.Id == graph.ScoringModel.Id).Select(x => x.EvaluationId).SingleAsync(Ct)));
+    }
+
     [Fact]
     public async Task Update_keeps_a_scoring_options_category_named_in_the_body()
     {
