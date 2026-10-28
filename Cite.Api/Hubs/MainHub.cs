@@ -168,31 +168,16 @@ namespace Cite.Api.Hubs
             }
 
             // official scores follow the same permissions as SubmissionService.HasSpecificPermission
-            var callerTeamIds = await context.TeamMemberships
-                .Where(m => m.UserId == userId && m.Team.EvaluationId == evaluationId)
-                .Select(m => m.TeamId)
-                .ToListAsync();
-            if (isObserver || await AnyTeamHasAsync(callerTeamIds, SubmissionService.OfficialScorePermissions(0, 1, SpecificPermission.View)))
+            if (isObserver || await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, SubmissionService.OfficialScorePermissions(0, 1, SpecificPermission.View), _ct))
             {
                 idList.Add(evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX);
             }
-            if (isObserver || await AnyTeamHasAsync(callerTeamIds, SubmissionService.OfficialScorePermissions(0, 0, SpecificPermission.View)))
+            if (isObserver || await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, SubmissionService.OfficialScorePermissions(0, 0, SpecificPermission.View), _ct))
             {
                 idList.Add(evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
             }
 
             return idList;
-        }
-
-        private async Task<bool> AnyTeamHasAsync(IEnumerable<Guid> teamIds, TeamPermission[] permissions)
-        {
-            foreach (var teamId in teamIds)
-            {
-                if (await _authorizationService.AuthorizeAsync<Team>(teamId, [], permissions, _ct))
-                    return true;
-            }
-
-            return false;
         }
 
         private async Task<List<string>> GetAdminIdList()

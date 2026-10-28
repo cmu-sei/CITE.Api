@@ -160,7 +160,7 @@ namespace Cite.Api.Services
             var scoringModel = (await _context.Evaluations.Include(e => e.ScoringModel).SingleOrDefaultAsync(e => e.Id == evaluationId, ct)).ScoringModel;
             // the same rules HasSpecificPermission applies to a single submission
             var canViewTeam = await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], ct);
-            var official = await GetOfficialScoreAccessAsync(evaluationId, userId, ct);
+            var official = await GetOfficialScoreAccessAsync(evaluationId, ct);
             var useUserScore = scoringModel.UseUserScore;
             var useTeamScore = scoringModel.UseTeamScore && canViewTeam;
             var viewPastOfficial = scoringModel.UseOfficialScore && official.ViewPast;
@@ -197,7 +197,7 @@ namespace Cite.Api.Services
             var currentMoveNumber = (await _context.Evaluations.FindAsync([evaluationId], ct)).CurrentMoveNumber;
             var scoringModel = await _context.ScoringModels.Where(m => m.EvaluationId == evaluationId).AsNoTracking().FirstOrDefaultAsync(ct);
             // an observer sees the whole team; a team member sees what HasSpecificPermission lets them see
-            var official = asObserver ? (ViewPast: true, ViewCurrent: true) : await GetOfficialScoreAccessAsync(evaluationId, userId, ct);
+            var official = asObserver ? (ViewPast: true, ViewCurrent: true) : await GetOfficialScoreAccessAsync(evaluationId, ct);
             var viewPastOfficial = scoringModel.UseOfficialScore && official.ViewPast;
             var viewCurrentOfficial = scoringModel.UseOfficialScore && official.ViewCurrent;
             var submissionEntities = await _context.Submissions.Where(sm => sm.EvaluationId == evaluationId && (
@@ -220,19 +220,10 @@ namespace Cite.Api.Services
         }
 
         /// <summary>Whether any of the user's teams in the evaluation can read the past and the current official score.</summary>
-        private async Task<(bool ViewPast, bool ViewCurrent)> GetOfficialScoreAccessAsync(Guid evaluationId, Guid userId, CancellationToken ct)
+        private async Task<(bool ViewPast, bool ViewCurrent)> GetOfficialScoreAccessAsync(Guid evaluationId, CancellationToken ct)
         {
-            var teamIds = await _context.TeamMemberships
-                .Where(m => m.UserId == userId && m.Team.EvaluationId == evaluationId)
-                .Select(m => m.TeamId)
-                .ToListAsync(ct);
-            var viewPast = false;
-            var viewCurrent = false;
-            foreach (var teamId in teamIds)
-            {
-                viewPast = viewPast || await _authorizationService.AuthorizeAsync<Team>(teamId, [], OfficialScorePermissions(0, 1, SpecificPermission.View), ct);
-                viewCurrent = viewCurrent || await _authorizationService.AuthorizeAsync<Team>(teamId, [], OfficialScorePermissions(0, 0, SpecificPermission.View), ct);
-            }
+            var viewPast = await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, OfficialScorePermissions(0, 1, SpecificPermission.View), ct);
+            var viewCurrent = await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, OfficialScorePermissions(0, 0, SpecificPermission.View), ct);
 
             return (viewPast, viewCurrent);
         }
@@ -778,17 +769,7 @@ namespace Cite.Api.Services
             if (permissions.Length == 0)
                 return false;
 
-            var teamIds = await _context.TeamMemberships
-                .Where(m => m.UserId == userId && m.Team.EvaluationId == submission.EvaluationId)
-                .Select(m => m.TeamId)
-                .ToListAsync(ct);
-            foreach (var teamId in teamIds)
-            {
-                if (await _authorizationService.AuthorizeAsync<Team>(teamId, [], permissions, ct))
-                    return true;
-            }
-
-            return false;
+            return await _authorizationService.AuthorizeAnyTeamAsync(submission.EvaluationId.Value, permissions, ct);
         }
 
         /// <summary>

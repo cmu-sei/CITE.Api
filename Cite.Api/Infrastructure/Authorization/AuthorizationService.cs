@@ -39,6 +39,12 @@ public interface ICiteAuthorizationService
         TeamPermission[] requiredTeamPermissions,
         CancellationToken cancellationToken) where T : IAuthorizationType;
 
+    /// <summary>Whether any of the caller's teams in the evaluation holds one of the team permissions, as the evaluation's official score is read.</summary>
+    Task<bool> AuthorizeAnyTeamAsync(
+        Guid evaluationId,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken);
+
     IEnumerable<Guid> GetAuthorizedEvaluationIds();
     IEnumerable<SystemPermission> GetSystemPermissions();
     IEnumerable<EvaluationPermissionClaim> GetEvaluationPermissions(Guid? evaluationId = null);
@@ -134,6 +140,22 @@ public class AuthorizationService(
         }
 
         return succeeded;
+    }
+
+    public async Task<bool> AuthorizeAnyTeamAsync(
+        Guid evaluationId,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken)
+    {
+        // the caller's team claims name its teams; only those in the evaluation count
+        var teamIds = GetTeamPermissions()
+            .Where(x => x.Permissions.Any(requiredTeamPermissions.Contains))
+            .Select(x => x.TeamId)
+            .ToList();
+        if (teamIds.Count == 0)
+            return false;
+
+        return await dbContext.Teams.AnyAsync(x => x.EvaluationId == evaluationId && teamIds.Contains(x.Id), cancellationToken);
     }
 
     public IEnumerable<Guid> GetAuthorizedEvaluationIds()
