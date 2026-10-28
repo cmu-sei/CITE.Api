@@ -122,7 +122,7 @@ public class ParentIdUpdateTests(DatabaseFixture fixture, CiteAppFactory factory
         var submission = await TestScenario.SeedSubmissionAsync(Db, Ct, source, source.Team.Id);
         var actor = await Actor().OnEvaluation(source.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
 
-        var response = await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}", new { id = submission.Option.Id, submissionCategoryId = submission.Category.Id, scoringOptionId = destination.Option.Id }, Ct);
+        var response = await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}", new { id = submission.Option.Id, isSelected = false, submissionCategoryId = submission.Category.Id, scoringOptionId = destination.Option.Id }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         Assert.Equal(submission.Option.ScoringOptionId, await ReadBack(db => db.SubmissionOptions.Where(x => x.Id == submission.Option.Id).Select(x => x.ScoringOptionId).SingleAsync(Ct)));

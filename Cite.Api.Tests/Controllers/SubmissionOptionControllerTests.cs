@@ -352,7 +352,7 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         var actor = await Actor().OnEvaluation(managed.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
 
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{theirs.Option.Id}",
-            new { id = theirs.Option.Id, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct));
+            new { id = theirs.Option.Id, isSelected = true, submissionCategoryId = mine.Category.Id, scoringOptionId = other.Option.Id }, Ct));
 
         await using var context = NewContext();
         Assert.Equal(theirs.Category.Id, (await context.SubmissionOptions.SingleAsync(x => x.Id == theirs.Option.Id, Ct)).SubmissionCategoryId);
@@ -372,6 +372,56 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         await using var context = NewContext();
         var stored = await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct);
         Assert.Equal((true, submission.Category.Id), (stored.IsSelected, stored.SubmissionCategoryId));
+    }
+
+    /// <summary>A body without isSelected is refused rather than read as a deselection that clears the category.</summary>
+    [Fact]
+    public async Task Update_without_isSelected_is_a_bad_request_and_leaves_the_category_selected()
+    {
+        var (graph, submission) = await Seed();
+        submission.Option.IsSelected = true;
+        await Db.SaveChangesAsync(Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.BadRequest, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{submission.Option.Id}", new { }, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
+    }
+
+    /// <summary>Deselecting an option that is not selected changes nothing, so the category keeps its answer.</summary>
+    [Fact]
+    public async Task Update_deselecting_an_unselected_option_leaves_the_categorys_selection_alone()
+    {
+        var (graph, submission) = await Seed();
+        submission.Option.IsSelected = true;
+        await Db.SaveChangesAsync(Ct);
+        var other = await AddOption(graph, submission, isModifier: false, isSelected: false);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ManageEvaluations).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/submissionOptions/{other.Id}", new { isSelected = false }, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected);
+    }
+
+    /// <summary>Deselecting a modifier clears only the modifier, not the category's answer it modifies.</summary>
+    [Fact]
+    public async Task SetOptionFalse_on_a_modifier_keeps_the_categorys_answer()
+    {
+        var (graph, submission) = await Seed();
+        submission.Option.IsSelected = true;
+        await Db.SaveChangesAsync(Ct);
+        var modifier = await AddOption(graph, submission, isModifier: true, isSelected: true);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/submissionOptions/{modifier.Id}/deselect", null, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(
+            (true, false),
+            ((await context.SubmissionOptions.SingleAsync(x => x.Id == submission.Option.Id, Ct)).IsSelected,
+                (await context.SubmissionOptions.SingleAsync(x => x.Id == modifier.Id, Ct)).IsSelected));
     }
 
     [Fact]
@@ -454,6 +504,17 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
 
         return (graph, await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id));
+    }
+
+    /// <summary>A second option in the seeded category, which allows a single selection.</summary>
+    private async Task<Cite.Api.Data.Models.SubmissionOptionEntity> AddOption(EvaluationGraph graph, SubmissionGraph submission, bool isModifier, bool isSelected)
+    {
+        var scoringOption = TestData.ScoringOption(graph.Category.Id, isModifier ? "Modifier" : "Other Option", displayOrder: 2);
+        scoringOption.IsModifier = isModifier;
+        var option = TestData.SubmissionOption(submission.Category.Id, scoringOption.Id, isSelected);
+        await Seed(scoringOption, option);
+
+        return option;
     }
 
     private async Task<(EvaluationGraph Graph, SubmissionGraph Submission)> SeedOfficial()

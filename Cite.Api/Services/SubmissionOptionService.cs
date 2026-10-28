@@ -87,11 +87,19 @@ namespace Cite.Api.Services
 
         public async Task<SubmissionOption> UpdateAsync(Guid id, UpdateSubmissionOptionRequest submissionOption, CancellationToken ct)
         {
-            if (!await _context.SubmissionOptions.AnyAsync(v => v.Id == id, ct))
+            var isSelected = await _context.SubmissionOptions
+                .Where(v => v.Id == id)
+                .Select(v => (bool?)v.IsSelected)
+                .SingleOrDefaultAsync(ct);
+            if (isSelected == null)
                 throw new EntityNotFoundException<SubmissionOption>();
 
-            // a selection, so the category's exclusivity and the submission's score are applied as for select and deselect
-            await _submissionService.SetOptionAsync(id, submissionOption.IsSelected, ct);
+            // a selection, so the category's exclusivity and the submission's score are applied as for select and deselect;
+            // a request that changes nothing leaves the category and the score alone
+            if (isSelected != submissionOption.IsSelected)
+            {
+                await _submissionService.SetOptionAsync(id, submissionOption.IsSelected.Value, ct);
+            }
 
             return await GetAsync(id, ct);
         }

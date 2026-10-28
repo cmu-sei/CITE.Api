@@ -437,7 +437,8 @@ namespace Cite.Api.Services
                     submissionOption.ModifiedBy = modifiedBy;
                 }
             }
-            else
+            // deselecting a modifier leaves the category's other selections alone
+            else if (!submissionOptionToUpdate.ScoringOption.IsModifier)
             {
                 // Only one option can be selected if selectMultiple is not true
                 var scoringOptionSelection = (await _context.SubmissionCategories
