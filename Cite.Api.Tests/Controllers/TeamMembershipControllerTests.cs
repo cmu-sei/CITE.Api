@@ -203,6 +203,21 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
     }
 
+    /// <summary>Clients built when the role was optional send null; that is read as no role, not refused.</summary>
+    [Fact]
+    public async Task CreateMembership_with_a_null_role_gives_the_user_the_Member_role()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id, roleId = (Guid?)null }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
     /// <summary>The foreign key refuses the delete, so removing a role cannot take every member who holds it off their team.</summary>
     [Fact]
     public async Task Deleting_a_team_role_held_by_a_membership_is_refused_and_keeps_the_membership()
@@ -359,6 +374,20 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
 
         var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
             new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task Update_with_a_null_role_gives_the_member_the_Member_role()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.Owner), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = (Guid?)null }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
