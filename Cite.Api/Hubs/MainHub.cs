@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,8 @@ namespace Cite.Api.Hubs
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly CancellationToken _ct;
         private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IUserClaimsService _userClaimsService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public const string ADMIN_DATA_GROUP = "AdminDataGroup";
         public const string EVALUATION_GROUP = "AdminEvaluationGroup";
         public const string SCORING_MODEL_GROUP = "AdminScoringModelGroup";
@@ -43,7 +46,9 @@ namespace Cite.Api.Hubs
             IEvaluationService evaluationService,
             IScoringModelService scoringModelService,
             IServiceScopeFactory scopeFactory,
-            ICiteAuthorizationService authorizationService
+            ICiteAuthorizationService authorizationService,
+            IUserClaimsService userClaimsService,
+            IHttpContextAccessor httpContextAccessor
         )
         {
             _teamService = teamService;
@@ -53,6 +58,8 @@ namespace Cite.Api.Hubs
             CancellationTokenSource source = new CancellationTokenSource();
             _ct = source.Token;
             _authorizationService = authorizationService;
+            _userClaimsService = userClaimsService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task Join()
@@ -85,7 +92,8 @@ namespace Cite.Api.Hubs
                 {
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, id);
                 }
-                // join the new team's groups the caller is allowed to read
+                // join the new team's groups the caller is allowed to read, by its permissions as they are now
+                await RefreshClaimsAsync();
                 idList = await GetTeamIdList(newTeamId, checkAccess: true);
                 foreach (var id in idList)
                 {
@@ -178,6 +186,20 @@ namespace Cite.Api.Hubs
             }
 
             return idList;
+        }
+
+        /// <summary>
+        /// A connection keeps the claims it opened with, so a member added to a team or given another role since then
+        /// would not reach the team's groups. Rebuilds the caller's permission claims from the database for the checks
+        /// that follow, on the HttpContext the authorization service reads.
+        /// </summary>
+        private async Task RefreshClaimsAsync()
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext?.User != null)
+            {
+                httpContext.User = await _userClaimsService.RefreshClaims(httpContext.User);
+            }
         }
 
         private async Task<List<string>> GetAdminIdList()

@@ -4,12 +4,15 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Cite.Api.Data;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Identity;
+using Cite.Api.Infrastructure.Options;
+using Cite.Api.Services;
 using Cite.Api.Tests.Support;
 
 namespace Cite.Api.Tests.Hubs;
@@ -17,7 +20,8 @@ namespace Cite.Api.Tests.Hubs;
 /// <summary>
 /// <see cref="MainHub"/>: which groups a connection joins. The hub reads the database through a scope of
 /// its own and asks the real <see cref="AuthorizationService"/>, so both are wired over this test's
-/// database; the caller is a principal shaped like the claims transformer's output.
+/// database; the caller is a principal shaped like the claims transformer's output. The claims the hub
+/// rebuilds before joining are the principal's own, unless a test passes the real <see cref="UserClaimsService"/>.
 /// </summary>
 public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
 {
@@ -87,6 +91,38 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         Assert.Equal(
             [harness.UserId.ToString(), graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString()],
             Joined(harness));
+    }
+
+    /// <summary>
+    /// The connection opened before the user was put on the team, so its claims name no team; the hub reads the
+    /// membership and its role from the database as they are now.
+    /// </summary>
+    [Fact]
+    public async Task SwitchTeam_joins_the_team_for_a_member_added_after_the_connection_opened()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder();
+        var harness = new HubHarness(principal.UserId, principal.Build());
+        var role = TestData.TeamRole(TeamPermission.ViewTeam);
+        await Seed(TestData.User(harness.UserId), role, TestData.TeamMembership(graph.Team.Id, harness.UserId, role.Id));
+
+        await Hub(harness, claimsFromDatabase: true).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.Contains(graph.Team.Id.ToString(), Joined(harness));
+    }
+
+    /// <summary>A permission removed since the connection opened no longer joins the team's groups.</summary>
+    [Fact]
+    public async Task SwitchTeam_leaves_out_a_team_whose_membership_was_removed_after_the_connection_opened()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = new ClaimsPrincipalBuilder().WithTeam(graph.Team.Id, TeamPermission.ViewTeam);
+        var harness = new HubHarness(principal.UserId, principal.Build());
+        await Seed(TestData.User(harness.UserId));
+
+        await Hub(harness, claimsFromDatabase: true).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        Assert.Equal([harness.UserId.ToString()], Joined(harness));
     }
 
     [Fact]
@@ -271,7 +307,11 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         return harness;
     }
 
-    private MainHub Hub(HubHarness harness)
+    /// <param name="claimsFromDatabase">
+    /// Rebuild the caller's permission claims with the real <see cref="UserClaimsService"/>, as a connection does;
+    /// otherwise they stay the principal's own.
+    /// </param>
+    private MainHub Hub(HubHarness harness, bool claimsFromDatabase = false)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -280,6 +320,18 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         services.AddSingleton<IHttpContextAccessor>(new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = harness.User } });
         services.AddScoped<IIdentityResolver, IdentityResolver>();
         services.AddScoped<ICiteAuthorizationService, AuthorizationService>();
+        services.AddSingleton<IMemoryCache>(new MemoryCache(new MemoryCacheOptions()));
+        services.AddSingleton(new ClaimsTransformationOptions());
+        if (claimsFromDatabase)
+        {
+            services.AddScoped<IUserClaimsService, UserClaimsService>();
+        }
+        else
+        {
+            var claims = Substitute.For<IUserClaimsService>();
+            claims.RefreshClaims(Arg.Any<ClaimsPrincipal>()).Returns(call => call.Arg<ClaimsPrincipal>());
+            services.AddSingleton(claims);
+        }
         var provider = services.BuildServiceProvider();
         _providers.Add(provider);
 
@@ -288,7 +340,9 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
             null,
             null,
             provider.GetRequiredService<IServiceScopeFactory>(),
-            provider.GetRequiredService<ICiteAuthorizationService>()));
+            provider.GetRequiredService<ICiteAuthorizationService>(),
+            provider.GetRequiredService<IUserClaimsService>(),
+            provider.GetRequiredService<IHttpContextAccessor>()));
     }
 
     /// <summary>The groups the connection was added to, in order.</summary>

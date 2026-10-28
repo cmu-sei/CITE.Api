@@ -32,6 +32,20 @@ public class MainHubConnectionTests(DatabaseFixture fixture, CiteAppFactory fact
         Assert.Equal(HubConnectionState.Connected, connection.State);
     }
 
+    /// <summary>SwitchTeam rebuilds the connection's claims before choosing its groups, on the connection's own request.</summary>
+    [Fact]
+    public async Task A_member_switches_to_their_team()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+        await using var connection = Connection(actor);
+
+        await connection.StartAsync(Ct);
+        await connection.InvokeAsync("SwitchTeam", new[] { graph.Team.Id, graph.Team.Id }, Ct);
+
+        Assert.Equal(HubConnectionState.Connected, connection.State);
+    }
+
     /// <summary>A request with no identity is answered with a 401; the anonymous client is the case under test.</summary>
     [Fact]
     public async Task Negotiate_without_an_identity_is_unauthorized()
