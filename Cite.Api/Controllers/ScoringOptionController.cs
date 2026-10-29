@@ -112,7 +112,8 @@ namespace Cite.Api.Controllers
         [SwaggerOperation(OperationId = "createScoringOption")]
         public async Task<IActionResult> Create([FromBody] ScoringOption scoringOption, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ScoringOption>(scoringOption.Id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+            // the new option joins the category in the body, so that category's scoring model is the one to edit
+            if (!await _authorizationService.AuthorizeAsync<ScoringCategory>(scoringOption.ScoringCategoryId, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
                 throw new ForbiddenException();
 
             scoringOption.CreatedBy = User.GetId();
@@ -135,12 +136,11 @@ namespace Cite.Api.Controllers
         [HttpPut("scoringOptions/{id}")]
         [ProducesResponseType(typeof(ScoringOption), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateScoringOption")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ScoringOption scoringOption, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateScoringOptionRequest scoringOption, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ScoringOption>(scoringOption.Id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+            if (!await _authorizationService.AuthorizeAsync<ScoringOption>(id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
                 throw new ForbiddenException();
 
-            scoringOption.ModifiedBy = User.GetId();
             var updatedScoringOption = await _scoringOptionService.UpdateAsync(id, scoringOption, ct);
             return Ok(updatedScoringOption);
         }

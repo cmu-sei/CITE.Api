@@ -6,7 +6,7 @@ using Cite.Api.Data;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScoringModelMembership
+    public class ScoringModelMembership : IAuthorizationType
     {
         public Guid Id { get; set; }
 

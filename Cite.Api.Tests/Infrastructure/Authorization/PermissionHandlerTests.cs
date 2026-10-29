@@ -79,17 +79,46 @@ public class PermissionHandlerTests
         Assert.True(context.HasFailed);
     }
 
-    /// <summary>An empty list of required permissions is met by any membership on the evaluation, even one granting nothing.</summary>
-    [Fact]
-    public async Task EvaluationPermissionHandler_succeeds_on_an_empty_requirement_for_any_member()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EvaluationPermissionHandler_never_succeeds_on_an_empty_or_omitted_requirement(bool omitted)
     {
         var evaluationId = Guid.NewGuid();
-        var user = new ClaimsPrincipalBuilder().WithEvaluation(evaluationId).Build();
+        var user = new ClaimsPrincipalBuilder().WithEvaluation(evaluationId, Enum.GetValues<EvaluationPermission>()).Build();
 
         var context = await AuthorizationHarness.HandleAsync(new EvaluationPermissionHandler(),
-            new EvaluationPermissionRequirement([], evaluationId), user);
+            new EvaluationPermissionRequirement(omitted ? null : [], evaluationId), user);
 
-        Assert.True(context.HasSucceeded);
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScoringModelPermissionHandler_never_succeeds_on_an_empty_or_omitted_requirement(bool omitted)
+    {
+        var scoringModelId = Guid.NewGuid();
+        var user = new ClaimsPrincipalBuilder().WithScoringModel(scoringModelId, Enum.GetValues<ScoringModelPermission>()).Build();
+
+        var context = await AuthorizationHarness.HandleAsync(new ScoringModelPermissionHandler(),
+            new ScoringModelPermissionRequirement(omitted ? null : [], scoringModelId), user);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TeamPermissionHandler_never_succeeds_on_an_empty_or_omitted_requirement(bool omitted)
+    {
+        var teamId = Guid.NewGuid();
+        var user = new ClaimsPrincipalBuilder().WithTeam(teamId, Enum.GetValues<TeamPermission>()).Build();
+
+        var context = await AuthorizationHarness.HandleAsync(new TeamPermissionHandler(),
+            new TeamPermissionRequirement(omitted ? null : [], teamId), user);
+
+        Assert.False(context.HasSucceeded);
     }
 
     [Fact]

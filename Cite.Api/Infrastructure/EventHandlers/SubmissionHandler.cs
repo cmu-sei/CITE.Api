@@ -58,17 +58,16 @@ namespace Cite.Api.Infrastructure.EventHandlers
             {
                 signalrGroupIds.Add(submissionEntity.TeamId.ToString());
             }
-            // if this is an evaluation's submission and the move number is not the current one, add the evaluation ID to the signalr notify list
+            // the official submission goes to the readers of that move's official score; a future move's to no team
             else if (submissionEntity.EvaluationId != null)
             {
-                var currentMoveNumber = (await _db.Evaluations.FindAsync(submissionEntity.EvaluationId)).CurrentMoveNumber;
+                var currentMoveNumber = (await _db.Evaluations.FindAsync([submissionEntity.EvaluationId], cancellationToken)).CurrentMoveNumber;
                 if (submissionEntity.MoveNumber < currentMoveNumber)
                 {
-                    signalrGroupIds.Add(submissionEntity.EvaluationId.ToString());
+                    signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + MainHub.PAST_OFFICIAL_SCORE_POSTFIX);
                 }
-                else
+                else if (submissionEntity.MoveNumber == currentMoveNumber)
                 {
-                    // send to evaluation official score contributors
                     signalrGroupIds.Add(submissionEntity.EvaluationId.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX);
                 }
             }
@@ -96,45 +95,19 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
             foreach (var signalrGroupId in signalrGroupIds)
             {
-                tasks.Add(_mainHub.Clients.Group(signalrGroupId.ToString()).SendAsync(method, submission, modifiedProperties, cancellationToken));
+                tasks.Add(_mainHub.Clients.Group(signalrGroupId).SendAsync(method, submission, modifiedProperties, cancellationToken));
             }
-            var averageTasks = await GetAverageSubmissionTasks(submissionEntity, method, modifiedProperties, cancellationToken);
-            tasks.AddRange(averageTasks);
-
-            await Task.WhenAll(tasks);
-        }
-
-        private async Task<IEnumerable<Task>> GetAverageSubmissionTasks(
-            SubmissionEntity submission,
-            string method,
-            string[] modifiedProperties,
-            CancellationToken cancellationToken)
-        {
-            var tasks = new List<Task>();
-            // create the task to send the team average
-            if (submission.UserId != null)
+            // a user's submission also updates the team average the team sees
+            if (submissionEntity.UserId != null && submissionEntity.TeamId != null)
             {
-                var averageSubmission = await _submissionService.GetTeamAverageAsync(submission, cancellationToken);
+                var averageSubmission = await _submissionService.GetTeamAverageAsync(submissionEntity, cancellationToken);
                 if (averageSubmission != null)
                 {
-                    tasks.Add(_mainHub.Clients.Group(submission.TeamId.ToString()).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
-                }
-            }
-            else if (submission.TeamId != null)
-            {
-                var teamType = await _db.Teams.Select(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == submission.TeamId);
-                if (teamType != null && teamType.ShowTeamTypeAverage)
-                {
-                    // create the task to send the teamType average
-                    var averageSubmission = await _submissionService.GetTypeAverageAsync(_mapper.Map<ViewModels.Submission>(submission), cancellationToken);
-                    if (averageSubmission != null)
-                    {
-                        tasks.Add(_mainHub.Clients.Group(averageSubmission.EvaluationId.ToString() + teamType.Id).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
-                    }
+                    tasks.Add(_mainHub.Clients.Group(submissionEntity.TeamId.ToString()).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
                 }
             }
 
-            return tasks;
+            await Task.WhenAll(tasks);
         }
     }
 
@@ -194,7 +167,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
             foreach (var signalrGroupId in signalrGroupIds)
             {
-                tasks.Add(_mainHub.Clients.Group(signalrGroupId.ToString()).SendAsync(MainHubMethods.SubmissionDeleted, notification.Entity.Id, cancellationToken));
+                tasks.Add(_mainHub.Clients.Group(signalrGroupId).SendAsync(MainHubMethods.SubmissionDeleted, notification.Entity.Id, cancellationToken));
             }
 
             await Task.WhenAll(tasks);

@@ -201,7 +201,7 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         var template = TestData.ScoringModel("Template");
         var category = TestData.ScoringCategory(template.Id);
         await Seed(template, category, TestData.ScoringOption(category.Id));
-        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ViewScoringModels).SeedAsync();
         var id = Guid.NewGuid();
 
         var response = await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct);
@@ -215,6 +215,58 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(0, Assert.Single(stored.Moves).MoveNumber);
         var owner = await context.EvaluationMemberships.SingleAsync(x => x.EvaluationId == id, Ct);
         Assert.Equal((actor.Id, TestData.EvaluationRoles.Owner), (owner.UserId.Value, owner.RoleId));
+    }
+
+    [Fact]
+    public async Task Create_copies_a_template_for_a_caller_holding_CreateEvaluations_and_ViewScoringModel_on_it()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).OnScoringModel(template.Id, permissions: [ScoringModelPermission.ViewScoringModel]).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+    }
+
+    /// <summary>The caller could otherwise copy any scoring model, and read its calculations from the copy.</summary>
+    [Fact]
+    public async Task Create_is_forbidden_on_a_template_the_caller_cannot_view_and_stores_nothing()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).OnNewScoringModel(ScoringModelPermission.ViewScoringModel).SeedAsync();
+        var id = Guid.NewGuid();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == id, Ct));
+        Assert.Equal(2, await context.ScoringModels.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Create_is_forbidden_on_another_evaluations_scoring_model_for_a_caller_holding_only_CreateEvaluations()
+    {
+        var graph = await Seed("Victim");
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsJsonAsync("api/evaluations", NewEvaluation(Guid.NewGuid(), graph.ScoringModel.Id), Ct));
+    }
+
+    [Fact]
+    public async Task Create_gives_the_evaluations_scoring_model_the_templates_severity_levels()
+    {
+        var template = TestData.ScoringModel("Template");
+        template.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF", Description = "Quiet" }];
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == id, Ct);
+        var level = Assert.Single(stored.ScoringModel.SeverityLevels);
+        Assert.Equal(("Calm", "#FFFFFF", "Quiet"), (level.Name, level.Color, level.Description));
     }
 
     [Fact]
@@ -268,6 +320,25 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.NotEqual(graph.Team.Id, Assert.Single(stored.Teams).Id);
         Assert.Single(stored.Moves);
         Assert.Equal(copy.Id, stored.ScoringModel.EvaluationId);
+    }
+
+    [Fact]
+    public async Task Copy_gives_the_copied_scoring_model_the_severity_levels()
+    {
+        var graph = await Seed("Source");
+        await using (var context = NewContext())
+        {
+            var model = await context.ScoringModels.SingleAsync(x => x.Id == graph.ScoringModel.Id, Ct);
+            model.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF" }, new() { Name = "Storm", MinimumScore = 60, Color = "#000000" }];
+            await context.SaveChangesAsync(Ct);
+        }
+
+        var copy = await ReadAsync<Evaluation>(await RootClient.PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        await using var check = NewContext();
+        var stored = await check.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.NotEqual(graph.ScoringModel.Id, stored.ScoringModel.Id);
+        Assert.Equal([("Calm", 0.0), ("Storm", 60.0)], stored.ScoringModel.SeverityLevels.Select(x => (x.Name, x.MinimumScore)));
     }
 
     [Fact]
@@ -327,6 +398,21 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal("After", (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).Description);
+    }
+
+    /// <summary>The body points the evaluation at another evaluation's live scoring model; the stored model is kept.</summary>
+    [Fact]
+    public async Task Update_keeps_the_scoring_model_whatever_the_body_sends()
+    {
+        var graph = await Seed("Mine");
+        var other = await Seed("Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", Body(graph.Evaluation, "After") with { ScoringModelId = other.ScoringModel.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(graph.ScoringModel.Id, (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).ScoringModelId);
     }
 
     [Fact]
@@ -488,6 +574,38 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await using var context = NewContext();
         var stored = await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct);
         Assert.Equal((1, "Move One Situation"), (stored.CurrentMoveNumber, stored.SituationDescription));
+    }
+
+    /// <summary>Teams see moves up to the current one, so a move that becomes current is sent to the teams' move group, and only there.</summary>
+    [Fact]
+    public async Task SetCurrentMove_sends_the_move_that_becomes_current_to_the_teams_move_group()
+    {
+        var graph = await Seed();
+        var move = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(move);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/1", null, Ct));
+
+        Assert.Contains(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id), x => x.Method == MainHubMethods.MoveUpdated);
+        Assert.DoesNotContain(Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.ALL_MOVES_POSTFIX), x => x.Method == MainHubMethods.MoveUpdated);
+    }
+
+    /// <summary>Setting the current move back withdraws the moves after it from the teams, which can no longer read them.</summary>
+    [Fact]
+    public async Task SetCurrentMove_back_withdraws_the_later_moves_from_the_teams_move_group()
+    {
+        var graph = await Seed();
+        var move = TestData.Move(graph.Evaluation.Id, 1);
+        await Seed(move);
+        graph.Evaluation.CurrentMoveNumber = 1;
+        await Db.SaveChangesAsync(Ct);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/evaluations/{graph.Evaluation.Id}/move/0", null, Ct));
+
+        var teams = Factory.Hub<MainHub>().ToGroup(graph.Evaluation.Id + MainHub.CURRENT_MOVES_POSTFIX);
+        Assert.Contains(teams, x => x.Method == MainHubMethods.MoveDeleted && (Guid)x.Arguments[0] == move.Id);
+        Assert.DoesNotContain(teams, x => x.Method == MainHubMethods.MoveUpdated && ((Move)x.Arguments[0]).Id == move.Id);
     }
 
     [Fact]
@@ -659,11 +777,11 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
-    public async Task UploadJson_imports_a_downloaded_evaluation_as_a_new_one_for_a_caller_holding_CreateEvaluations()
+    public async Task UploadJson_imports_a_downloaded_evaluation_as_a_new_one_for_a_caller_holding_CreateEvaluations_and_ViewScoringModels()
     {
         var graph = await Seed("Round Trip");
         var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
-        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateEvaluations, SystemPermission.ViewScoringModels).SeedAsync();
 
         var imported = await ReadAsync<Evaluation>(await Client(actor).PostAsync("api/evaluations/json", Upload(exported), Ct));
 
@@ -671,6 +789,46 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal("Round Trip - Importer", imported.Description);
         await using var context = NewContext();
         Assert.Equal(1, await context.Teams.CountAsync(x => x.EvaluationId == imported.Id, Ct));
+    }
+
+    /// <summary>The file names a scoring model that exists, which the caller cannot view: no row is created.</summary>
+    [Fact]
+    public async Task UploadJson_is_forbidden_on_an_existing_scoring_model_for_a_caller_holding_only_CreateEvaluations()
+    {
+        var graph = await Seed("Round Trip");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateEvaluations).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PostAsync("api/evaluations/json", Upload(exported), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal((1, 1), (await context.Evaluations.CountAsync(Ct), await context.ScoringModels.CountAsync(Ct)));
+    }
+
+    /// <summary>
+    /// When the file's scoring model isn't in the database, upload creates it from the file, so its
+    /// severity levels are checked the way a save is.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_refuses_a_new_scoring_model_with_invalid_severity_levels()
+    {
+        var graph = await Seed("Bad Levels");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newModelId = Guid.NewGuid().ToString();
+        json["ScoringModelId"] = newModelId;
+        var scoringModel = json["ScoringModel"]!.AsObject();
+        scoringModel["Id"] = newModelId;
+        scoringModel["SeverityLevels"] = new System.Text.Json.Nodes.JsonArray(
+            new System.Text.Json.Nodes.JsonObject { ["Name"] = "Low", ["MinimumScore"] = 0, ["Color"] = "red" });
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Contains("'red' is not a #rrggbb color (severity level 1)", error.Title);
+        await using var context = NewContext();
+        Assert.Equal([graph.Evaluation.Id], await context.Evaluations.Select(x => x.Id).ToListAsync(Ct));
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == Guid.Parse(newModelId), Ct));
     }
 
     [Fact]

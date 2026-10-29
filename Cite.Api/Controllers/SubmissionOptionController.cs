@@ -116,12 +116,11 @@ namespace Cite.Api.Controllers
         [HttpPut("submissionOptions/{id}")]
         [ProducesResponseType(typeof(SubmissionOption), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateSubmissionOption")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] SubmissionOption submissionOption, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateSubmissionOptionRequest submissionOption, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<SubmissionCategory>(submissionOption.SubmissionCategoryId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<SubmissionOption>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
                 throw new ForbiddenException();
 
-            submissionOption.ModifiedBy = User.GetId();
             var updatedSubmissionOption = await _submissionOptionService.UpdateAsync(id, submissionOption, ct);
             return Ok(updatedSubmissionOption);
         }

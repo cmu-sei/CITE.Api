@@ -53,11 +53,9 @@ namespace Cite.Api.Infrastructure.Authorization
                 {
                     context.Fail();
                 }
-                else if (requirement.RequiredPermissions == null || requirement.RequiredPermissions.Length == 0)
-                {
-                    context.Succeed(requirement);
-                }
-                else if (requirement.RequiredPermissions.Any(x => evaluationPermissionsClaim.Permissions.Contains(x)))
+                // Omitted permission lists grant nothing, just like empty lists. A caller holding the system permission
+                // still passes, because AuthorizationService checks it before this requirement.
+                else if (requirement.RequiredPermissions != null && requirement.RequiredPermissions.Any(x => evaluationPermissionsClaim.Permissions.Contains(x)))
                 {
                     context.Succeed(requirement);
                 }

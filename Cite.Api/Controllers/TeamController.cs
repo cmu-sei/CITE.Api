@@ -114,7 +114,7 @@ namespace Cite.Api.Controllers
         [HttpPost("teams")]
         [ProducesResponseType(typeof(Team), (int)HttpStatusCode.Created)]
         [SwaggerOperation(OperationId = "createTeam")]
-        public async Task<IActionResult> Create([FromBody] Team team, CancellationToken ct)
+        public async Task<IActionResult> Create([FromBody] CreateTeamRequest team, CancellationToken ct)
         {
             if (!await _authorizationService.AuthorizeAsync<Evaluation>(team.EvaluationId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();
@@ -137,9 +137,9 @@ namespace Cite.Api.Controllers
         [HttpPut("teams/{id}")]
         [ProducesResponseType(typeof(Team), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateTeam")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] Team team, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateTeamRequest team, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<Evaluation>(team.EvaluationId, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
+            if (!await _authorizationService.AuthorizeAsync<Team>(id, [SystemPermission.EditEvaluations], [EvaluationPermission.EditEvaluation], ct))
                 throw new ForbiddenException();
 
             var updatedTeam = await _teamService.UpdateAsync(id, team, ct);

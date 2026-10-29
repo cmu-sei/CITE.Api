@@ -34,12 +34,13 @@ namespace Cite.Api.Services
     {
         Task<IEnumerable<ViewModels.ScoringModel>> GetAsync(ScoringModelGet queryParameters, CancellationToken ct);
         Task<ViewModels.ScoringModel> GetAsync(Guid id, bool hasPermission, bool viewAsAdmin, CancellationToken ct);
-        Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct);
+        Task<ViewModels.ScoringModel> CreateAsync(ViewModels.CreateScoringModelRequest scoringModel, CancellationToken ct);
         Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct, string descriptionSuffix = null);
         Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct, string descriptionSuffix = null);
         Task<Tuple<MemoryStream, string>> DownloadJsonAsync(Guid scoringModelId, CancellationToken ct);
         Task<ScoringModel> UploadJsonAsync(FileForm form, CancellationToken ct);
-        Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.ScoringModel scoringModel, CancellationToken ct);
+        Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.UpdateScoringModelRequest scoringModel, CancellationToken ct);
+        Task AttachToEvaluationAsync(Guid scoringModelId, Guid evaluationId, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -125,17 +126,17 @@ namespace Cite.Api.Services
             return scoringModel;
         }
 
-        public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.ScoringModel scoringModel, CancellationToken ct)
+        public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.CreateScoringModelRequest scoringModel, CancellationToken ct)
         {
-            scoringModel.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
-            scoringModel.CreatedBy = _user.GetId();
+            // a new scoring model is a template: no evaluation, and categories are added through their own endpoint
             var scoringModelEntity = _mapper.Map<ScoringModelEntity>(scoringModel);
+            scoringModelEntity.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
+            scoringModelEntity.CreatedBy = _user.GetId();
 
             _context.ScoringModels.Add(scoringModelEntity);
             await _context.SaveChangesAsync(ct);
-            scoringModel = await GetAsync(scoringModelEntity.Id, true, true, ct);
 
-            return scoringModel;
+            return await GetAsync(scoringModelEntity.Id, true, true, ct);
         }
 
         public async Task<ViewModels.ScoringModel> CopyAsync(Guid scoringModelId, CancellationToken ct, string descriptionSuffix = null)
@@ -170,6 +171,8 @@ namespace Cite.Api.Services
             newScoringModel.Id = newScoringModelId;
             newScoringModel.CreatedBy = currentUserId;
             newScoringModel.Description = scoringModelEntity.Description + descriptionSuffix;
+            // a copy is a template; a caller that needs it on an evaluation attaches it afterwards
+            newScoringModel.EvaluationId = null;
             newScoringModel.ScoringCategories = new List<ScoringCategoryEntity>();
 
             foreach (var originalCategory in originalCategories)
@@ -264,6 +267,8 @@ namespace Cite.Api.Services
             {
                 return _mapper.Map<ScoringModel>(existingScoringModel);
             }
+            // the file is read straight into the database model, so the API model's checks haven't run
+            SeverityLevelRules.ThrowIfInvalid(scoringModelEntity.SeverityLevels);
             // make a copy and add it to the database, keeping the file's description unless it is already in use
             var descriptionInUse = await _context.ScoringModels.AnyAsync(m => m.Description == scoringModelEntity.Description, ct);
             scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionInUse ? null : "");
@@ -271,21 +276,30 @@ namespace Cite.Api.Services
             return _mapper.Map<ScoringModel>(scoringModelEntity);
         }
 
-        public async Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.ScoringModel scoringModel, CancellationToken ct)
+        public async Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.UpdateScoringModelRequest scoringModel, CancellationToken ct)
         {
             var scoringModelToUpdate = await _context.ScoringModels.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (scoringModelToUpdate == null)
                 throw new EntityNotFoundException<ScoringModel>();
 
-            scoringModel.ModifiedBy = _user.GetId();
             _mapper.Map(scoringModel, scoringModelToUpdate);
-
-            _context.ScoringModels.Update(scoringModelToUpdate);
+            scoringModelToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
-            scoringModel = await GetAsync(scoringModelToUpdate.Id, true, true, ct);
+            return await GetAsync(scoringModelToUpdate.Id, true, true, ct);
+        }
 
-            return scoringModel;
+        /// <summary>
+        /// Makes a scoring model copy the live model of an evaluation. Only evaluation creation calls this;
+        /// no endpoint sets a scoring model's evaluation.
+        /// </summary>
+        public async Task AttachToEvaluationAsync(Guid scoringModelId, Guid evaluationId, CancellationToken ct)
+        {
+            var scoringModel = await _context.ScoringModels.SingleOrDefaultAsync(m => m.Id == scoringModelId, ct)
+                ?? throw new EntityNotFoundException<ScoringModel>();
+            scoringModel.EvaluationId = evaluationId;
+            scoringModel.ModifiedBy = _user.GetId();
+            await _context.SaveChangesAsync(ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

@@ -5,6 +5,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
@@ -20,7 +21,7 @@ namespace Cite.Api.Services
 {
     public interface IGalleryService
     {
-        Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid exhibitId, CancellationToken ct);
+        Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid evaluationId, bool canViewEvaluation, CancellationToken ct);
     }
 
     public class GalleryService : IGalleryService
@@ -51,12 +52,16 @@ namespace Cite.Api.Services
             _logger = logger;
         }
 
-        public async Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid evaluationId, CancellationToken ct)
+        public async Task<GAC.UnreadArticles> GetMyUnreadArticleCountAsync(Guid evaluationId, bool canViewEvaluation, CancellationToken ct)
         {
             // get the evaluation
             var evaluation = await _context.Evaluations.FindAsync(evaluationId);
             if (evaluation == null)
                 throw new EntityNotFoundException<EvaluationEntity>("Evaluation not found " + evaluationId.ToString());
+            // Gallery is asked with CITE's service account, so CITE decides who may ask: a viewer of the evaluation or a member of one of its teams
+            var userId = _user.GetId();
+            if (!canViewEvaluation && !await _context.TeamMemberships.AnyAsync(m => m.UserId == userId && m.Team.EvaluationId == evaluationId, ct))
+                throw new ForbiddenException();
 
             // get the exhibit ID from the evaluation
             var unreadArticles = new GAC.UnreadArticles();

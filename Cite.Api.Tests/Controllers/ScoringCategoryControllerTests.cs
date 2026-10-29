@@ -119,41 +119,36 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         Assert.Empty(categories);
     }
 
-    /// <summary>A participant in the evaluation that uses the scoring model is answered with a 500.</summary>
-    [Fact]
-    public async Task GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error()
+    [Theory]
+    [InlineData(EvaluationPermission.ParticipateInEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task GetForScoringModel_masks_the_equations_of_an_evaluations_model_for_a_caller_holding_an_evaluation_permission(EvaluationPermission permission)
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
+        var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
 
-        Assert.Equal("Handler for type ScoringModel is not implemented.", error.Detail);
+        var category = Assert.Single(categories);
+        Assert.Equal(("********", 0.0), (category.CalculationEquation, category.ScoringWeight));
     }
 
-    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task GetForScoringModel_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    public async Task GetForScoringModel_is_forbidden_for_a_caller_holding_ParticipateInEvaluation_only_on_another_evaluation()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ParticipateInEvaluation).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
-
-        Assert.Equal("Handler for type ScoringModel is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
     }
 
-    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task GetForScoringModel_answers_a_caller_holding_only_ViewEvaluations_with_a_server_error()
+    public async Task GetForScoringModel_is_forbidden_on_a_template_for_a_caller_holding_only_ViewEvaluations()
     {
         var (model, _) = await SeedTemplate();
         var actor = await Actor().WithSystemPermissions(SystemPermission.ViewEvaluations).SeedAsync();
 
-        var response = await Client(actor).GetAsync($"api/scoringModel/{model.Id}/scoringCategories", Ct);
-
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, response);
-        Assert.Equal("Handler for type ScoringModel is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringModel/{model.Id}/scoringCategories", Ct));
     }
 
     [Fact]
@@ -232,35 +227,32 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategories/{category.Id}", Ct));
     }
 
-    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
-    [Fact]
-    public async Task Get_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error()
+    [Theory]
+    [InlineData(EvaluationPermission.ParticipateInEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task Get_masks_the_equation_of_an_evaluations_category_for_a_caller_holding_an_evaluation_permission(EvaluationPermission permission)
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ParticipateInEvaluation]).SeedAsync();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
-        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+        var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
+
+        Assert.Equal(("********", 0.0), (read.CalculationEquation, read.ScoringWeight));
     }
 
-    // Same case as GetForScoringModel_answers_a_caller_holding_ParticipateInEvaluation_with_a_server_error.
     [Fact]
-    public async Task Get_answers_a_caller_holding_ObserveEvaluation_with_a_server_error()
+    public async Task Get_is_forbidden_for_a_caller_holding_ObserveEvaluation_only_on_another_evaluation()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ObserveEvaluation]).SeedAsync();
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ObserveEvaluation).SeedAsync();
 
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
-
-        Assert.Equal("Handler for type ScoringCategory is not implemented.", error.Detail);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
     }
 
-    /// <summary>An unknown category id is answered with a 500 for a caller the gate lets through.</summary>
     [Fact]
-    public async Task Get_answers_an_unknown_category_with_a_server_error()
+    public async Task Get_answers_an_unknown_category_with_not_found()
     {
-        var error = await AssertApiError(HttpStatusCode.InternalServerError, await RootClient.GetAsync($"api/scoringCategories/{Guid.NewGuid()}", Ct));
-        Assert.Equal("Object reference not set to an instance of an object.", error.Detail);
+        await AssertApiError(HttpStatusCode.NotFound, await RootClient.GetAsync($"api/scoringCategories/{Guid.NewGuid()}", Ct));
     }
 
     [Fact]
@@ -327,19 +319,41 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         Assert.Equal(category.Description, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).Description);
     }
 
-    /// <summary>EditScoringModel on the scoring model named in the body lets a caller take another model's category.</summary>
     [Fact]
-    public async Task Update_moves_another_models_category_into_the_model_the_caller_edits()
+    public async Task Update_is_forbidden_for_a_caller_holding_EditScoringModel_only_on_another_scoring_model_named_in_the_body()
     {
-        var (_, category) = await SeedTemplate();
+        var (model, category) = await SeedTemplate();
         var actor = await Actor().OnNewScoringModel(ScoringModelPermission.EditScoringModel).SeedAsync();
         var editable = actor.NewScoringModelIds[0];
 
-        var response = await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", NewCategory(category.Id, editable), Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", NewCategory(category.Id, editable), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(model.Id, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).ScoringModelId);
+    }
+
+    /// <summary>The body names another model and nests an option of another model's category; neither is applied.</summary>
+    [Fact]
+    public async Task Update_keeps_the_categorys_model_and_options_whatever_the_body_sends()
+    {
+        var (model, category) = await SeedTemplate();
+        var other = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringCategories/{category.Id}", new
+        {
+            id = category.Id,
+            description = "Changed",
+            scoringModelId = other.ScoringModel.Id,
+            scoringOptions = new[] { new { id = other.Option.Id, description = "Hijacked", scoringCategoryId = category.Id } },
+        }, Ct);
 
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(editable, (await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct)).ScoringModelId);
+        var stored = await context.ScoringCategories.SingleAsync(x => x.Id == category.Id, Ct);
+        Assert.Equal(("Changed", model.Id), (stored.Description, stored.ScoringModelId));
+        var option = await context.ScoringOptions.SingleAsync(x => x.Id == other.Option.Id, Ct);
+        Assert.Equal((other.Category.Id, other.Option.Description), (option.ScoringCategoryId, option.Description));
     }
 
     [Fact]

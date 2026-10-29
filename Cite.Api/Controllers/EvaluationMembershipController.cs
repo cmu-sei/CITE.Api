@@ -71,7 +71,9 @@ public class EvaluationMembershipsController : BaseController
     [SwaggerOperation(OperationId = "CreateEvaluationMembership")]
     public async Task<IActionResult> CreateMembership([FromRoute] Guid evaluationId, EvaluationMembership evaluationMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationMembership.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        // the membership always joins the evaluation in the URL
+        evaluationMembership.EvaluationId = evaluationId;
+        if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
             throw new ForbiddenException();
 
         var result = await _evaluationMembershipService.CreateAsync(evaluationMembership, ct);
@@ -90,9 +92,9 @@ public class EvaluationMembershipsController : BaseController
     [HttpPut("Evaluations/Memberships/{id}")]
     [ProducesResponseType(typeof(EvaluationMembership), (int)HttpStatusCode.OK)]
     [SwaggerOperation(OperationId = "updateEvaluationMembership")]
-    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] EvaluationMembership evaluationMembership, CancellationToken ct)
+    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateEvaluationMembershipRequest evaluationMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<EvaluationMembership>(evaluationMembership.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        if (!await _authorizationService.AuthorizeAsync<EvaluationMembership>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
             throw new ForbiddenException();
 
         var updatedEvaluationMembership = await _evaluationMembershipService.UpdateAsync(id, evaluationMembership, ct);
@@ -108,8 +110,7 @@ public class EvaluationMembershipsController : BaseController
     [SwaggerOperation(OperationId = "DeleteEvaluationMembership")]
     public async Task<IActionResult> DeleteMembership([FromRoute] Guid id, CancellationToken ct)
     {
-        var evaluationMembership = await _evaluationMembershipService.GetAsync(id, ct);
-        if (!await _authorizationService.AuthorizeAsync<Evaluation>(evaluationMembership.EvaluationId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        if (!await _authorizationService.AuthorizeAsync<EvaluationMembership>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
             throw new ForbiddenException();
 
         await _evaluationMembershipService.DeleteAsync(id, ct);

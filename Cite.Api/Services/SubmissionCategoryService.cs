@@ -25,7 +25,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<SubmissionCategory>> GetForSubmissionAsync(Guid submissionModelId, CancellationToken ct);
         Task<SubmissionCategory> GetAsync(Guid id, CancellationToken ct);
         Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct);
-        Task<SubmissionCategory> UpdateAsync(Guid id, SubmissionCategory submissionCategory, CancellationToken ct);
+        Task<SubmissionCategory> UpdateAsync(Guid id, UpdateSubmissionCategoryRequest submissionCategory, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -67,6 +67,7 @@ namespace Cite.Api.Services
 
         public async Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct)
         {
+            await _context.EnsureScoringCategoryOfSubmissionAsync(submissionCategory.ScoringCategoryId, submissionCategory.SubmissionId, ct);
             submissionCategory.Id = submissionCategory.Id != Guid.Empty ? submissionCategory.Id : Guid.NewGuid();
             submissionCategory.CreatedBy = _user.GetId();
             var submissionCategoryEntity = _mapper.Map<SubmissionCategoryEntity>(submissionCategory);
@@ -78,21 +79,13 @@ namespace Cite.Api.Services
             return submissionCategory;
         }
 
-        public async Task<SubmissionCategory> UpdateAsync(Guid id, SubmissionCategory submissionCategory, CancellationToken ct)
+        public async Task<SubmissionCategory> UpdateAsync(Guid id, UpdateSubmissionCategoryRequest submissionCategory, CancellationToken ct)
         {
-            var submissionCategoryToUpdate = await _context.SubmissionCategories.SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (submissionCategoryToUpdate == null)
+            // nothing on a submission category is edited directly: its score follows the selected options
+            if (!await _context.SubmissionCategories.AnyAsync(v => v.Id == id, ct))
                 throw new EntityNotFoundException<SubmissionCategory>();
 
-            submissionCategory.ModifiedBy = _user.GetId();
-            _mapper.Map(submissionCategory, submissionCategoryToUpdate);
-
-            _context.SubmissionCategories.Update(submissionCategoryToUpdate);
-            await _context.SaveChangesAsync(ct);
-
-            submissionCategory = await GetAsync(submissionCategoryToUpdate.Id, ct);
-
-            return submissionCategory;
+            return await GetAsync(id, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

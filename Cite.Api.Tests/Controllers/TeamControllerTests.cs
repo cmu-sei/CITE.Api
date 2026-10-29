@@ -283,20 +283,55 @@ public class TeamControllerTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(graph.Team.Name, (await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct)).Name);
     }
 
-    /// <summary>EditEvaluation on the evaluation named in the body moves a team of another evaluation into it.</summary>
     [Fact]
-    public async Task Update_moves_a_team_of_another_evaluation_into_the_one_the_caller_edits()
+    public async Task Update_is_forbidden_for_a_caller_holding_EditEvaluation_only_on_another_evaluation_named_in_the_body()
     {
         var target = await Seed("Target");
         var actor = await Actor().OnNewEvaluation(EvaluationPermission.EditEvaluation).SeedAsync();
         var editable = actor.NewEvaluationIds[0];
 
-        var response = await Client(actor).PutAsJsonAsync($"api/teams/{target.Team.Id}",
-            new TeamBody(target.Team.Id, "Taken", "Taken", editable, target.TeamType.Id), Ct);
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/teams/{target.Team.Id}",
+            new TeamBody(target.Team.Id, "Taken", "Taken", editable, target.TeamType.Id), Ct));
 
-        await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
-        Assert.Equal(editable, (await context.Teams.SingleAsync(x => x.Id == target.Team.Id, Ct)).EvaluationId);
+        var stored = await context.Teams.SingleAsync(x => x.Id == target.Team.Id, Ct);
+        Assert.Equal((target.Evaluation.Id, target.Team.Name), (stored.EvaluationId, stored.Name));
+    }
+
+    [Fact]
+    public async Task Update_keeps_the_teams_evaluation_whatever_the_body_sends()
+    {
+        var graph = await Seed();
+        var other = await Seed("Other");
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/teams/{graph.Team.Id}",
+            new TeamBody(graph.Team.Id, "Renamed", "RN", other.Evaluation.Id, graph.TeamType.Id), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Teams.SingleAsync(x => x.Id == graph.Team.Id, Ct);
+        Assert.Equal(("Renamed", graph.Evaluation.Id), (stored.Name, stored.EvaluationId));
+    }
+
+    /// <summary>A nested team type in the body is not created; the team names its type by id only.</summary>
+    [Fact]
+    public async Task Create_does_not_create_a_team_type_nested_in_the_body()
+    {
+        var graph = await Seed();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation]).SeedAsync();
+        var nestedTypeId = Guid.NewGuid();
+
+        await Client(actor).PostAsJsonAsync("api/teams", new
+        {
+            name = "New Team",
+            shortName = "NT",
+            evaluationId = graph.Evaluation.Id,
+            teamTypeId = nestedTypeId,
+            teamType = new { id = nestedTypeId, name = "Planted", isOfficialScoreContributor = true },
+        }, Ct);
+
+        await using var context = NewContext();
+        Assert.False(await context.TeamTypes.AnyAsync(x => x.Id == nestedTypeId, Ct));
     }
 
     [Fact]

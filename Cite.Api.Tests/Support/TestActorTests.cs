@@ -119,9 +119,9 @@ public class TestActorTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         Assert.Equal([TeamPermission.SubmitTeamScore], claim.Permissions);
     }
 
-    /// <summary>A membership with no role is still a team claim, with no permissions in it.</summary>
+    /// <summary>A membership created without a role has the Member role, so its claim holds Member's permissions.</summary>
     [Fact]
-    public async Task OnTeam_with_no_role_grants_an_empty_claim_on_that_team()
+    public async Task OnTeam_with_no_role_grants_the_Member_permissions_on_that_team()
     {
         var team = await SeedTeam();
 
@@ -129,7 +129,7 @@ public class TestActorTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
 
         var claim = Assert.Single(TeamClaims(await ClaimsOf(actor)));
         Assert.Equal(team.Id, claim.TeamId);
-        Assert.Empty(claim.Permissions);
+        Assert.Equal([TeamPermission.ViewTeam, TeamPermission.ViewPastOfficialScore], claim.Permissions.Order());
     }
 
     [Fact]

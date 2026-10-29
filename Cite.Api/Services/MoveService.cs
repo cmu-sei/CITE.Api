@@ -26,7 +26,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct);
         Task<ViewModels.Move> GetAsync(Guid id, bool hasPermission, CancellationToken ct);
         Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct);
-        Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.Move move, CancellationToken ct);
+        Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.UpdateMoveRequest move, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -51,16 +51,17 @@ namespace Cite.Api.Services
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct)
         {
+            var moves = _context.Moves.Where(move => move.EvaluationId == evaluationId);
             if (!hasPermission)
             {
-                if (!await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == evaluationId))
+                // a member of one of the evaluation's teams sees the moves up to the current one
+                if (!await IsOnATeamAsync(evaluationId, ct))
                     throw new ForbiddenException();
+                moves = moves.Where(move => move.MoveNumber <= move.Evaluation.CurrentMoveNumber);
             }
-            var moveEntities = await _context.Moves
-                .Where(move => move.EvaluationId == evaluationId)
-                .ToListAsync();
+            var moveEntities = await moves.ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();;
+            return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();
         }
 
         public async Task<ViewModels.Move> GetAsync(Guid id, bool hasPermission, CancellationToken ct)
@@ -68,13 +69,21 @@ namespace Cite.Api.Services
             var item = await _context.Moves
                 .Where(m => m.Id == id)
                 .Select(m => new { Move = m, EvaluationId = m.EvaluationId, CurrentMoveNumber = m.Evaluation.CurrentMoveNumber })
-                .SingleAsync(ct);
+                .SingleOrDefaultAsync(ct);
+            if (item == null)
+                throw new EntityNotFoundException<Move>();
             if (!hasPermission)
             {
-                if (!await _context.TeamMemberships.AnyAsync(m => m.Team.EvaluationId == item.EvaluationId) || item.Move.MoveNumber > item.CurrentMoveNumber)
+                if (!await IsOnATeamAsync(item.EvaluationId, ct) || item.Move.MoveNumber > item.CurrentMoveNumber)
                     throw new ForbiddenException();
             }
             return _mapper.Map<Move>(item.Move);
+        }
+
+        private Task<bool> IsOnATeamAsync(Guid evaluationId, CancellationToken ct)
+        {
+            var userId = _user.GetId();
+            return _context.TeamMemberships.AnyAsync(m => m.UserId == userId && m.Team.EvaluationId == evaluationId, ct);
         }
 
         public async Task<ViewModels.Move> CreateAsync(ViewModels.Move move, CancellationToken ct)
@@ -84,28 +93,39 @@ namespace Cite.Api.Services
             var moveEntity = _mapper.Map<MoveEntity>(move);
             moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
             _context.Moves.Add(moveEntity);
-            await _context.SaveChangesAsync(ct);
+            await SaveMoveAsync(ct);
             move = await GetAsync(moveEntity.Id, true, ct);
 
             return move;
         }
 
-        public async Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.Move move, CancellationToken ct)
+        public async Task<ViewModels.Move> UpdateAsync(Guid id, ViewModels.UpdateMoveRequest move, CancellationToken ct)
         {
             var moveToUpdate = await _context.Moves.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (moveToUpdate == null)
                 throw new EntityNotFoundException<Move>();
 
-            move.ModifiedBy = _user.GetId();
-            _mapper.Map(move, moveToUpdate);
-            moveToUpdate.SituationTime = moveToUpdate.SituationTime.ToUniversalTime();
+            moveToUpdate.Description = move.Description;
+            moveToUpdate.MoveNumber = move.MoveNumber;
+            moveToUpdate.SituationTime = move.SituationTime.ToUniversalTime();
+            moveToUpdate.SituationDescription = move.SituationDescription;
+            moveToUpdate.ModifiedBy = _user.GetId();
+            await SaveMoveAsync(ct);
 
-            _context.Moves.Update(moveToUpdate);
-            await _context.SaveChangesAsync(ct);
+            return await GetAsync(moveToUpdate.Id, true, ct);
+        }
 
-            move = await GetAsync(moveToUpdate.Id, true, ct);
-
-            return move;
+        /// <summary>A move number is unique in its evaluation; a second move with the same number is a 409.</summary>
+        private async Task SaveMoveAsync(CancellationToken ct)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_moves_evaluation_id_move_number" })
+            {
+                throw new ConflictException("The evaluation already has a move with this move number.");
+            }
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
