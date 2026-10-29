@@ -5,7 +5,8 @@ namespace Cite.Api.Data.Models
 {
     /// <summary>
     /// One band of a scoring model's severity scale, stored in the scoring model's severity_levels json column.
-    /// A score falls in the level with the highest MinimumScore at or below it.
+    /// A score falls in the level with the highest MinimumScore at or below it; a score below
+    /// every minimum falls in the lowest level.
     /// </summary>
     public class SeverityLevelEntity
     {
