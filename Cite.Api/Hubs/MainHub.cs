@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,8 @@ namespace Cite.Api.Hubs
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly CancellationToken _ct;
         private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IUserClaimsService _userClaimsService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public const string ADMIN_DATA_GROUP = "AdminDataGroup";
         public const string EVALUATION_GROUP = "AdminEvaluationGroup";
         public const string SCORING_MODEL_GROUP = "AdminScoringModelGroup";
@@ -35,13 +38,19 @@ namespace Cite.Api.Hubs
         public const string ROLE_GROUP = "AdminRoleGroup";
         public const string USER_GROUP = "AdminUserGroup";
         public const string OFFICIAL_SCORE_POSTFIX = "OfficialScore";
+        public const string PAST_OFFICIAL_SCORE_POSTFIX = "PastOfficialScore";
+        public const string ALL_MOVES_POSTFIX = "AllMoves";
+        // moves up to the current one, for the team's viewers who cannot read every move; disjoint from ALL_MOVES_POSTFIX
+        public const string CURRENT_MOVES_POSTFIX = "CurrentMoves";
 
         public MainHub(
             ITeamService teamService,
             IEvaluationService evaluationService,
             IScoringModelService scoringModelService,
             IServiceScopeFactory scopeFactory,
-            ICiteAuthorizationService authorizationService
+            ICiteAuthorizationService authorizationService,
+            IUserClaimsService userClaimsService,
+            IHttpContextAccessor httpContextAccessor
         )
         {
             _teamService = teamService;
@@ -51,6 +60,8 @@ namespace Cite.Api.Hubs
             CancellationTokenSource source = new CancellationTokenSource();
             _ct = source.Token;
             _authorizationService = authorizationService;
+            _userClaimsService = userClaimsService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task Join()
@@ -77,17 +88,18 @@ namespace Cite.Api.Hubs
             {
                 var oldTeamId = args[0];
                 var newTeamId = args[1];
-                // leave the old team
-                var idList = await GetTeamIdList(oldTeamId);
+                // leave every group the old team could have added, whatever the caller can do now
+                var idList = await GetTeamIdList(oldTeamId, checkAccess: false);
                 foreach (var id in idList)
                 {
-                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, id.ToString());
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, id);
                 }
-                // join the new team
-                idList = await GetTeamIdList(newTeamId);
+                // join the new team's groups the caller is allowed to read, by its permissions as they are now
+                await RefreshClaimsAsync();
+                idList = await GetTeamIdList(newTeamId, checkAccess: true);
                 foreach (var id in idList)
                 {
-                    await Groups.AddToGroupAsync(Context.ConnectionId, id.ToString());
+                    await Groups.AddToGroupAsync(Context.ConnectionId, id);
                 }
             }
         }
@@ -121,44 +133,83 @@ namespace Cite.Api.Hubs
             return idList;
         }
 
-        private async Task<List<string>> GetTeamIdList(Guid teamId)
+        private async Task<List<string>> GetTeamIdList(Guid teamId, bool checkAccess)
         {
             var idList = new List<string>();
             // add the user's ID
-            var userId = Context.User.Identities.First().Claims.First(c => c.Type == "sub")?.Value;
-            idList.Add(userId);
+            var userId = Guid.Parse(Context.User.Identities.First().Claims.First(c => c.Type == "sub").Value);
+            idList.Add(userId.ToString());
 
-            // make sure that the user has access to the requested team
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<CiteContext>();
+            var team = await context.Teams.SingleOrDefaultAsync(t => t.Id == teamId);
+            if (team == null || team.EvaluationId == null)
+                return idList;
 
-            var team = await context.Teams.Include(t => t.TeamType).SingleOrDefaultAsync(t => t.Id == teamId);
-            var isObserver = await context.EvaluationMemberships
-                .Where(er =>
-                    er.EvaluationId == team.EvaluationId &&
-                    er.UserId == Guid.Parse(userId) &&
-                    (er.Role.AllPermissions || er.Role.Permissions.Contains(EvaluationPermission.ObserveEvaluation)))
-                .AnyAsync();
-            if (team != null)
+            var evaluationId = team.EvaluationId.Value;
+            var evaluation = await context.Evaluations.SingleAsync(e => e.Id == evaluationId);
+            var teamGroups = new[] { teamId.ToString(), evaluationId.ToString(), evaluation.ScoringModelId.ToString() };
+            var officialGroups = new[] { evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX, evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX };
+            var allMovesGroup = evaluationId.ToString() + ALL_MOVES_POSTFIX;
+            var currentMovesGroup = evaluationId.ToString() + CURRENT_MOVES_POSTFIX;
+            if (!checkAccess)
             {
-                var teamMembership = await context.TeamMemberships
-                    .Include(tu => tu.Team)
-                    .ThenInclude(t => t.TeamType)
-                    .SingleOrDefaultAsync(tu => tu.Team.EvaluationId == team.EvaluationId && tu.UserId.ToString() == userId);
-                if (teamMembership != null && (teamMembership.TeamId == teamId || isObserver))
+                idList.AddRange(teamGroups);
+                idList.AddRange(officialGroups);
+                idList.Add(allMovesGroup);
+                idList.Add(currentMovesGroup);
+                return idList;
+            }
+
+            // moves ahead of the current one follow the same permissions as MoveController's reads
+            var readsEveryMove = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations, SystemPermission.ExecuteEvaluations], [EvaluationPermission.ObserveEvaluation, EvaluationPermission.ViewEvaluation, EvaluationPermission.ExecuteEvaluation], _ct);
+            if (readsEveryMove)
+            {
+                idList.Add(allMovesGroup);
+            }
+
+            // an observer of the evaluation can follow any of its teams
+            var isObserver = await _authorizationService.AuthorizeAsync<Evaluation>(evaluationId, [SystemPermission.ObserveEvaluations], [EvaluationPermission.ObserveEvaluation], _ct);
+            var isMember = await context.TeamMemberships.AnyAsync(m => m.TeamId == teamId && m.UserId == userId);
+            if (isObserver || (isMember && await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], _ct)))
+            {
+                idList.AddRange(teamGroups);
+                // a viewer who reads every move gets moves through the all-moves group alone
+                if (!readsEveryMove)
                 {
-                    idList.Add(teamId.ToString());
-                    idList.Add(team.EvaluationId.ToString());
-                    var scoringModelId = (await context.Evaluations.SingleOrDefaultAsync(e => e.Id == team.EvaluationId)).ScoringModelId;
-                    idList.Add(scoringModelId.ToString());
-                    if (teamMembership.Team.TeamType.IsOfficialScoreContributor)
-                    {
-                        idList.Add(team.EvaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
-                    }
+                    idList.Add(currentMovesGroup);
                 }
+            }
+            else
+            {
+                return idList;
+            }
+
+            // official scores follow the same permissions as SubmissionService.HasSpecificPermission
+            if (isObserver || await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, SubmissionService.OfficialScorePermissions(0, 1, SpecificPermission.View), _ct))
+            {
+                idList.Add(evaluationId.ToString() + PAST_OFFICIAL_SCORE_POSTFIX);
+            }
+            if (isObserver || await _authorizationService.AuthorizeAnyTeamAsync(evaluationId, SubmissionService.OfficialScorePermissions(0, 0, SpecificPermission.View), _ct))
+            {
+                idList.Add(evaluationId.ToString() + OFFICIAL_SCORE_POSTFIX);
             }
 
             return idList;
+        }
+
+        /// <summary>
+        /// A connection keeps the claims it opened with, so a member added to a team or given another role since then
+        /// would not reach the team's groups. Rebuilds the caller's permission claims from the database for the checks
+        /// that follow, on the HttpContext the authorization service reads.
+        /// </summary>
+        private async Task RefreshClaimsAsync()
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext?.User != null)
+            {
+                httpContext.User = await _userClaimsService.RefreshClaims(httpContext.User);
+            }
         }
 
         private async Task<List<string>> GetAdminIdList()

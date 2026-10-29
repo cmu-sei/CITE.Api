@@ -39,6 +39,12 @@ public interface ICiteAuthorizationService
         TeamPermission[] requiredTeamPermissions,
         CancellationToken cancellationToken) where T : IAuthorizationType;
 
+    /// <summary>Whether any of the caller's teams in the evaluation holds one of the team permissions, as the evaluation's official score is read.</summary>
+    Task<bool> AuthorizeAnyTeamAsync(
+        Guid evaluationId,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken);
+
     IEnumerable<Guid> GetAuthorizedEvaluationIds();
     IEnumerable<SystemPermission> GetSystemPermissions();
     IEnumerable<EvaluationPermissionClaim> GetEvaluationPermissions(Guid? evaluationId = null);
@@ -136,6 +142,22 @@ public class AuthorizationService(
         return succeeded;
     }
 
+    public async Task<bool> AuthorizeAnyTeamAsync(
+        Guid evaluationId,
+        TeamPermission[] requiredTeamPermissions,
+        CancellationToken cancellationToken)
+    {
+        // the caller's team claims name its teams; only those in the evaluation count
+        var teamIds = GetTeamPermissions()
+            .Where(x => x.Permissions.Any(requiredTeamPermissions.Contains))
+            .Select(x => x.TeamId)
+            .ToList();
+        if (teamIds.Count == 0)
+            return false;
+
+        return await dbContext.Teams.AnyAsync(x => x.EvaluationId == evaluationId && teamIds.Contains(x.Id), cancellationToken);
+    }
+
     public IEnumerable<Guid> GetAuthorizedEvaluationIds()
     {
         return identityResolver.GetClaimsPrincipal().Claims
@@ -215,6 +237,8 @@ public class AuthorizationService(
         return permissionResult.Succeeded;
     }
 
+    // Each resolver reads the scope from the stored record and returns null when the record does not exist,
+    // so a caller with no system permission is refused instead of answered with a 500.
     private async Task<Guid?> GetEvaluationId<T>(Guid resourceId, CancellationToken cancellationToken)
     {
         return typeof(T) switch
@@ -223,12 +247,17 @@ public class AuthorizationService(
             var t when t == typeof(EvaluationMembership) => await GetEvaluationIdFromEvaluationMembership(resourceId, cancellationToken),
             var t when t == typeof(Team) => await GetEvaluationIdFromTeam(resourceId, cancellationToken),
             var t when t == typeof(TeamMembership) => await GetEvaluationIdFromTeamMembership(resourceId, cancellationToken),
+            var t when t == typeof(Move) => await GetEvaluationIdFromMove(resourceId, cancellationToken),
             var t when t == typeof(ViewModels.Action) => await GetEvaluationIdFromAction(resourceId, cancellationToken),
             var t when t == typeof(Duty) => await GetEvaluationIdFromDuty(resourceId, cancellationToken),
             var t when t == typeof(Submission) => await GetEvaluationIdFromSubmission(resourceId, cancellationToken),
             var t when t == typeof(SubmissionCategory) => await GetEvaluationIdFromSubmissionCategory(resourceId, cancellationToken),
             var t when t == typeof(SubmissionOption) => await GetEvaluationIdFromSubmissionOption(resourceId, cancellationToken),
             var t when t == typeof(SubmissionComment) => await GetEvaluationIdFromSubmissionComment(resourceId, cancellationToken),
+            // a scoring model belongs to an evaluation only when it is the evaluation's own copy; a template resolves to null
+            var t when t == typeof(ScoringModel) => await GetEvaluationIdFromScoringModel(resourceId, cancellationToken),
+            var t when t == typeof(ScoringCategory) => await GetEvaluationIdFromScoringCategory(resourceId, cancellationToken),
+            var t when t == typeof(ScoringOption) => await GetEvaluationIdFromScoringOption(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
     }
@@ -241,113 +270,9 @@ public class AuthorizationService(
             var t when t == typeof(Evaluation) => await GetScoringModelIdFromEvaluation(resourceId, cancellationToken),
             var t when t == typeof(ScoringCategory) => await GetScoringModelIdFromScoringCategory(resourceId, cancellationToken),
             var t when t == typeof(ScoringOption) => await GetScoringModelIdFromScoringOption(resourceId, cancellationToken),
-            var t when t == typeof(EvaluationMembership) => await GetScoringModelIdFromScoringModelMembership(resourceId, cancellationToken),
+            var t when t == typeof(ScoringModelMembership) => await GetScoringModelIdFromScoringModelMembership(resourceId, cancellationToken),
             _ => throw new NotImplementedException($"Handler for type {typeof(T).Name} is not implemented.")
         };
-    }
-
-    private async Task<Guid> GetEvaluationIdFromEvaluationMembership(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.EvaluationMemberships
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid?> GetEvaluationIdFromTeam(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.Teams
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid?> GetEvaluationIdFromTeamMembership(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.TeamMemberships
-            .Where(x => x.Id == id)
-            .Select(x => x.Team.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromAction(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.Actions
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromDuty(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.Duties
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromSubmission(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Submissions
-            .Where(x => x.Id == id)
-            .Select(x => x.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromSubmissionCategory(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.SubmissionCategories
-            .Where(x => x.Id == id)
-            .Select(x => x.Submission.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromSubmissionOption(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.SubmissionOptions
-            .Where(x => x.Id == id)
-            .Select(x => x.SubmissionCategory.Submission.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetEvaluationIdFromSubmissionComment(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.SubmissionComments
-            .Where(x => x.Id == id)
-            .Select(x => x.SubmissionOption.SubmissionCategory.Submission.EvaluationId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetScoringModelIdFromEvaluation(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.Evaluations
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetScoringModelIdFromScoringCategory(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.ScoringCategories
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetScoringModelIdFromScoringOption(Guid id, CancellationToken cancellationToken)
-    {
-        return (Guid)await dbContext.ScoringOptions
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringCategory.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    private async Task<Guid> GetScoringModelIdFromScoringModelMembership(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.ScoringModelMemberships
-            .Where(x => x.Id == id)
-            .Select(x => x.ScoringModelId)
-            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<Guid?> GetTeamId<T>(Guid resourceId, CancellationToken cancellationToken)
@@ -362,28 +287,124 @@ public class AuthorizationService(
         };
     }
 
-    private async Task<Guid> GetTeamIdFromTeamMembership(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.TeamMemberships
+    private Task<Guid?> GetEvaluationIdFromEvaluationMembership(Guid id, CancellationToken cancellationToken) =>
+        dbContext.EvaluationMemberships
             .Where(x => x.Id == id)
-            .Select(x => x.TeamId)
+            .Select(x => (Guid?)x.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
-    }
 
-    private async Task<Guid> GetTeamIdFromAction(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.Actions
+    private Task<Guid?> GetEvaluationIdFromTeam(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Teams
             .Where(x => x.Id == id)
-            .Select(x => x.TeamId)
+            .Select(x => (Guid?)x.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
-    }
 
-    private async Task<Guid> GetTeamIdFromDuty(Guid id, CancellationToken cancellationToken)
-    {
-        return await dbContext.Duties
+    private Task<Guid?> GetEvaluationIdFromTeamMembership(Guid id, CancellationToken cancellationToken) =>
+        dbContext.TeamMemberships
             .Where(x => x.Id == id)
-            .Select(x => x.TeamId)
+            .Select(x => (Guid?)x.Team.EvaluationId)
             .FirstOrDefaultAsync(cancellationToken);
-    }
+
+    private Task<Guid?> GetEvaluationIdFromMove(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Moves
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromAction(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Actions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromDuty(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Duties
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromSubmission(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Submissions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromSubmissionCategory(Guid id, CancellationToken cancellationToken) =>
+        dbContext.SubmissionCategories
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.Submission.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromSubmissionOption(Guid id, CancellationToken cancellationToken) =>
+        dbContext.SubmissionOptions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.SubmissionCategory.Submission.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromSubmissionComment(Guid id, CancellationToken cancellationToken) =>
+        dbContext.SubmissionComments
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.SubmissionOption.SubmissionCategory.Submission.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromScoringModel(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringModels
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromScoringCategory(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringCategories
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringModel.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetEvaluationIdFromScoringOption(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringOptions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringCategory.ScoringModel.EvaluationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetScoringModelIdFromEvaluation(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Evaluations
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetScoringModelIdFromScoringCategory(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringCategories
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetScoringModelIdFromScoringOption(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringOptions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringCategory.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetScoringModelIdFromScoringModelMembership(Guid id, CancellationToken cancellationToken) =>
+        dbContext.ScoringModelMemberships
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.ScoringModelId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetTeamIdFromTeamMembership(Guid id, CancellationToken cancellationToken) =>
+        dbContext.TeamMemberships
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.TeamId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetTeamIdFromAction(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Actions
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.TeamId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task<Guid?> GetTeamIdFromDuty(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Duties
+            .Where(x => x.Id == id)
+            .Select(x => (Guid?)x.TeamId)
+            .FirstOrDefaultAsync(cancellationToken);
 
 }

@@ -26,7 +26,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<SubmissionOption>> GetForSubmissionCategoryAsync(Guid submissionCategoryId, CancellationToken ct);
         Task<SubmissionOption> GetAsync(Guid id, CancellationToken ct);
         Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct);
-        Task<SubmissionOption> UpdateAsync(Guid id, SubmissionOption submissionOption, CancellationToken ct);
+        Task<SubmissionOption> UpdateAsync(Guid id, UpdateSubmissionOptionRequest submissionOption, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -73,6 +73,7 @@ namespace Cite.Api.Services
 
         public async Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct)
         {
+            await _context.EnsureScoringOptionOfSubmissionCategoryAsync(submissionOption.ScoringOptionId, submissionOption.SubmissionCategoryId, ct);
             submissionOption.Id = submissionOption.Id != Guid.Empty ? submissionOption.Id : Guid.NewGuid();
             submissionOption.CreatedBy = _user.GetId();
             var submissionOptionEntity = _mapper.Map<SubmissionOptionEntity>(submissionOption);
@@ -84,19 +85,23 @@ namespace Cite.Api.Services
             return submissionOption;
         }
 
-        public async Task<SubmissionOption> UpdateAsync(Guid id, SubmissionOption submissionOption, CancellationToken ct)
+        public async Task<SubmissionOption> UpdateAsync(Guid id, UpdateSubmissionOptionRequest submissionOption, CancellationToken ct)
         {
-            var submissionOptionToUpdate = await _context.SubmissionOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (submissionOptionToUpdate == null)
+            var isSelected = await _context.SubmissionOptions
+                .Where(v => v.Id == id)
+                .Select(v => (bool?)v.IsSelected)
+                .SingleOrDefaultAsync(ct);
+            if (isSelected == null)
                 throw new EntityNotFoundException<SubmissionOption>();
 
-            submissionOption.ModifiedBy = _user.GetId();
-            _mapper.Map(submissionOption, submissionOptionToUpdate);
-            _context.SubmissionOptions.Update(submissionOptionToUpdate);
-            await _context.SaveChangesAsync(ct);
-            submissionOption = await GetAsync(submissionOptionToUpdate.Id, ct);
+            // a selection, so the category's exclusivity and the submission's score are applied as for select and deselect;
+            // a request that changes nothing leaves the category and the score alone
+            if (isSelected != submissionOption.IsSelected)
+            {
+                await _submissionService.SetOptionAsync(id, submissionOption.IsSelected.Value, ct);
+            }
 
-            return submissionOption;
+            return await GetAsync(id, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

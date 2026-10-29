@@ -26,7 +26,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct);
         Task<SubmissionComment> GetAsync(Guid id, CancellationToken ct);
         Task<SubmissionComment> CreateAsync(SubmissionComment submissionComment, CancellationToken ct);
-        Task<SubmissionComment> UpdateAsync(Guid id, SubmissionComment submissionComment, CancellationToken ct);
+        Task<SubmissionComment> UpdateAsync(Guid id, UpdateSubmissionCommentRequest submissionComment, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -66,66 +66,44 @@ namespace Cite.Api.Services
             return _mapper.Map<SubmissionComment>(item);
         }
 
+        // Writes go through the same implementation as the nested /submissions/{id}/comments routes,
+        // scoped to the submission that owns the option or comment.
+
         public async Task<SubmissionComment> CreateAsync(SubmissionComment submissionComment, CancellationToken ct)
         {
-            submissionComment.Id = submissionComment.Id != Guid.Empty ? submissionComment.Id : Guid.NewGuid();
-            submissionComment.CreatedBy = _user.GetId();
-            var submissionCommentEntity = _mapper.Map<SubmissionCommentEntity>(submissionComment);
+            var submissionId = await _context.SubmissionOptions
+                .Where(o => o.Id == submissionComment.SubmissionOptionId)
+                .Select(o => (Guid?)o.SubmissionCategory.SubmissionId)
+                .SingleOrDefaultAsync(ct)
+                ?? throw new EntityNotFoundException<SubmissionOption>();
+            var submissionCommentEntity = await _submissionService.AddCommentEntityAsync(submissionId, submissionComment.SubmissionOptionId, submissionComment.Comment, ct);
 
-            _context.SubmissionComments.Add(submissionCommentEntity);
-            await _context.SaveChangesAsync(ct);
-            submissionComment = await GetAsync(submissionCommentEntity.Id, ct);
-
-            // create and send xapi statement
-            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/stated");
-            await _submissionService.LogCommentXApiAsync(
-                verb,
-                submissionCommentEntity.SubmissionOptionId,
-                submissionComment.Comment,
-                ct);
-
-            return submissionComment;
+            return await GetAsync(submissionCommentEntity.Id, ct);
         }
 
-        public async Task<SubmissionComment> UpdateAsync(Guid id, SubmissionComment submissionComment, CancellationToken ct)
+        public async Task<SubmissionComment> UpdateAsync(Guid id, UpdateSubmissionCommentRequest submissionComment, CancellationToken ct)
         {
-            var submissionCommentToUpdate = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (submissionCommentToUpdate == null)
-                throw new EntityNotFoundException<SubmissionComment>();
+            var submissionId = await GetSubmissionIdAsync(id, ct);
+            await _submissionService.UpdateCommentEntityAsync(submissionId, id, submissionComment.Comment, ct);
 
-            submissionComment.ModifiedBy = _user.GetId();
-            _mapper.Map(submissionComment, submissionCommentToUpdate);
-            _context.SubmissionComments.Update(submissionCommentToUpdate);
-            await _context.SaveChangesAsync(ct);
-            submissionComment = await GetAsync(submissionCommentToUpdate.Id, ct);
-            // create and send xapi statement
-            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/edited");
-            await _submissionService.LogCommentXApiAsync(
-                verb,
-                submissionCommentToUpdate.SubmissionOptionId,
-                submissionComment.Comment,
-                ct);
-
-            return submissionComment;
+            return await GetAsync(id, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
         {
-            var submissionCommentToDelete = await _context.SubmissionComments.SingleOrDefaultAsync(v => v.Id == id, ct);
-            if (submissionCommentToDelete == null)
-                throw new EntityNotFoundException<SubmissionComment>();
-
-            _context.SubmissionComments.Remove(submissionCommentToDelete);
-            await _context.SaveChangesAsync(ct);
-            // create and send xapi statement
-            var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/deleted");
-            await _submissionService.LogCommentXApiAsync(
-                verb,
-                submissionCommentToDelete.SubmissionOptionId,
-                submissionCommentToDelete.Comment,
-                ct);
+            var submissionId = await GetSubmissionIdAsync(id, ct);
+            await _submissionService.DeleteCommentEntityAsync(submissionId, id, ct);
 
             return true;
+        }
+
+        private async Task<Guid> GetSubmissionIdAsync(Guid submissionCommentId, CancellationToken ct)
+        {
+            return await _context.SubmissionComments
+                .Where(c => c.Id == submissionCommentId)
+                .Select(c => (Guid?)c.SubmissionOption.SubmissionCategory.SubmissionId)
+                .SingleOrDefaultAsync(ct)
+                ?? throw new EntityNotFoundException<SubmissionComment>();
         }
     }
 }

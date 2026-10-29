@@ -28,7 +28,7 @@ namespace Cite.Api.Data.Models
 
         public Guid UserId { get; set; }
         public virtual UserEntity User { get; set; }
-        public Guid? RoleId { get; set; }
+        public Guid RoleId { get; set; } = TeamRoleDefaults.TeamMemberRoleId;
         public TeamRoleEntity Role { get; set; }
     }
 
@@ -37,6 +37,15 @@ namespace Cite.Api.Data.Models
         public void Configure(EntityTypeBuilder<TeamMembershipEntity> builder)
         {
             builder.HasIndex(e => new { e.TeamId, e.UserId }).IsUnique();
+
+            builder.Property(x => x.RoleId).HasDefaultValue(TeamRoleDefaults.TeamMemberRoleId);
+
+            // a role still held by a membership cannot be deleted, rather than taking every member off their team
+            builder
+                .HasOne(tu => tu.Role)
+                .WithMany()
+                .HasForeignKey(tu => tu.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             builder
                 .HasOne(tu => tu.Team)

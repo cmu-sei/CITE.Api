@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -38,8 +39,10 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
         protected string[] GetGroups(MoveEntity moveEntity)
         {
+            // the two move groups are disjoint, so a connection gets each move once
             var groupIds = new List<string>();
-            groupIds.Add(moveEntity.EvaluationId.ToString());
+            groupIds.Add(moveEntity.EvaluationId.ToString() + MainHub.CURRENT_MOVES_POSTFIX);
+            groupIds.Add(moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX);
             // the admin data group gets everything
             groupIds.Add(MainHub.ADMIN_DATA_GROUP);
 
@@ -52,13 +55,28 @@ namespace Cite.Api.Infrastructure.EventHandlers
             string[] modifiedProperties,
             CancellationToken cancellationToken)
         {
-            var groupIds = GetGroups(moveEntity);
+            // a future move reaches only those who can read every move; the evaluation's teams get it when it becomes current
+            var currentMoveNumber = await _db.Evaluations
+                .Where(e => e.Id == moveEntity.EvaluationId)
+                .Select(e => e.CurrentMoveNumber)
+                .SingleOrDefaultAsync(cancellationToken);
+            var isFuture = moveEntity.MoveNumber > currentMoveNumber;
+            var groupIds = isFuture
+                ? [moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX, MainHub.ADMIN_DATA_GROUP]
+                : GetGroups(moveEntity);
             var move = _mapper.Map<ViewModels.Move>(moveEntity);
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
             {
                 tasks.Add(_mainHub.Clients.Group(groupId).SendAsync(method, move, modifiedProperties, cancellationToken));
+            }
+
+            // a move renumbered past the current one is withdrawn from the teams that could see it
+            if (isFuture && modifiedProperties != null && modifiedProperties.Contains(nameof(MoveEntity.MoveNumber).TitleCaseToCamelCase()))
+            {
+                tasks.Add(_mainHub.Clients.Group(moveEntity.EvaluationId.ToString() + MainHub.CURRENT_MOVES_POSTFIX)
+                    .SendAsync(MainHubMethods.MoveDeleted, moveEntity.Id, cancellationToken));
             }
 
             await Task.WhenAll(tasks);

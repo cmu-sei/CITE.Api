@@ -25,6 +25,7 @@ namespace Cite.Api.Services
         Task<ClaimsPrincipal> AddUserClaims(ClaimsPrincipal principal, bool update);
         Task<ClaimsPrincipal> GetClaimsPrincipal(Guid userId, bool setAsCurrent);
         Task<ClaimsPrincipal> RefreshClaims(Guid userId);
+        Task<ClaimsPrincipal> RefreshClaims(ClaimsPrincipal principal);
         ClaimsPrincipal GetCurrentClaimsPrincipal();
         void SetCurrentClaimsPrincipal(ClaimsPrincipal principal);
     }
@@ -109,6 +110,29 @@ namespace Cite.Api.Services
             _cache.Remove(userId);
             return await GetClaimsPrincipal(userId, false);
         }
+
+        /// <summary>
+        /// The principal with its permission claims built again from the database, for a principal that outlives the
+        /// request that added them, such as a SignalR connection's. The token's own claims are kept, so roles and groups
+        /// from the identity provider still apply.
+        /// </summary>
+        public async Task<ClaimsPrincipal> RefreshClaims(ClaimsPrincipal principal)
+        {
+            _cache.Remove(principal.GetId());
+            var identity = (ClaimsIdentity)principal.Identity;
+            var tokenClaims = identity.Claims.Where(x => !PermissionClaimTypes.Contains(x.Type));
+            var refreshed = new ClaimsPrincipal(new ClaimsIdentity(tokenClaims, identity.AuthenticationType, identity.NameClaimType, identity.RoleClaimType));
+
+            return await AddUserClaims(refreshed, false);
+        }
+
+        private static readonly string[] PermissionClaimTypes =
+        [
+            AuthorizationConstants.PermissionClaimType,
+            AuthorizationConstants.EvaluationPermissionClaimType,
+            AuthorizationConstants.ScoringModelPermissionClaimType,
+            AuthorizationConstants.TeamPermissionClaimType,
+        ];
 
         public ClaimsPrincipal GetCurrentClaimsPrincipal()
         {

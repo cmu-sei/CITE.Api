@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
@@ -94,6 +95,20 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 MainHubMethods.EvaluationUpdated,
                 notification.ModifiedProperties.Select(x => x.TitleCaseToCamelCase()).ToArray(),
                 cancellationToken);
+
+            // teams see moves up to the current one only. The event does not say what the current move was, so the teams'
+            // group is sent the moves now visible and told to drop the rest, whichever way the current move went; the
+            // all-moves and admin groups already hold every move.
+            if (notification.ModifiedProperties.Contains(nameof(EvaluationEntity.CurrentMoveNumber)))
+            {
+                var moves = await _db.Moves
+                    .Where(m => m.EvaluationId == notification.Entity.Id)
+                    .ToListAsync(cancellationToken);
+                var group = _mainHub.Clients.Group(notification.Entity.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX);
+                await Task.WhenAll(moves.Select(m => m.MoveNumber <= notification.Entity.CurrentMoveNumber
+                    ? group.SendAsync(MainHubMethods.MoveUpdated, _mapper.Map<ViewModels.Move>(m), null, cancellationToken)
+                    : group.SendAsync(MainHubMethods.MoveDeleted, m.Id, cancellationToken)));
+            }
         }
     }
 

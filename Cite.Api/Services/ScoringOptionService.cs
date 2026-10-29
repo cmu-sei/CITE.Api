@@ -27,7 +27,7 @@ namespace Cite.Api.Services
         Task<IEnumerable<ViewModels.ScoringOption>> GetForScoringCategoryAsync(Guid scoringCategoryId, CancellationToken ct);
         Task<ViewModels.ScoringOption> GetAsync(Guid id, CancellationToken ct);
         Task<ViewModels.ScoringOption> CreateAsync(ViewModels.ScoringOption scoringOption, CancellationToken ct);
-        Task<ViewModels.ScoringOption> UpdateAsync(Guid id, ViewModels.ScoringOption scoringOption, CancellationToken ct);
+        Task<ViewModels.ScoringOption> UpdateAsync(Guid id, ViewModels.UpdateScoringOptionRequest scoringOption, CancellationToken ct);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct);
     }
 
@@ -93,19 +93,20 @@ namespace Cite.Api.Services
             return scoringOption;
         }
 
-        public async Task<ViewModels.ScoringOption> UpdateAsync(Guid id, ViewModels.ScoringOption scoringOption, CancellationToken ct)
+        public async Task<ViewModels.ScoringOption> UpdateAsync(Guid id, ViewModels.UpdateScoringOptionRequest scoringOption, CancellationToken ct)
         {
             var scoringOptionToUpdate = await _context.ScoringOptions.SingleOrDefaultAsync(v => v.Id == id, ct);
             if (scoringOptionToUpdate == null)
                 throw new EntityNotFoundException<ScoringOption>();
 
-            scoringOption.ModifiedBy = _user.GetId();
-            _mapper.Map(scoringOption, scoringOptionToUpdate);
-            _context.ScoringOptions.Update(scoringOptionToUpdate);
+            scoringOptionToUpdate.DisplayOrder = scoringOption.DisplayOrder;
+            scoringOptionToUpdate.Description = scoringOption.Description;
+            scoringOptionToUpdate.IsModifier = scoringOption.IsModifier;
+            scoringOptionToUpdate.Value = scoringOption.Value;
+            scoringOptionToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
-            scoringOption = await GetAsync(scoringOptionToUpdate.Id, ct);
 
-            return scoringOption;
+            return await GetAsync(scoringOptionToUpdate.Id, ct);
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

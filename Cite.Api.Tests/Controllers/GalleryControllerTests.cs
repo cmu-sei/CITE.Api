@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Tests.Support;
 using GAC = Gallery.Api.Client;
 
@@ -28,17 +29,41 @@ public class GalleryControllerTests(DatabaseFixture fixture, CiteAppFactory fact
         await AssertStatus(HttpStatusCode.Unauthorized, await Client().GetAsync($"api/evaluations/{Guid.NewGuid()}/unreadarticlecount", Ct));
     }
 
-    /// <summary>No permission is checked: an evaluation without an exhibit answers an empty count to any caller, and Gallery is not asked.</summary>
     [Fact]
     public async Task GetEvaluationUnreadArticleCount_answers_an_empty_count_for_an_evaluation_without_an_exhibit()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
-        var actor = await Actor().SeedAsync();
+        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
 
         var unread = await ReadAsync<GAC.UnreadArticles>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/unreadarticlecount", Ct));
 
         Assert.Null(unread.Count);
         Assert.DoesNotContain(Factory.OutboundHttp.Requests, x => x.Contains(actor.Id.ToString()));
+    }
+
+    /// <summary>CITE asks Gallery with its own service account, so a caller with no access to the evaluation is refused first.</summary>
+    [Fact]
+    public async Task GetEvaluationUnreadArticleCount_is_forbidden_for_a_caller_with_no_access_to_the_evaluation()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        graph.Evaluation.GalleryExhibitId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Ct);
+        var actor = await Actor().OnNewEvaluation(EvaluationPermission.ViewEvaluation).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/unreadarticlecount", Ct));
+
+        Assert.DoesNotContain(Factory.OutboundHttp.Requests, x => x.Contains(actor.Id.ToString()));
+    }
+
+    [Theory]
+    [InlineData(EvaluationPermission.ViewEvaluation)]
+    [InlineData(EvaluationPermission.ObserveEvaluation)]
+    public async Task GetEvaluationUnreadArticleCount_answers_a_caller_holding_an_evaluation_permission_on_it(EvaluationPermission permission)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [permission]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/unreadarticlecount", Ct));
     }
 
     [Fact]
@@ -54,7 +79,7 @@ public class GalleryControllerTests(DatabaseFixture fixture, CiteAppFactory fact
         var exhibitId = Guid.NewGuid();
         graph.Evaluation.GalleryExhibitId = exhibitId;
         await Db.SaveChangesAsync(Ct);
-        var actor = await Actor().SeedAsync();
+        var actor = await Actor().OnTeam(graph.Team.Id).SeedAsync();
         var galleryUrl = $"{GalleryApiUrl}api/exhibits/{exhibitId}/users/{actor.Id}/articles/unread";
         StubIdentityProvider();
         Factory.OutboundHttp.Respond(galleryUrl,

@@ -137,12 +137,11 @@ namespace Cite.Api.Controllers
         [HttpPut("scoringCategories/{id}")]
         [ProducesResponseType(typeof(ScoringCategory), (int)HttpStatusCode.OK)]
         [SwaggerOperation(OperationId = "updateScoringCategory")]
-        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] ScoringCategory scoringCategory, CancellationToken ct)
+        public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateScoringCategoryRequest scoringCategory, CancellationToken ct)
         {
-            if (!await _authorizationService.AuthorizeAsync<ScoringModel>(scoringCategory.ScoringModelId, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
+            if (!await _authorizationService.AuthorizeAsync<ScoringCategory>(id, [SystemPermission.EditScoringModels], [ScoringModelPermission.EditScoringModel], ct))
                 throw new ForbiddenException();
 
-            scoringCategory.ModifiedBy = User.GetId();
             var updatedScoringCategory = await _scoringCategoryService.UpdateAsync(id, scoringCategory, ct);
             return Ok(updatedScoringCategory);
         }

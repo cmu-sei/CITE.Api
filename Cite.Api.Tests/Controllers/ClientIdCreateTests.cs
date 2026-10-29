@@ -23,9 +23,7 @@ public class ClientIdCreateTests(DatabaseFixture fixture, CiteAppFactory factory
     [InlineData("scoringModels")]
     [InlineData("scoringModels/memberships")]
     [InlineData("submissionCategories")]
-    [InlineData("submissionComments")]
     [InlineData("submissionOptions")]
-    [InlineData("submissions/comments")]
     [InlineData("system-roles")]
     [InlineData("teams")]
     [InlineData("teams/memberships")]
@@ -40,6 +38,24 @@ public class ClientIdCreateTests(DatabaseFixture fixture, CiteAppFactory factory
         var error = await AssertApiError(HttpStatusCode.InternalServerError, response);
         Assert.Equal("An error occurred while saving the entity changes. See the inner exception for details.", error.Detail);
         Assert.Equal(before, await ReadBack(db => Stored(db, resource, arranged.Id)));
+    }
+
+    /// <summary>A comment's id is always server-generated, so a client id that already exists adds a second comment.</summary>
+    [Theory]
+    [InlineData("api/submissionComments", HttpStatusCode.Created)]
+    [InlineData("api/submissions/{0}/comments", HttpStatusCode.OK)]
+    public async Task Create_comment_ignores_an_existing_client_id_and_leaves_that_comment_unchanged(string route, HttpStatusCode status)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var submission = await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id, Root.Id);
+        var comment = TestData.SubmissionComment(submission.Option.Id);
+        await Seed(comment);
+
+        var response = await RootClient.PostAsJsonAsync(string.Format(route, submission.Submission.Id), new { id = comment.Id, submissionOptionId = submission.Option.Id, comment = "Replacement" }, Ct);
+
+        await AssertStatus(status, response);
+        Assert.Equal(comment.Comment, await ReadBack(db => db.SubmissionComments.Where(x => x.Id == comment.Id).Select(x => x.Comment).SingleAsync(Ct)));
+        Assert.True(await ReadBack(db => db.SubmissionComments.AnyAsync(x => x.Id != comment.Id && x.SubmissionOptionId == submission.Option.Id && x.Comment == "Replacement", Ct)));
     }
 
     private async Task<(Guid Id, string Route, object Body)> Duplicate(string resource)

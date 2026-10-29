@@ -185,6 +185,28 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal(actor.Id, stored.CreatedBy);
     }
 
+    /// <summary>A new scoring model is a template: an evaluation and categories in the body are not stored.</summary>
+    [Fact]
+    public async Task Create_ignores_an_evaluation_and_categories_in_the_body()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Created Model",
+            status = "Active",
+            evaluationId = graph.Evaluation.Id,
+            scoringCategories = new[] { new { id = graph.Category.Id, description = "Hijacked", scoringModelId = id } },
+        }, Ct));
+
+        await using var context = NewContext();
+        Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == id, Ct)).EvaluationId);
+        var category = await context.ScoringCategories.SingleAsync(x => x.Id == graph.Category.Id, Ct);
+        Assert.Equal((graph.ScoringModel.Id, graph.Category.Description), (category.ScoringModelId, category.Description));
+    }
+
     [Fact]
     public async Task Create_broadcasts_the_new_scoring_model_to_its_group()
     {
@@ -282,6 +304,57 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal("Renamed", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).Description);
+    }
+
+    /// <summary>The body attaches the template to another evaluation and rewrites that evaluation's category; neither is applied.</summary>
+    [Fact]
+    public async Task Update_ignores_an_evaluation_and_categories_in_the_body()
+    {
+        var (model, _) = await SeedTemplate();
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var actor = await Actor().OnScoringModel(model.Id, permissions: [ScoringModelPermission.EditScoringModel]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/scoringModels/{model.Id}", new
+        {
+            id = model.Id,
+            description = "Renamed",
+            status = "Active",
+            evaluationId = graph.Evaluation.Id,
+            scoringCategories = new[] { new { id = graph.Category.Id, description = "Hijacked", scoringModelId = model.Id } },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).EvaluationId);
+        var category = await context.ScoringCategories.SingleAsync(x => x.Id == graph.Category.Id, Ct);
+        Assert.Equal((graph.ScoringModel.Id, graph.Category.Description), (category.ScoringModelId, category.Description));
+    }
+
+    [Fact]
+    public async Task Copy_of_an_evaluations_scoring_model_is_a_template()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{graph.ScoringModel.Id}/copy", null, Ct));
+
+        await using var context = NewContext();
+        Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == copy.Id, Ct)).EvaluationId);
+        Assert.Equal(graph.ScoringModel.Id, (await context.Evaluations.SingleAsync(x => x.Id == graph.Evaluation.Id, Ct)).ScoringModelId);
+    }
+
+    /// <summary>A downloaded evaluation-owned model carries its EvaluationId; the import is a template all the same.</summary>
+    [Fact]
+    public async Task UploadJson_imports_an_evaluations_scoring_model_as_a_template()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{graph.ScoringModel.Id}/json", Ct)).Content.ReadAsByteArrayAsync(Ct);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.CreateScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json", Upload(exported), Ct));
+
+        Assert.NotEqual(graph.ScoringModel.Id, imported.Id);
+        await using var context = NewContext();
+        Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == imported.Id, Ct)).EvaluationId);
     }
 
     [Fact]

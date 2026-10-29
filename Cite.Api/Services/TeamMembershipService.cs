@@ -77,7 +77,8 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<SAVM.Team>();
 
             teamMembershipToUpdate.Role = null;
-            teamMembershipToUpdate.RoleId = teamMembership.RoleId;
+            // a request without a role leaves the member with the default Member role
+            teamMembershipToUpdate.RoleId = teamMembership.RoleId == Guid.Empty ? TeamRoleDefaults.TeamMemberRoleId : teamMembership.RoleId;
             await _context.SaveChangesAsync(ct);
 
             return _mapper.Map<SAVM.TeamMembership>(teamMembershipToUpdate);

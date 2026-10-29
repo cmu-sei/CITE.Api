@@ -1150,8 +1150,10 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuid_generate_v4()");
 
-                    b.Property<Guid?>("RoleId")
+                    b.Property<Guid>("RoleId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("b52ef031-65ee-4597-b768-b73480e6de67"))
                         .HasColumnName("role_id");
 
                     b.Property<Guid>("TeamId")
@@ -1204,28 +1206,28 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                             Id = new Guid("a2cc11c1-9fd1-402b-9937-0f6ede1066c3"),
                             Description = "Can perform all actions for the Team",
                             Name = "Owner",
-                            Permissions = new[] { 0, 1, 2, 3 }
+                            Permissions = new[] { 0, 4, 1, 2, 3 }
                         },
                         new
                         {
                             Id = new Guid("1cfce79f-f344-4cb1-b33a-55de8dc1ccb3"),
                             Description = "Can contribute to and submit the answers for the Team",
                             Name = "Submitter",
-                            Permissions = new[] { 0, 1, 2 }
+                            Permissions = new[] { 0, 4, 1, 2 }
                         },
                         new
                         {
                             Id = new Guid("c442cf49-e26e-45c5-be7c-00e710d2e055"),
                             Description = "Can contribute answers for the Team",
                             Name = "Contributor",
-                            Permissions = new[] { 0, 1 }
+                            Permissions = new[] { 0, 4, 1 }
                         },
                         new
                         {
                             Id = new Guid("b52ef031-65ee-4597-b768-b73480e6de67"),
                             Description = "Has read only access to the Team",
                             Name = "Member",
-                            Permissions = new[] { 0 }
+                            Permissions = new[] { 0, 4 }
                         });
                 });
 
@@ -1742,7 +1744,9 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                 {
                     b.HasOne("Cite.Api.Data.Models.TeamRoleEntity", "Role")
                         .WithMany()
-                        .HasForeignKey("RoleId");
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Cite.Api.Data.Models.TeamEntity", "Team")
                         .WithMany("Memberships")

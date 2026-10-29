@@ -18,6 +18,10 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<ScoringModel, ScoringModelEntity>()
                 .ForMember(e => e.SeverityLevels, opt => opt.Condition(src => src.SeverityLevels != null));
 
+            CreateMap<ScoringModelFields, ScoringModelEntity>()
+                .ForMember(e => e.SeverityLevels, opt => opt.Condition(src => src.SeverityLevels != null))
+                .IncludeAllDerived();
+
             // copies get their own severity levels
             CreateMap<ScoringModelEntity, ScoringModelEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore())

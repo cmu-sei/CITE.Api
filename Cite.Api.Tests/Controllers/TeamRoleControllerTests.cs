@@ -40,6 +40,16 @@ public class TeamRoleControllerTests(DatabaseFixture fixture, CiteAppFactory fac
         Assert.Contains(TeamPermission.ManageTeam, role.Permissions);
     }
 
+    /// <summary>Every seeded role reads past moves' official scores, so the scoresheet keeps showing them.</summary>
+    [Fact]
+    public async Task GetAll_grants_ViewPastOfficialScore_and_no_current_official_score_permission_on_every_seeded_role()
+    {
+        var roles = await ReadAsync<List<TeamRole>>(await RootClient.GetAsync("api/team-roles", Ct));
+
+        Assert.All(roles, x => Assert.Contains(TeamPermission.ViewPastOfficialScore, x.Permissions));
+        Assert.All(roles, x => Assert.DoesNotContain(TeamPermission.ViewCurrentOfficialScore, x.Permissions));
+    }
+
     [Fact]
     public async Task Get_answers_an_unknown_role_with_not_found()
     {

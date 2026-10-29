@@ -1,6 +1,7 @@
 // Copyright 2026 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
@@ -186,6 +187,51 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.Equal(0, (await context.Submissions.SingleAsync(x => x.UserId == user.Id, Ct)).MoveNumber);
     }
 
+    /// <summary>The admin UI adds a member without naming a role; the membership gets the Member role.</summary>
+    [Fact]
+    public async Task CreateMembership_without_a_role_gives_the_user_the_Member_role()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        Assert.Equal(TestData.TeamRoles.Member, (await ReadAsync<TeamMembership>(response)).RoleId);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    /// <summary>Clients built when the role was optional send null; that is read as no role, not refused.</summary>
+    [Fact]
+    public async Task CreateMembership_with_a_null_role_gives_the_user_the_Member_role()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships", new { teamId = graph.Team.Id, userId = user.Id, roleId = (Guid?)null }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    /// <summary>The foreign key refuses the delete, so removing a role cannot take every member who holds it off their team.</summary>
+    [Fact]
+    public async Task Deleting_a_team_role_held_by_a_membership_is_refused_and_keeps_the_membership()
+    {
+        var (_, membership) = await SeedWithMember();
+        var role = TestData.TeamRole(TeamPermission.ViewTeam);
+        await Seed(role);
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, role.Id), Ct));
+
+        await Assert.ThrowsAnyAsync<DbException>(() => ReadBack(db => db.TeamRoles.Where(x => x.Id == role.Id).ExecuteDeleteAsync(Ct)));
+
+        Assert.True(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct)));
+    }
+
     // Same case as Update_lets_a_caller_holding_only_ManageTeam_grant_the_Owner_role.
     /// <summary>A caller holding only ManageTeam gives another user the Owner role, which also grants EditTeamScore and SubmitTeamScore.</summary>
     [Fact]
@@ -317,6 +363,34 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal(managerRole.Id, (await context.TeamMemberships.SingleAsync(x => x.Id == membership.Id, Ct)).RoleId);
+    }
+
+    [Fact]
+    public async Task Update_without_a_role_gives_the_member_the_Member_role()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.Owner), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task Update_with_a_null_role_gives_the_member_the_Member_role()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.Owner), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = (Guid?)null }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        Assert.Equal(TestData.TeamRoles.Member, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
     }
 
     [Fact]
