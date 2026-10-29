@@ -218,6 +218,22 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
     }
 
     [Fact]
+    public async Task Create_gives_the_evaluations_scoring_model_the_templates_severity_levels()
+    {
+        var template = TestData.ScoringModel("Template");
+        template.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF", Description = "Quiet" }];
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == id, Ct);
+        var level = Assert.Single(stored.ScoringModel.SeverityLevels);
+        Assert.Equal(("Calm", "#FFFFFF", "Quiet"), (level.Name, level.Color, level.Description));
+    }
+
+    [Fact]
     public async Task Create_broadcasts_the_new_evaluation_to_its_group()
     {
         var template = TestData.ScoringModel("Template");
@@ -268,6 +284,25 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.NotEqual(graph.Team.Id, Assert.Single(stored.Teams).Id);
         Assert.Single(stored.Moves);
         Assert.Equal(copy.Id, stored.ScoringModel.EvaluationId);
+    }
+
+    [Fact]
+    public async Task Copy_gives_the_copied_scoring_model_the_severity_levels()
+    {
+        var graph = await Seed("Source");
+        await using (var context = NewContext())
+        {
+            var model = await context.ScoringModels.SingleAsync(x => x.Id == graph.ScoringModel.Id, Ct);
+            model.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF" }, new() { Name = "Storm", MinimumScore = 60, Color = "#000000" }];
+            await context.SaveChangesAsync(Ct);
+        }
+
+        var copy = await ReadAsync<Evaluation>(await RootClient.PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        await using var check = NewContext();
+        var stored = await check.Evaluations.Include(x => x.ScoringModel).SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.NotEqual(graph.ScoringModel.Id, stored.ScoringModel.Id);
+        Assert.Equal([("Calm", 0.0), ("Storm", 60.0)], stored.ScoringModel.SeverityLevels.Select(x => (x.Name, x.MinimumScore)));
     }
 
     [Fact]
@@ -671,6 +706,32 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal("Round Trip - Importer", imported.Description);
         await using var context = NewContext();
         Assert.Equal(1, await context.Teams.CountAsync(x => x.EvaluationId == imported.Id, Ct));
+    }
+
+    /// <summary>
+    /// When the file's scoring model isn't in the database, upload creates it from the file, so its
+    /// severity levels are checked the way a save is.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_refuses_a_new_scoring_model_with_invalid_severity_levels()
+    {
+        var graph = await Seed("Bad Levels");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newModelId = Guid.NewGuid().ToString();
+        json["ScoringModelId"] = newModelId;
+        var scoringModel = json["ScoringModel"]!.AsObject();
+        scoringModel["Id"] = newModelId;
+        scoringModel["SeverityLevels"] = new System.Text.Json.Nodes.JsonArray(
+            new System.Text.Json.Nodes.JsonObject { ["Name"] = "Low", ["MinimumScore"] = 0, ["Color"] = "red" });
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Contains("'red' is not a #rrggbb color (severity level 1)", error.Title);
+        await using var context = NewContext();
+        Assert.Equal([graph.Evaluation.Id], await context.Evaluations.Select(x => x.Id).ToListAsync(Ct));
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == Guid.Parse(newModelId), Ct));
     }
 
     [Fact]

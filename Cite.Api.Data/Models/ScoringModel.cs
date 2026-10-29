@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Cite.Api.Data.Enumerations;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Cite.Api.Data.Models
 {
@@ -34,5 +36,16 @@ namespace Cite.Api.Data.Models
         public string RightSideEmbeddedUrl { get; set; }
         public Guid? EvaluationId { get; set; }
         public virtual ICollection<ScoringModelMembershipEntity> Memberships { get; set; } = new List<ScoringModelMembershipEntity>();
+        // empty means the UI's default severity scale
+        public List<SeverityLevelEntity> SeverityLevels { get; set; } = new List<SeverityLevelEntity>();
+    }
+
+    public class ScoringModelEntityConfiguration : IEntityTypeConfiguration<ScoringModelEntity>
+    {
+        public void Configure(EntityTypeBuilder<ScoringModelEntity> builder)
+        {
+            // named here because UsePostgresCasing only renames entity properties
+            builder.ComplexCollection(e => e.SeverityLevels, b => b.ToJson("severity_levels"));
+        }
     }
 }

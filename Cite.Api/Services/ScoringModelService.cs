@@ -262,6 +262,8 @@ namespace Cite.Api.Services
             {
                 return _mapper.Map<ScoringModel>(existingScoringModel);
             }
+            // the file is read straight into the database model, so the API model's checks haven't run
+            SeverityLevelRules.ThrowIfInvalid(scoringModelEntity.SeverityLevels);
             // make a copy and add it to the database, keeping the file's description unless it is already in use
             var descriptionInUse = await _context.ScoringModels.AnyAsync(m => m.Description == scoringModelEntity.Description, ct);
             scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionInUse ? null : "");

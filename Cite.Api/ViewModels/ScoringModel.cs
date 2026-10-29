@@ -3,13 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
 {
-    public class ScoringModel : Base, IAuthorizationType
+    public class ScoringModel : Base, IAuthorizationType, IValidatableObject
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -33,5 +34,15 @@ namespace Cite.Api.ViewModels
         public string RightSideEmbeddedUrl { get; set; }
         public Guid? EvaluationId { get; set; }
         public IEnumerable<ScoringModelPermission> ScoringModelPermissions { get; set; }
+        // empty means the default severity scale; left out of an update, the saved levels are kept
+        public List<SeverityLevel> SeverityLevels { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (SeverityLevels == null)
+                yield break;
+            foreach (var problem in SeverityLevelRules.SharedMinimumScoreProblems(SeverityLevels.Select(l => l.MinimumScore)))
+                yield return new ValidationResult(problem, [nameof(SeverityLevels)]);
+        }
     }
 }
