@@ -2,6 +2,9 @@
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using Cite.Api.Data.Enumerations;
 
 namespace Cite.Api.ViewModels
@@ -11,7 +14,7 @@ namespace Cite.Api.ViewModels
     /// the categories are not among them: the server attaches a copy to its evaluation, and categories are
     /// written through their own endpoints.
     /// </summary>
-    public abstract class ScoringModelFields
+    public abstract class ScoringModelFields : IValidatableObject
     {
         public string Description { get; set; }
         public string CalculationEquation { get; set; }
@@ -29,6 +32,16 @@ namespace Cite.Api.ViewModels
         public RightSideDisplay RightSideDisplay { get; set; }
         public string RightSideHtmlBlock { get; set; }
         public string RightSideEmbeddedUrl { get; set; }
+        // empty means the default severity scale; left out of an update, the saved levels are kept
+        public List<SeverityLevel> SeverityLevels { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (SeverityLevels == null)
+                yield break;
+            foreach (var problem in SeverityLevelRules.SharedMinimumScoreProblems(SeverityLevels.Select(l => l.MinimumScore)))
+                yield return new ValidationResult(problem, [nameof(SeverityLevels)]);
+        }
     }
 
     public class CreateScoringModelRequest : ScoringModelFields

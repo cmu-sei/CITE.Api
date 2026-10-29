@@ -382,6 +382,8 @@ namespace Cite.Api.Services
                     throw new InvalidOperationException("Uploaded evaluation does not contain a ScoringModel object and the ScoringModelId does not exist in the database");
                 }
 
+                // the file is read straight into the database model, so the API model's checks haven't run
+                SeverityLevelRules.ThrowIfInvalid(evaluationEntity.ScoringModel.SeverityLevels);
                 var newScoringModel = await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
                 evaluationEntity.ScoringModelId = newScoringModel.Id;
             }
