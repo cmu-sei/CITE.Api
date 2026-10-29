@@ -39,13 +39,10 @@ namespace Cite.Api.ViewModels
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (SeverityLevels != null &&
-                SeverityLevels.GroupBy(l => l.MinimumScore).Any(g => g.Count() > 1))
-            {
-                yield return new ValidationResult(
-                    "Each severity level needs a different minimum score",
-                    [nameof(SeverityLevels)]);
-            }
+            if (SeverityLevels == null)
+                yield break;
+            foreach (var problem in SeverityLevelRules.SharedMinimumScoreProblems(SeverityLevels.Select(l => l.MinimumScore)))
+                yield return new ValidationResult(problem, [nameof(SeverityLevels)]);
         }
     }
 }

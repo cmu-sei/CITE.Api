@@ -10,9 +10,8 @@ namespace Cite.Api.ViewModels
         [Required(AllowEmptyStrings = false)]
         public string Name { get; set; }
         public double MinimumScore { get; set; }
-        // a #rrggbb color, so the UI can pick a readable text color for it
         [Required]
-        [RegularExpression("^#[0-9a-fA-F]{6}$")]
+        [RegularExpression(SeverityLevelRules.ColorPattern)]
         public string Color { get; set; }
         public string Description { get; set; }
     }

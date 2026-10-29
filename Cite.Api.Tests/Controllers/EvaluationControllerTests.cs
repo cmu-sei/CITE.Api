@@ -708,6 +708,32 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(1, await context.Teams.CountAsync(x => x.EvaluationId == imported.Id, Ct));
     }
 
+    /// <summary>
+    /// When the file's scoring model isn't in the database, upload creates it from the file, so its
+    /// severity levels are checked the way a save is.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_refuses_a_new_scoring_model_with_invalid_severity_levels()
+    {
+        var graph = await Seed("Bad Levels");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newModelId = Guid.NewGuid().ToString();
+        json["ScoringModelId"] = newModelId;
+        var scoringModel = json["ScoringModel"]!.AsObject();
+        scoringModel["Id"] = newModelId;
+        scoringModel["SeverityLevels"] = new System.Text.Json.Nodes.JsonArray(
+            new System.Text.Json.Nodes.JsonObject { ["Name"] = "Low", ["MinimumScore"] = 0, ["Color"] = "red" });
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Contains("'red' is not a #rrggbb color (severity level 1)", error.Title);
+        await using var context = NewContext();
+        Assert.Equal([graph.Evaluation.Id], await context.Evaluations.Select(x => x.Id).ToListAsync(Ct));
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == Guid.Parse(newModelId), Ct));
+    }
+
     [Fact]
     public async Task UploadJson_is_forbidden_for_a_caller_holding_only_EditEvaluations()
     {

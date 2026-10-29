@@ -715,6 +715,36 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Empty(imported.SeverityLevels);
     }
 
+    /// <summary>A hand-edited file is checked the way a save is, since upload reads it straight into the database model.</summary>
+    [Theory]
+    [InlineData("Low", "red", 0.0, "'red' is not a #rrggbb color (severity level 1)")]
+    [InlineData(" ", "#00FF00", 0.0, "severity level 1 needs a name")]
+    [InlineData("Low", "#00FF00", 50.0, "two severity levels share minimum score 50")]
+    public async Task UploadJson_refuses_a_file_with_invalid_severity_levels(string name, string color, double minimumScore, string problem)
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        json["Id"] = Guid.NewGuid().ToString();
+        var first = LevelArray(json)[0]!.AsObject();
+        first["Name"] = name;
+        first["Color"] = color;
+        first["MinimumScore"] = minimumScore;
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/scoringModels/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Contains(problem, error.Title);
+        await using var context = NewContext();
+        Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+    }
+
+    // the levels in an exported file, a plain array or the $values of a preserved reference
+    private static System.Text.Json.Nodes.JsonArray LevelArray(System.Text.Json.Nodes.JsonObject scoringModel)
+        => scoringModel["SeverityLevels"] is System.Text.Json.Nodes.JsonArray array
+            ? array
+            : scoringModel["SeverityLevels"]!["$values"]!.AsArray();
+
     private static List<SeverityLevelEntity> SeverityLevels() =>
     [
         new() { Name = "Low", MinimumScore = 0, Color = "#00FF00", Description = "Fine" },
