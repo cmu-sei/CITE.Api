@@ -72,17 +72,19 @@ namespace Cite.Api.Services
                 sc.ScoringModelId == scoringModelId &&
                 (includeCalculations || (sc.ScoringModel.EvaluationId != null))
             ).ToListAsync();
-            // only show scoring model calculations to content developers and system admins
+            var scoringCategories = _mapper.Map<List<ScoringCategory>>(scoringCategoryList);
+            // only show scoring model calculations to content developers and system admins;
+            // redacted after mapping so IsScored still reflects the real equation
             if (!includeCalculations)
             {
-                foreach (var scoringCategory in scoringCategoryList)
+                foreach (var scoringCategory in scoringCategories)
                 {
                     scoringCategory.CalculationEquation = "********";
                     scoringCategory.ScoringWeight = 0.0;
                 }
             }
 
-            return _mapper.Map<IEnumerable<ScoringCategory>>(scoringCategoryList);
+            return scoringCategories;
         }
 
         public async Task<ViewModels.ScoringCategory> GetAsync(Guid id, bool includeCalculations, CancellationToken ct)
@@ -93,15 +95,17 @@ namespace Cite.Api.Services
             if (!includeCalculations && item.ScoringModel.EvaluationId == null)
                 throw new ForbiddenException();
 
-            // only show scoring model calculations to content developers and system admins
+            item.ScoringModel = null;
+            var scoringCategory = _mapper.Map<ScoringCategory>(item);
+            // only show scoring model calculations to content developers and system admins;
+            // redacted after mapping so IsScored still reflects the real equation
             if (!includeCalculations)
             {
-                item.CalculationEquation = "********";
-                item.ScoringWeight = 0.0;
+                scoringCategory.CalculationEquation = "********";
+                scoringCategory.ScoringWeight = 0.0;
             }
-            item.ScoringModel = null;
 
-            return _mapper.Map<ScoringCategory>(item);
+            return scoringCategory;
         }
 
         public async Task<ViewModels.ScoringCategory> CreateAsync(ViewModels.ScoringCategory scoringCategory, CancellationToken ct)

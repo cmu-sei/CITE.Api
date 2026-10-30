@@ -77,7 +77,23 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
         var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
 
         var category = Assert.Single(categories);
-        Assert.Equal(("********", 0.0), (category.CalculationEquation, category.ScoringWeight));
+        Assert.Equal(("********", 0.0, true), (category.CalculationEquation, category.ScoringWeight, category.IsScored));
+    }
+
+    [Fact]
+    public async Task GetForScoringModel_tells_scored_from_unscored_categories_with_the_equations_masked()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var unscored = TestData.ScoringCategory(graph.ScoringModel.Id, "Unscored Category", 2);
+        unscored.CalculationEquation = null;
+        await Seed(unscored);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var categories = await ReadAsync<List<ScoringCategory>>(await Client(actor).GetAsync($"api/scoringModel/{graph.ScoringModel.Id}/scoringCategories", Ct));
+
+        Assert.Equal(
+            [(graph.Category.Id, "********", true), (unscored.Id, "********", false)],
+            categories.OrderBy(c => c.DisplayOrder).Select(c => (c.Id, c.CalculationEquation, c.IsScored)));
     }
 
     [Fact]
@@ -165,7 +181,32 @@ public class ScoringCategoryControllerTests(DatabaseFixture fixture, CiteAppFact
 
         var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{graph.Category.Id}", Ct));
 
-        Assert.Equal(("********", 0.0), (read.CalculationEquation, read.ScoringWeight));
+        Assert.Equal(("********", 0.0, true), (read.CalculationEquation, read.ScoringWeight, read.IsScored));
+    }
+
+    [Fact]
+    public async Task Get_marks_an_evaluations_category_without_an_equation_unscored_with_the_equation_masked()
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var unscored = TestData.ScoringCategory(graph.ScoringModel.Id, "Unscored Category", 2);
+        unscored.CalculationEquation = " ";
+        await Seed(unscored);
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ObserveEvaluations).SeedAsync();
+
+        var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{unscored.Id}", Ct));
+
+        Assert.Equal(("********", false), (read.CalculationEquation, read.IsScored));
+    }
+
+    [Fact]
+    public async Task Get_marks_the_category_scored_alongside_its_equation_for_a_caller_holding_ViewScoringModels()
+    {
+        var (_, category) = await SeedTemplate();
+        var actor = await Actor().WithSystemPermissions(SystemPermission.ViewScoringModels).SeedAsync();
+
+        var read = await ReadAsync<ScoringCategory>(await Client(actor).GetAsync($"api/scoringCategories/{category.Id}", Ct));
+
+        Assert.Equal(("{sum}", true), (read.CalculationEquation, read.IsScored));
     }
 
     [Fact]

@@ -111,17 +111,19 @@ namespace Cite.Api.Services
                 if (!hasPermission)
                     throw new ForbiddenException();
             }
-            // only show scoring model calculations to those who can view as Admins
+            var scoringModel = _mapper.Map<ScoringModel>(item);
+            // only show scoring model calculations to those who can view as Admins;
+            // redacted after mapping so IsScored still reflects the real equation
             if (!viewAsAdmin)
             {
-                foreach (var scoringCategory in item.ScoringCategories)
+                foreach (var scoringCategory in scoringModel.ScoringCategories)
                 {
                     scoringCategory.CalculationEquation = "Redacted";
                     scoringCategory.ScoringWeight = 0.0;
                 }
             }
 
-            return _mapper.Map<ScoringModel>(item);
+            return scoringModel;
         }
 
         public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.CreateScoringModelRequest scoringModel, CancellationToken ct)
