@@ -1,0 +1,196 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-34 BIA Outage Impact",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Outage impact (Business Impact Analysis)</h4><p>Rate the impact on the organization if the mission/business processes affected in this move could not be performed. Name the processes in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Cost (template example)</th><th>Value</th></tr><tr><td>Severe</td><td>e.g. temp staffing, overtime, fees greater than $1 million</td></tr><tr><td>Moderate</td><td>e.g. fines, penalties, liabilities, potential $550k</td></tr><tr><td>Minimal</td><td>e.g. new contracts, supplies, $75k</td></tr></table><p>The thresholds are the BIA template's sample values; your organization should set its own.</p><p><i>Source: NIST SP 800-34 Rev. 1, Contingency Planning Guide for Federal Information Systems (2010), Section 3.2 and Appendix B (BIA template).</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Cost - staffing, overtime, fees, fines, penalties, liabilities",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "c0d419ec-4074-5e11-92bd-490bbb7d1a43",
+              "ScoringCategoryId": "c39ca7ca-0f34-5de4-afa4-af26e1319452"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "b9cad582-e7c3-5a10-b8cd-e819526edda6",
+              "ScoringCategoryId": "c39ca7ca-0f34-5de4-afa4-af26e1319452"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "dad95fb3-1d73-5cfc-a7f8-e4cef59e7104",
+              "ScoringCategoryId": "c39ca7ca-0f34-5de4-afa4-af26e1319452"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "a06f4871-d906-58aa-b2fe-c78e96473fae",
+              "ScoringCategoryId": "c39ca7ca-0f34-5de4-afa4-af26e1319452"
+            }
+          ]
+        },
+        "Id": "c39ca7ca-0f34-5de4-afa4-af26e1319452",
+        "ScoringModelId": "c138eb1f-747b-531f-8dd7-fa1b5d3a75d5"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Harm to individuals",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "65002215-3a5d-5fe5-bda9-63a18eebed9b",
+              "ScoringCategoryId": "7b67a0b3-6be5-5e03-807c-0e710094a45b"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "c54c2598-1d80-5e20-8e42-42605062eb4a",
+              "ScoringCategoryId": "7b67a0b3-6be5-5e03-807c-0e710094a45b"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "1776d489-0440-583a-8a18-c2f0a47caae0",
+              "ScoringCategoryId": "7b67a0b3-6be5-5e03-807c-0e710094a45b"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "bd2374bf-bf50-5525-bad9-6a09a85d775b",
+              "ScoringCategoryId": "7b67a0b3-6be5-5e03-807c-0e710094a45b"
+            }
+          ]
+        },
+        "Id": "7b67a0b3-6be5-5e03-807c-0e710094a45b",
+        "ScoringModelId": "c138eb1f-747b-531f-8dd7-fa1b5d3a75d5"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 3,
+        "Description": "Ability to perform mission",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "07c1803d-b3a4-51bf-bc1f-ec96d642f2c3",
+              "ScoringCategoryId": "a8e5acb6-0ea1-56e6-950d-62b0900c8647"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "aca6967e-e847-5b5e-93e8-fb3aba3ba16b",
+              "ScoringCategoryId": "a8e5acb6-0ea1-56e6-950d-62b0900c8647"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "a02fa384-2052-5445-abf4-86577fd96945",
+              "ScoringCategoryId": "a8e5acb6-0ea1-56e6-950d-62b0900c8647"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "d3b432ec-7894-5e6d-873e-2d97cd363b2b",
+              "ScoringCategoryId": "a8e5acb6-0ea1-56e6-950d-62b0900c8647"
+            }
+          ]
+        },
+        "Id": "a8e5acb6-0ea1-56e6-950d-62b0900c8647",
+        "ScoringModelId": "c138eb1f-747b-531f-8dd7-fa1b5d3a75d5"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "21",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "22",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "c138eb1f-747b-531f-8dd7-fa1b5d3a75d5"
+}

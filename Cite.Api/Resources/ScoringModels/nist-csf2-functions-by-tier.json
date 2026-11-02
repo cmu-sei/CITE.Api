@@ -1,0 +1,358 @@
+{
+  "$id": "1",
+  "Description": "NIST CSF 2.0 Functions by Tier",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>CSF 2.0 Functions by Tier</h4><p>Rate the organization's practice for each Function at the Tier that best describes it. Score once before the exercise and once after; the difference is what the exercise changed. The GOVERN Function uses the governance column; the other five use the management column. Explain your evidence in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Tier</th><th>Cybersecurity risk governance (GOVERN)</th><th>Cybersecurity risk management (other Functions)</th></tr><tr><td>Tier 1: Partial</td><td>Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.</td><td>There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.</td></tr><tr><td>Tier 2: Risk Informed</td><td>Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.</td><td>There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.</td></tr><tr><td>Tier 3: Repeatable</td><td>The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.</td><td>There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.</td></tr><tr><td>Tier 4: Adaptive</td><td>There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.</td><td>Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.</td></tr></table><p><i>Source: The NIST Cybersecurity Framework (CSF) 2.0, NIST CSWP 29 (February 26, 2024), Section 2 (Functions), Section 3.2 and Appendix B Table 2 (Tiers). Public domain. CSF 2.0 says the Tiers \"characterize the rigor of an organization's cybersecurity risk governance and management practices\"; Appendix B is a \"notional illustration\". They are not maturity levels.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "GOVERN (GV) - The organization's cybersecurity risk management strategy, expectations, and policy are established, communicated, and monitored.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "3db5f533-de45-5a94-a656-ff5ff69462f7",
+              "ScoringCategoryId": "7cfdd24e-2355-5b13-9064-e5f8d2015491"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "f0e15c82-b6f9-5e9b-a73e-32ea3e6bd14d",
+              "ScoringCategoryId": "7cfdd24e-2355-5b13-9064-e5f8d2015491"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "1444e4ea-cbda-53eb-baee-0cfb7b81f25f",
+              "ScoringCategoryId": "7cfdd24e-2355-5b13-9064-e5f8d2015491"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "7c5f4999-ac85-543c-a45d-c4bf44115364",
+              "ScoringCategoryId": "7cfdd24e-2355-5b13-9064-e5f8d2015491"
+            }
+          ]
+        },
+        "Id": "7cfdd24e-2355-5b13-9064-e5f8d2015491",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "IDENTIFY (ID) - The organization's current cybersecurity risks are understood.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "8e3351ac-5ced-54e4-8ce8-75d6a3d8172d",
+              "ScoringCategoryId": "c331daaa-a245-5098-bac8-eb124b5986cc"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "ab5f807d-27ba-5bc3-a3cf-fdc64ffb0b6a",
+              "ScoringCategoryId": "c331daaa-a245-5098-bac8-eb124b5986cc"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "3ca06bf6-4c0f-598f-b846-6daaf32f645f",
+              "ScoringCategoryId": "c331daaa-a245-5098-bac8-eb124b5986cc"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "00167fb7-19f0-552d-b759-3c9ac7c4bbee",
+              "ScoringCategoryId": "c331daaa-a245-5098-bac8-eb124b5986cc"
+            }
+          ]
+        },
+        "Id": "c331daaa-a245-5098-bac8-eb124b5986cc",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 3,
+        "Description": "PROTECT (PR) - Safeguards to manage the organization's cybersecurity risks are used.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a937b05f-a27a-5ab8-ae94-7673330682eb",
+              "ScoringCategoryId": "07635c9e-75e6-5521-924b-4aa255e9b3a2"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "83bcf649-2c0f-5663-884f-3d7f6e95e016",
+              "ScoringCategoryId": "07635c9e-75e6-5521-924b-4aa255e9b3a2"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "fa4caa68-1a41-5068-a43a-bda9c1a10a85",
+              "ScoringCategoryId": "07635c9e-75e6-5521-924b-4aa255e9b3a2"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "72a8fa0b-cb51-52d1-973d-0b66204f81c8",
+              "ScoringCategoryId": "07635c9e-75e6-5521-924b-4aa255e9b3a2"
+            }
+          ]
+        },
+        "Id": "07635c9e-75e6-5521-924b-4aa255e9b3a2",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      },
+      {
+        "$id": "21",
+        "DisplayOrder": 4,
+        "Description": "DETECT (DE) - Possible cybersecurity attacks and compromises are found and analyzed.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "22",
+          "$values": [
+            {
+              "$id": "23",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "e94250a6-b164-534e-9d73-2c8afc459cc2",
+              "ScoringCategoryId": "fb09b9aa-80d1-565a-b8a9-f5fbb65b4d3c"
+            },
+            {
+              "$id": "24",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "237b1803-f42a-541b-b0fb-d37624669152",
+              "ScoringCategoryId": "fb09b9aa-80d1-565a-b8a9-f5fbb65b4d3c"
+            },
+            {
+              "$id": "25",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "33cfc792-b746-5239-a6e3-8b2ce4166a8a",
+              "ScoringCategoryId": "fb09b9aa-80d1-565a-b8a9-f5fbb65b4d3c"
+            },
+            {
+              "$id": "26",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "e285db69-6d5a-56db-a8db-36367b1f5808",
+              "ScoringCategoryId": "fb09b9aa-80d1-565a-b8a9-f5fbb65b4d3c"
+            }
+          ]
+        },
+        "Id": "fb09b9aa-80d1-565a-b8a9-f5fbb65b4d3c",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      },
+      {
+        "$id": "27",
+        "DisplayOrder": 5,
+        "Description": "RESPOND (RS) - Actions regarding a detected cybersecurity incident are taken.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "28",
+          "$values": [
+            {
+              "$id": "29",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "505128e0-62a1-5a7f-b6c6-00a655159df9",
+              "ScoringCategoryId": "59be586b-8a74-5909-a9d9-ddfdc0954402"
+            },
+            {
+              "$id": "30",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "47ed8a93-0a91-5d82-aff2-40061afab06e",
+              "ScoringCategoryId": "59be586b-8a74-5909-a9d9-ddfdc0954402"
+            },
+            {
+              "$id": "31",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "3a99a4da-cddf-589f-aa9f-c9c4c8787d6e",
+              "ScoringCategoryId": "59be586b-8a74-5909-a9d9-ddfdc0954402"
+            },
+            {
+              "$id": "32",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "d386e568-206c-5f3d-9d8c-9ecfb312d319",
+              "ScoringCategoryId": "59be586b-8a74-5909-a9d9-ddfdc0954402"
+            }
+          ]
+        },
+        "Id": "59be586b-8a74-5909-a9d9-ddfdc0954402",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      },
+      {
+        "$id": "33",
+        "DisplayOrder": 6,
+        "Description": "RECOVER (RC) - Assets and operations affected by a cybersecurity incident are restored.",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "34",
+          "$values": [
+            {
+              "$id": "35",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - There is limited awareness of cybersecurity risks at the organizational level. The organization implements cybersecurity risk management on an irregular, case-by-case basis. The organization may not have processes that enable cybersecurity information to be shared within the organization.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "d5813e69-5348-5318-95ca-0c502d64922f",
+              "ScoringCategoryId": "ae292ca7-b065-5d14-910b-1375f91bb79f"
+            },
+            {
+              "$id": "36",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - There is an awareness of cybersecurity risks at the organizational level, but an organization-wide approach to managing cybersecurity risks has not been established. Cyber risk assessment of organizational and external assets occurs but is not typically repeatable or reoccurring. Cybersecurity information is shared within the organization on an informal basis.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "37a97da3-e534-5743-abdd-d9140f801510",
+              "ScoringCategoryId": "ae292ca7-b065-5d14-910b-1375f91bb79f"
+            },
+            {
+              "$id": "37",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - There is an organization-wide approach to managing cybersecurity risks. Cybersecurity information is routinely shared throughout the organization. Consistent methods are in place to respond effectively to changes in risk. Personnel possess the knowledge and skills to perform their appointed roles and responsibilities.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "d8214e8d-0d99-589c-a05d-c25c97f7b597",
+              "ScoringCategoryId": "ae292ca7-b065-5d14-910b-1375f91bb79f"
+            },
+            {
+              "$id": "38",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - Cybersecurity risk management is part of the organizational culture. The organization adapts its cybersecurity practices based on previous and current cybersecurity activities, including lessons learned and predictive indicators. Through a process of continuous improvement, the organization actively adapts to a changing technological landscape and responds in a timely and effective manner to evolving, sophisticated threats.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "cd833a6f-a739-5bb8-8a43-3c53ae0effb4",
+              "ScoringCategoryId": "ae292ca7-b065-5d14-910b-1375f91bb79f"
+            }
+          ]
+        },
+        "Id": "ae292ca7-b065-5d14-910b-1375f91bb79f",
+        "ScoringModelId": "33e36572-2f1a-5343-b729-95f00d9e2993"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "39",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "40",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "33e36572-2f1a-5343-b729-95f00d9e2993"
+}

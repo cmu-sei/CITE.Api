@@ -1,0 +1,223 @@
+{
+  "$id": "1",
+  "Description": "MIL-STD-882E System Safety Risk Assessment",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": false,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Risk assessment matrix</h4><p>Rate the severity and probability of the mishap this move's events could cause (death or injury, environmental impact, or monetary loss). Their combination is the Risk Assessment Code (e.g. 1A = Catastrophic, Frequent). Read the risk level from Table III. Only the risk level is scored.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th></th><th>Catastrophic (1)</th><th>Critical (2)</th><th>Marginal (3)</th><th>Negligible (4)</th></tr><tr><td>Frequent (A)</td><td>High</td><td>High</td><td>Serious</td><td>Medium</td></tr><tr><td>Probable (B)</td><td>High</td><td>High</td><td>Serious</td><td>Medium</td></tr><tr><td>Occasional (C)</td><td>High</td><td>Serious</td><td>Medium</td><td>Low</td></tr><tr><td>Remote (D)</td><td>Serious</td><td>Medium</td><td>Medium</td><td>Low</td></tr><tr><td>Improbable (E)</td><td>Medium</td><td>Medium</td><td>Medium</td><td>Low</td></tr><tr><td>Eliminated (F)</td><td>Eliminated</td><td>Eliminated</td><td>Eliminated</td><td>Eliminated</td></tr></table><p>No amount of doctrine, training, warning, caution, or PPE can move a mishap probability to level F. Improbable is generally considered less than one in a million.</p><p><i>Source: MIL-STD-882E w/Change 1, Department of Defense Standard Practice: System Safety (27 September 2023), Tables I, II and III. Distribution A. Tailored definitions require formal approval under DoD Component policy.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Severity category",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "4 Negligible - Could result in one or more of the following: injury or occupational illness not resulting in a lost work day, minimal environmental impact, or monetary loss less than $100K.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "64d5a267-d1ef-584c-b472-1d1e799f8aaa",
+              "ScoringCategoryId": "ff13f5cc-d0de-5908-8592-ecd2f097b25f"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "3 Marginal - Could result in one or more of the following: injury or occupational illness resulting in one or more lost work day(s), reversible moderate environmental impact, or monetary loss equal to or exceeding $100K but less than $1M.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "57ecd424-e85b-52f6-bda5-f0a9ac30b2d1",
+              "ScoringCategoryId": "ff13f5cc-d0de-5908-8592-ecd2f097b25f"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "2 Critical - Could result in one or more of the following: permanent partial disability, injuries or occupational illness that may result in hospitalization of at least three personnel, reversible significant environmental impact, or monetary loss equal to or exceeding $1M but less than $10M.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "a3f83f6b-cf58-5bd5-be51-28cb4d3fdbc1",
+              "ScoringCategoryId": "ff13f5cc-d0de-5908-8592-ecd2f097b25f"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "1 Catastrophic - Could result in one or more of the following: death, permanent total disability, irreversible significant environmental impact, or monetary loss equal to or exceeding $10M.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "212b2331-c943-54fb-aab3-5d8c0a2ca2f5",
+              "ScoringCategoryId": "ff13f5cc-d0de-5908-8592-ecd2f097b25f"
+            }
+          ]
+        },
+        "Id": "ff13f5cc-d0de-5908-8592-ecd2f097b25f",
+        "ScoringModelId": "42321658-dd72-5339-95a4-ae5e8632d937"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Probability level",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "F Eliminated - Incapable of occurrence. This level is used when potential hazards are identified and later eliminated.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "ca7a127a-62ec-5e9c-bcf9-01ac74554e32",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "E Improbable - So unlikely, it can be assumed occurrence may not be experienced in the life of an item (fleet or inventory: unlikely to occur, but possible).",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a8604a58-c57e-546d-9cd4-b6f3ebf2aeab",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "D Remote - Unlikely, but possible to occur in the life of an item (fleet or inventory: unlikely, but can reasonably be expected to occur).",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "1a4dec67-4e7f-5299-820a-f7c3444c843b",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "C Occasional - Likely to occur sometime in the life of an item (fleet or inventory: will occur several times).",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "163ccb21-7d75-54e8-898c-cb385a463e79",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 5,
+              "Description": "B Probable - Will occur several times in the life of an item (fleet or inventory: will occur frequently).",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "8fef2bc1-b0e2-5e8e-b472-32ded8e3de1f",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 6,
+              "Description": "A Frequent - Likely to occur often in the life of an item (fleet or inventory: continuously experienced).",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "4d2e60e0-3ced-5d73-a058-2a8f447f9b64",
+              "ScoringCategoryId": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e"
+            }
+          ]
+        },
+        "Id": "ed6c17aa-edfc-5dfa-a296-6ea355ca7a7e",
+        "ScoringModelId": "42321658-dd72-5339-95a4-ae5e8632d937"
+      },
+      {
+        "$id": "17",
+        "DisplayOrder": 3,
+        "Description": "Risk level - from the Risk Assessment Code (severity and probability, Table III)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "18",
+          "$values": [
+            {
+              "$id": "19",
+              "DisplayOrder": 1,
+              "Description": "Eliminated",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "bbb8b23c-2edc-5f67-ba43-307f33b87f41",
+              "ScoringCategoryId": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 2,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "f85eb7bc-9572-5c1d-b35a-3a6f312689bc",
+              "ScoringCategoryId": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9"
+            },
+            {
+              "$id": "21",
+              "DisplayOrder": 3,
+              "Description": "Medium",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "22e90359-dac3-5132-9c1e-88b672d4b9e8",
+              "ScoringCategoryId": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 4,
+              "Description": "Serious",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "b8dc7557-2575-56ef-9126-edfb19e06368",
+              "ScoringCategoryId": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 5,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "c401d830-e4be-548a-802a-c9927e765c69",
+              "ScoringCategoryId": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9"
+            }
+          ]
+        },
+        "Id": "f84bd960-e5f1-505f-b1e2-ab262e8b32b9",
+        "ScoringModelId": "42321658-dd72-5339-95a4-ae5e8632d937"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "24",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "25",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "42321658-dd72-5339-95a4-ae5e8632d937"
+}

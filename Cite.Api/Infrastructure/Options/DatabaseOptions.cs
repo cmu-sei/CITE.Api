@@ -9,6 +9,8 @@ namespace Cite.Api.Infrastructure.Options
         public bool DevModeRecreate { get; set; }
         public string Provider { get; set; }
         public string SeedFile { get; set; }
+        /// <summary>Seed the stock scoring models in Resources/ScoringModels at start-up (true unless set).</summary>
+        public bool SeedStockScoringModels { get; set; } = true;
     }
 }
 

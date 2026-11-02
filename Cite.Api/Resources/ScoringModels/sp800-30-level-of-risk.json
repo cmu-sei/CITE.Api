@@ -1,0 +1,223 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-30 Level of Risk",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": false,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Level of risk</h4><p>Rate likelihood and impact, then read the level of risk from Table I-2. Only the level of risk is scored. In general, risk is not higher than the impact level; likelihood can reduce it.</p><p><b>Table I-2</b> (rows: likelihood; columns: level of impact)</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th></th><th>Very Low</th><th>Low</th><th>Moderate</th><th>High</th><th>Very High</th></tr><tr><td>Very High</td><td>Very Low</td><td>Low</td><td>Moderate</td><td>High</td><td>Very High</td></tr><tr><td>High</td><td>Very Low</td><td>Low</td><td>Moderate</td><td>High</td><td>Very High</td></tr><tr><td>Moderate</td><td>Very Low</td><td>Low</td><td>Moderate</td><td>Moderate</td><td>High</td></tr><tr><td>Low</td><td>Very Low</td><td>Low</td><td>Low</td><td>Low</td><td>Moderate</td></tr><tr><td>Very Low</td><td>Very Low</td><td>Very Low</td><td>Very Low</td><td>Low</td><td>Low</td></tr></table><p><i>Source: NIST SP 800-30 Rev. 1, Guide for Conducting Risk Assessments (2012), Appendix I, Tables I-2 and I-3; Task 2-6. The guide's scales are a starting point for tailoring; it does not prescribe how to combine them.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Overall likelihood (threat event occurs and results in adverse impact)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Very Low",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "ca0235e8-6e65-5959-96a4-55f86334288f",
+              "ScoringCategoryId": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "586159eb-1e2a-5388-b660-a13b307adea8",
+              "ScoringCategoryId": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "fbf683ce-0bf8-574b-adfc-cf7cfbcb1f8e",
+              "ScoringCategoryId": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "624ffe4f-d0f6-52f8-8b35-64cfa3bcf579",
+              "ScoringCategoryId": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "Very High",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "643aca23-97c7-5dc3-8bdb-437d02ec352c",
+              "ScoringCategoryId": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2"
+            }
+          ]
+        },
+        "Id": "4281a338-0bfc-5b80-b461-8fb3a47ecbf2",
+        "ScoringModelId": "415f2d42-dd8a-56be-a0e2-5e75109d6ff1"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Level of impact",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "Very Low",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "0038178f-8702-58ee-aeba-4f8f1fafe6aa",
+              "ScoringCategoryId": "db420c1b-50d6-5b73-88a5-774e19da1701"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "c6504e6c-1061-5fd7-a814-a9251358dea1",
+              "ScoringCategoryId": "db420c1b-50d6-5b73-88a5-774e19da1701"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "c38b6e95-1197-5d07-8e07-df75caa58cd0",
+              "ScoringCategoryId": "db420c1b-50d6-5b73-88a5-774e19da1701"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "eb1385a2-40b5-5306-8598-c21c2d6a8da6",
+              "ScoringCategoryId": "db420c1b-50d6-5b73-88a5-774e19da1701"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 5,
+              "Description": "Very High",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "64046b44-1f47-589d-9838-87c689ae0df6",
+              "ScoringCategoryId": "db420c1b-50d6-5b73-88a5-774e19da1701"
+            }
+          ]
+        },
+        "Id": "db420c1b-50d6-5b73-88a5-774e19da1701",
+        "ScoringModelId": "415f2d42-dd8a-56be-a0e2-5e75109d6ff1"
+      },
+      {
+        "$id": "17",
+        "DisplayOrder": 3,
+        "Description": "Level of risk - determine from likelihood and impact using Table I-2",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "18",
+          "$values": [
+            {
+              "$id": "19",
+              "DisplayOrder": 1,
+              "Description": "Very Low - Very low risk means that a threat event could be expected to have a negligible adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "2c33ca5e-c9c1-5e5c-98c7-3ca54719fa11",
+              "ScoringCategoryId": "d68b0be6-9dd2-576d-a335-8c55babac6fb"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 2,
+              "Description": "Low - Low risk means that a threat event could be expected to have a limited adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "49672d5a-80ec-5c98-8f68-5263743b733e",
+              "ScoringCategoryId": "d68b0be6-9dd2-576d-a335-8c55babac6fb"
+            },
+            {
+              "$id": "21",
+              "DisplayOrder": 3,
+              "Description": "Moderate - Moderate risk means that a threat event could be expected to have a serious adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "bee83431-47d5-56a5-a8ba-f89b1c1289c3",
+              "ScoringCategoryId": "d68b0be6-9dd2-576d-a335-8c55babac6fb"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 4,
+              "Description": "High - High risk means that a threat event could be expected to have a severe or catastrophic adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "c883b597-ae86-58ab-a262-25b8192a305b",
+              "ScoringCategoryId": "d68b0be6-9dd2-576d-a335-8c55babac6fb"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 5,
+              "Description": "Very High - Very high risk means that a threat event could be expected to have multiple severe or catastrophic adverse effects on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "5a59b839-c0b7-5142-93ab-99f9a53cde67",
+              "ScoringCategoryId": "d68b0be6-9dd2-576d-a335-8c55babac6fb"
+            }
+          ]
+        },
+        "Id": "d68b0be6-9dd2-576d-a335-8c55babac6fb",
+        "ScoringModelId": "415f2d42-dd8a-56be-a0e2-5e75109d6ff1"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "24",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "25",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "415f2d42-dd8a-56be-a0e2-5e75109d6ff1"
+}

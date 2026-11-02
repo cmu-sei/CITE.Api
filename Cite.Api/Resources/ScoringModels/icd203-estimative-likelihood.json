@@ -1,0 +1,115 @@
+{
+  "$id": "1",
+  "Description": "ICD 203 Estimative Likelihood",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Expressions of likelihood</h4><p>State how likely the assessed event or development is, using one of the terms below, and explain the basis in the comments: the logic and evidence, the quantity and quality of sources, and your understanding of the topic. Don't mix terms from different rows, and don't put a confidence level and a degree of likelihood in the same sentence.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Term</th><th>Or</th><th>Probability</th></tr><tr><td>almost no chance</td><td>remote</td><td>01-05%</td></tr><tr><td>very unlikely</td><td>highly improbable</td><td>05-20%</td></tr><tr><td>unlikely</td><td>improbable (improbably)</td><td>20-45%</td></tr><tr><td>roughly even chance</td><td>roughly even odds</td><td>45-55%</td></tr><tr><td>likely</td><td>probable (probably)</td><td>55-80%</td></tr><tr><td>very likely</td><td>highly probable</td><td>80-95%</td></tr><tr><td>almost certain(ly)</td><td>nearly certain</td><td>95-99%</td></tr></table><p><i>Source: Intelligence Community Directive 203, Analytic Standards (ODNI, 2015, as amended 2022), section D.6.e.(2). ICD 203 does not define confidence levels, so this model does not score confidence.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Likelihood of the event or development assessed this move",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "almost no chance / remote (01-05%)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a602bc38-f949-51e9-b770-ef91f3849af6",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "very unlikely / highly improbable (05-20%)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "6bef5875-219c-5cd4-94e6-40766ae7604e",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "unlikely / improbable (improbably) (20-45%)",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "95e90848-3ff2-5699-8c83-f0d0ffca9615",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "roughly even chance / roughly even odds (45-55%)",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "a73c06fe-688e-5dc4-99bf-62829dada433",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "likely / probable (probably) (55-80%)",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "733bcc1d-cff9-55d6-b5e9-af3a3ee3ce38",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "10",
+              "DisplayOrder": 6,
+              "Description": "very likely / highly probable (80-95%)",
+              "IsModifier": false,
+              "Value": 6.0,
+              "Id": "3c1fb810-0e3a-5fe4-90ed-a967ba7ab7ba",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            },
+            {
+              "$id": "11",
+              "DisplayOrder": 7,
+              "Description": "almost certain(ly) / nearly certain (95-99%)",
+              "IsModifier": false,
+              "Value": 7.0,
+              "Id": "efebaedf-94de-5b72-8a32-88f50a32d958",
+              "ScoringCategoryId": "d95dad52-90f5-5f7c-8c79-9cc721396722"
+            }
+          ]
+        },
+        "Id": "d95dad52-90f5-5f7c-8c79-9cc721396722",
+        "ScoringModelId": "7c0ad95b-d296-5690-a859-1e86d3ae1c27"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "12",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "13",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "7c0ad95b-d296-5690-a859-1e86d3ae1c27"
+}

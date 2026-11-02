@@ -1,0 +1,214 @@
+{
+  "$id": "1",
+  "Description": "FM 5-0 Course of Action Screening Criteria",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Screen the COA</h4><p>Screen your team's course of action against the five MDMP screening criteria. Screen out any COA that fails one or more. Record the evidence for each in the comments.</p><p><i>Source: FM 5-0, Planning and Orders Production (04 November 2024, incorporating Change 1, August 2025), paragraph 5-74. Approved for public release; distribution is unlimited.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Feasible - the COA can accomplish the mission within the established time, space, and resources available",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "20fd332e-4ac7-596a-9670-d4e20713069a",
+              "ScoringCategoryId": "e187ac81-350e-5e5c-a91c-02f190136668"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "d19cebb5-3a17-5441-9bc9-9879ced10c23",
+              "ScoringCategoryId": "e187ac81-350e-5e5c-a91c-02f190136668"
+            }
+          ]
+        },
+        "Id": "e187ac81-350e-5e5c-a91c-02f190136668",
+        "ScoringModelId": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+      },
+      {
+        "$id": "7",
+        "DisplayOrder": 2,
+        "Description": "Acceptable - the COA must balance cost and risk with the advantage gained",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "8",
+          "$values": [
+            {
+              "$id": "9",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "743d82ce-4728-527b-a693-414eb3faba6b",
+              "ScoringCategoryId": "3628d36f-6a67-5c52-953c-3221c62d593c"
+            },
+            {
+              "$id": "10",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "0863f0a7-a81a-5ce7-8504-3e2700dab2a2",
+              "ScoringCategoryId": "3628d36f-6a67-5c52-953c-3221c62d593c"
+            }
+          ]
+        },
+        "Id": "3628d36f-6a67-5c52-953c-3221c62d593c",
+        "ScoringModelId": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+      },
+      {
+        "$id": "11",
+        "DisplayOrder": 3,
+        "Description": "Suitable - the COA can accomplish the mission within the commander's intent and planning guidance",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "12",
+          "$values": [
+            {
+              "$id": "13",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "693849a0-52a9-5b73-b247-dd529f140880",
+              "ScoringCategoryId": "32d7ed6e-7167-5db7-843f-9176fdb60c2e"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "59e19669-3540-5db7-b2e8-beba031dd3bc",
+              "ScoringCategoryId": "32d7ed6e-7167-5db7-843f-9176fdb60c2e"
+            }
+          ]
+        },
+        "Id": "32d7ed6e-7167-5db7-843f-9176fdb60c2e",
+        "ScoringModelId": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 4,
+        "Description": "Distinguishable - each COA must differ significantly from the others (such as scheme of maneuver, lines of effort, phasing, use of the reserve, or task organization)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "bbb8b9f0-9815-5146-81ff-16e01231a767",
+              "ScoringCategoryId": "0e89ebde-d173-5e8c-9c22-71aa51798d06"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "379183d6-ed85-51eb-a4c6-32000b00554a",
+              "ScoringCategoryId": "0e89ebde-d173-5e8c-9c22-71aa51798d06"
+            }
+          ]
+        },
+        "Id": "0e89ebde-d173-5e8c-9c22-71aa51798d06",
+        "ScoringModelId": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+      },
+      {
+        "$id": "19",
+        "DisplayOrder": 5,
+        "Description": "Complete - incorporates how the main effort contributes to mission accomplishment, all units and capabilities for the entire operation, how supporting efforts set conditions for the main effort, how resources enable main and supporting efforts, and how actions transform current conditions to the desired end state",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "20",
+          "$values": [
+            {
+              "$id": "21",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "ded8280e-25bb-59b6-9ce1-71ea9021711c",
+              "ScoringCategoryId": "2d00530a-4314-558a-92b3-f4c7e03b351a"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "26a28ddb-4294-5b9a-81f0-ec9631f7fc8f",
+              "ScoringCategoryId": "2d00530a-4314-558a-92b3-f4c7e03b351a"
+            }
+          ]
+        },
+        "Id": "2d00530a-4314-558a-92b3-f4c7e03b351a",
+        "ScoringModelId": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "23",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "24",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "af1fb243-f717-5c8e-8d5b-4b5a19f1363e"
+}

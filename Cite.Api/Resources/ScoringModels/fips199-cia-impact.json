@@ -1,0 +1,178 @@
+{
+  "$id": "1",
+  "Description": "FIPS 199 Impact (Confidentiality, Integrity, Availability)",
+  "CalculationEquation": "{sum}",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>FIPS 199 potential impact</h4><p>Rate the potential impact of this move's events on each security objective, on organizational operations, organizational assets or individuals. Name the systems and information types in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Potential impact</th><th>Definition</th><th>For example, the loss might</th></tr><tr><td><b>Low</b></td><td>limited adverse effect</td><td>functions performed, effectiveness noticeably reduced; minor damage to assets; minor financial loss; minor harm to individuals</td></tr><tr><td><b>Moderate</b></td><td>serious adverse effect</td><td>functions performed, effectiveness significantly reduced; significant damage; significant financial loss; significant harm, not loss of life or serious life-threatening injury</td></tr><tr><td><b>High</b></td><td>severe or catastrophic adverse effect</td><td>unable to perform one or more primary functions; major damage; major financial loss; severe or catastrophic harm involving loss of life or serious life-threatening injuries</td></tr></table><p>State your result as <b>SC = {(confidentiality, impact), (integrity, impact), (availability, impact)}</b>. Not applicable applies to confidentiality only.</p><p><b>Reading the score (high-water mark).</b> Low = 1, Moderate = 10, High = 100, so the total counts the ratings: the hundreds digit is the number rated High, the tens Moderate, the units Low. The overall impact is the highest non-zero digit (e.g. <b>120</b> = one High, two Moderate: overall <b>High</b>). This is how FIPS 199 combines ratings: the highest value, not an average.</p><p><i>Source: FIPS 199, Standards for Security Categorization of Federal Information and Information Systems (NIST, 2004), Section 3 and Table 1.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Confidentiality - unauthorized disclosure of information",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Not applicable - no confidentiality requirement for the information involved",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "89451fa3-ab8f-568d-bbe7-362a1216ad9c",
+              "ScoringCategoryId": "c6d5fd5e-65ac-57dc-8edc-c12f740239a0"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "89f50412-a649-57ba-9d03-0df75e61b4d4",
+              "ScoringCategoryId": "c6d5fd5e-65ac-57dc-8edc-c12f740239a0"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "b3f17a36-0a91-5220-acd0-72efa345848f",
+              "ScoringCategoryId": "c6d5fd5e-65ac-57dc-8edc-c12f740239a0"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "df894c52-f29d-5c41-aced-19b3494604fd",
+              "ScoringCategoryId": "c6d5fd5e-65ac-57dc-8edc-c12f740239a0"
+            }
+          ]
+        },
+        "Id": "c6d5fd5e-65ac-57dc-8edc-c12f740239a0",
+        "ScoringModelId": "1cadd2cf-a35b-511a-8edf-97d98b486b96"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Integrity - unauthorized modification or destruction of information",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "556da5f7-cf78-50e0-a94f-60b5de348ff5",
+              "ScoringCategoryId": "38f067eb-7b1b-5c0b-8966-14e73f67f29b"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "442f1c11-461a-5f6a-976b-4c06ade4cda9",
+              "ScoringCategoryId": "38f067eb-7b1b-5c0b-8966-14e73f67f29b"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "aff24158-d331-5189-94b6-fe4d8eae836b",
+              "ScoringCategoryId": "38f067eb-7b1b-5c0b-8966-14e73f67f29b"
+            }
+          ]
+        },
+        "Id": "38f067eb-7b1b-5c0b-8966-14e73f67f29b",
+        "ScoringModelId": "1cadd2cf-a35b-511a-8edf-97d98b486b96"
+      },
+      {
+        "$id": "14",
+        "DisplayOrder": 3,
+        "Description": "Availability - disruption of access to or use of information or an information system",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "15",
+          "$values": [
+            {
+              "$id": "16",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "28a6c9c4-6146-5ba7-b1c6-93ca23187575",
+              "ScoringCategoryId": "8bc41659-c1ec-5a27-a69a-0fed1abd048f"
+            },
+            {
+              "$id": "17",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "55bcccf4-5e35-5c78-8978-91618eaa7dec",
+              "ScoringCategoryId": "8bc41659-c1ec-5a27-a69a-0fed1abd048f"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "ed77c45f-b7a0-515f-80f4-51156891635f",
+              "ScoringCategoryId": "8bc41659-c1ec-5a27-a69a-0fed1abd048f"
+            }
+          ]
+        },
+        "Id": "8bc41659-c1ec-5a27-a69a-0fed1abd048f",
+        "ScoringModelId": "1cadd2cf-a35b-511a-8edf-97d98b486b96"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "19",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "20",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "1cadd2cf-a35b-511a-8edf-97d98b486b96"
+}

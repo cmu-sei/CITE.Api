@@ -1,0 +1,358 @@
+{
+  "$id": "1",
+  "Description": "NIST CSF 2.0 GOVERN Categories by Tier",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>GOVERN Categories by Tier</h4><p>For executive and board exercises. Rate each GOVERN Category at the governance Tier that best describes how the organization practised it as the scenario unfolded. Explain the decisions that showed it in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Tier</th><th>Cybersecurity risk governance</th></tr><tr><td>Tier 1: Partial</td><td>Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.</td></tr><tr><td>Tier 2: Risk Informed</td><td>Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.</td></tr><tr><td>Tier 3: Repeatable</td><td>The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.</td></tr><tr><td>Tier 4: Adaptive</td><td>There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.</td></tr></table><p><i>Source: The NIST Cybersecurity Framework (CSF) 2.0, NIST CSWP 29 (February 26, 2024), Appendix A GOVERN (GV) Categories; Appendix B Table 2 governance column. Public domain. CSF 2.0 says the Tiers \"characterize the rigor of an organization's cybersecurity risk governance and management practices\"; Appendix B is a \"notional illustration\". They are not maturity levels.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Organizational Context (GV.OC) - The circumstances (mission, stakeholder expectations, dependencies, and legal, regulatory, and contractual requirements) surrounding the organization's cybersecurity risk management decisions are understood",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "41e1d55e-7494-5aae-9eae-36b4dcb28d34",
+              "ScoringCategoryId": "6c673444-6435-5258-97a2-5d7aa66d7d1c"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "78669f7a-0fb1-567f-a565-c97ef53637eb",
+              "ScoringCategoryId": "6c673444-6435-5258-97a2-5d7aa66d7d1c"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "6127ed45-7cc4-5d62-b980-5a5233c1f57b",
+              "ScoringCategoryId": "6c673444-6435-5258-97a2-5d7aa66d7d1c"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "bb58697e-5d30-532b-96c7-6d73b8a7315f",
+              "ScoringCategoryId": "6c673444-6435-5258-97a2-5d7aa66d7d1c"
+            }
+          ]
+        },
+        "Id": "6c673444-6435-5258-97a2-5d7aa66d7d1c",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Risk Management Strategy (GV.RM) - The organization's priorities, constraints, risk tolerance and appetite statements, and assumptions are established, communicated, and used to support operational risk decisions",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "7b0a4ec0-9375-5a67-8342-39ab93701df6",
+              "ScoringCategoryId": "ef0c50af-5f14-51aa-9a8c-ed4c1dd237c2"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "8bc9409b-76e9-59f2-b163-2d0a5006b1ae",
+              "ScoringCategoryId": "ef0c50af-5f14-51aa-9a8c-ed4c1dd237c2"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "c96ae773-06c7-535a-bae2-b50ce5662f40",
+              "ScoringCategoryId": "ef0c50af-5f14-51aa-9a8c-ed4c1dd237c2"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "72bc9c79-269b-5c69-b4be-43e13a432b76",
+              "ScoringCategoryId": "ef0c50af-5f14-51aa-9a8c-ed4c1dd237c2"
+            }
+          ]
+        },
+        "Id": "ef0c50af-5f14-51aa-9a8c-ed4c1dd237c2",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 3,
+        "Description": "Roles, Responsibilities, and Authorities (GV.RR) - Cybersecurity roles, responsibilities, and authorities to foster accountability, performance assessment, and continuous improvement are established and communicated",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "8b5114e2-d933-5aa4-aaca-e2bee9a7f951",
+              "ScoringCategoryId": "66a608a6-866a-5a60-9cf5-df0e9bfcecfa"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "b7fcd3b2-5ac5-5fa2-9a29-2034f85504e9",
+              "ScoringCategoryId": "66a608a6-866a-5a60-9cf5-df0e9bfcecfa"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "00d6cb34-c6b0-56b3-86c4-59ff3879d14d",
+              "ScoringCategoryId": "66a608a6-866a-5a60-9cf5-df0e9bfcecfa"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "78f0ba55-bc8b-50db-a6c4-26fafbd3896b",
+              "ScoringCategoryId": "66a608a6-866a-5a60-9cf5-df0e9bfcecfa"
+            }
+          ]
+        },
+        "Id": "66a608a6-866a-5a60-9cf5-df0e9bfcecfa",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      },
+      {
+        "$id": "21",
+        "DisplayOrder": 4,
+        "Description": "Policy (GV.PO) - Organizational cybersecurity policy is established, communicated, and enforced",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "22",
+          "$values": [
+            {
+              "$id": "23",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "9a3053fa-2f4a-5ecc-9617-4463636d6b6e",
+              "ScoringCategoryId": "7ca3a71b-051a-58cc-9a10-9c01329d0002"
+            },
+            {
+              "$id": "24",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "d3d60467-5b53-5e89-af5e-b71cd1af32cf",
+              "ScoringCategoryId": "7ca3a71b-051a-58cc-9a10-9c01329d0002"
+            },
+            {
+              "$id": "25",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "0031141f-031e-5d1b-b6bf-373ab392c704",
+              "ScoringCategoryId": "7ca3a71b-051a-58cc-9a10-9c01329d0002"
+            },
+            {
+              "$id": "26",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "51f91d0c-85c5-5b83-a792-72b9de88ab30",
+              "ScoringCategoryId": "7ca3a71b-051a-58cc-9a10-9c01329d0002"
+            }
+          ]
+        },
+        "Id": "7ca3a71b-051a-58cc-9a10-9c01329d0002",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      },
+      {
+        "$id": "27",
+        "DisplayOrder": 5,
+        "Description": "Oversight (GV.OV) - Results of organization-wide cybersecurity risk management activities and performance are used to inform, improve, and adjust the risk management strategy",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "28",
+          "$values": [
+            {
+              "$id": "29",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "2b0da619-7eee-5d85-98f8-e402b3e45aff",
+              "ScoringCategoryId": "cb4dea3b-4888-56d3-956d-298291bba58c"
+            },
+            {
+              "$id": "30",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "6c4ed155-2bcb-5543-bb71-e3bc6315d43f",
+              "ScoringCategoryId": "cb4dea3b-4888-56d3-956d-298291bba58c"
+            },
+            {
+              "$id": "31",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "b036a9a2-0350-55cf-8cfc-be90eefebaf8",
+              "ScoringCategoryId": "cb4dea3b-4888-56d3-956d-298291bba58c"
+            },
+            {
+              "$id": "32",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "9a2f7076-9d08-5520-b9cd-3ee54cf8e9eb",
+              "ScoringCategoryId": "cb4dea3b-4888-56d3-956d-298291bba58c"
+            }
+          ]
+        },
+        "Id": "cb4dea3b-4888-56d3-956d-298291bba58c",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      },
+      {
+        "$id": "33",
+        "DisplayOrder": 6,
+        "Description": "Cybersecurity Supply Chain Risk Management (GV.SC) - Cyber supply chain risk management processes are identified, established, managed, monitored, and improved by organizational stakeholders",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "34",
+          "$values": [
+            {
+              "$id": "35",
+              "DisplayOrder": 1,
+              "Description": "Tier 1: Partial - Application of the organizational cybersecurity risk strategy is managed in an ad hoc manner. Prioritization is ad hoc and not formally based on objectives or threat environment.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a6d6cdd2-c9b3-532a-8032-feaac16b9eca",
+              "ScoringCategoryId": "2c84327d-2ef2-566b-b827-8dec35ed21ca"
+            },
+            {
+              "$id": "36",
+              "DisplayOrder": 2,
+              "Description": "Tier 2: Risk Informed - Risk management practices are approved by management but may not be established as organization-wide policy. The prioritization of cybersecurity activities and protection needs is directly informed by organizational risk objectives, the threat environment, or business/mission requirements.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "1ba57188-cca8-575a-a9b5-13d6a85ae7de",
+              "ScoringCategoryId": "2c84327d-2ef2-566b-b827-8dec35ed21ca"
+            },
+            {
+              "$id": "37",
+              "DisplayOrder": 3,
+              "Description": "Tier 3: Repeatable - The organization's risk management practices are formally approved and expressed as policy. Risk-informed policies, processes, and procedures are defined, implemented as intended, and reviewed. Organizational cybersecurity practices are regularly updated based on the application of risk management processes to changes in business/mission requirements, threats, and technological landscape.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "2fd2b1fc-b733-5c6f-837a-542416bad45a",
+              "ScoringCategoryId": "2c84327d-2ef2-566b-b827-8dec35ed21ca"
+            },
+            {
+              "$id": "38",
+              "DisplayOrder": 4,
+              "Description": "Tier 4: Adaptive - There is an organization-wide approach to managing cybersecurity risks that uses risk-informed policies, processes, and procedures to address potential cybersecurity events. The relationship between cybersecurity risks and organizational objectives is clearly understood and considered when making decisions. Executives monitor cybersecurity risks in the same context as financial and other organizational risks.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "18d4f0b8-7b71-56c7-934b-0e049c7b049d",
+              "ScoringCategoryId": "2c84327d-2ef2-566b-b827-8dec35ed21ca"
+            }
+          ]
+        },
+        "Id": "2c84327d-2ef2-566b-b827-8dec35ed21ca",
+        "ScoringModelId": "da98e94c-fd54-5ee5-980c-751032f62950"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "39",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "40",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "da98e94c-fd54-5ee5-980c-751032f62950"
+}

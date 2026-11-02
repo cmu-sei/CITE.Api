@@ -1,0 +1,160 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-30 Non-Adversarial Threat Events (Errors, Accidents, Natural Events)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Non-adversarial threats</h4><p>Assess the error, accident or act of nature in this move: how likely it is, and how far its effects reach.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Value</th><th>0-100</th><th>0-10</th></tr><tr><td>Very High</td><td>96-100</td><td>10</td></tr><tr><td>High</td><td>80-95</td><td>8</td></tr><tr><td>Moderate</td><td>21-79</td><td>5</td></tr><tr><td>Low</td><td>5-20</td><td>2</td></tr><tr><td>Very Low</td><td>0-4</td><td>0</td></tr></table><p><i>Source: NIST SP 800-30 Rev. 1, Guide for Conducting Risk Assessments (2012), Appendices D and G, Tables D-6 and G-3. The guide's scales are a starting point for tailoring; it does not prescribe how to combine them.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Likelihood of threat event occurrence",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Very Low - Error, accident, or act of nature is highly unlikely to occur; or occurs less than once every 10 years.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "c57c76d9-9d1f-5a70-b7a4-c6b9765950d4",
+              "ScoringCategoryId": "409f81ae-cbbb-526e-830d-1a782fe1b2e4"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - Error, accident, or act of nature is unlikely to occur; or occurs less than once a year, but more than once every 10 years.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "5e81dcd3-2198-513f-a351-80a92694fa8e",
+              "ScoringCategoryId": "409f81ae-cbbb-526e-830d-1a782fe1b2e4"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - Error, accident, or act of nature is somewhat likely to occur; or occurs between 1-10 times a year.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "bbd96b4c-0871-5185-9235-45dd75be5653",
+              "ScoringCategoryId": "409f81ae-cbbb-526e-830d-1a782fe1b2e4"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - Error, accident, or act of nature is highly likely to occur; or occurs between 10-100 times a year.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "95f6d97c-bee4-555b-82e4-069c3da386ef",
+              "ScoringCategoryId": "409f81ae-cbbb-526e-830d-1a782fe1b2e4"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "Very High - Error, accident, or act of nature is almost certain to occur; or occurs more than 100 times a year.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "cc3944f8-66f3-5aef-a3df-5e6321d506c2",
+              "ScoringCategoryId": "409f81ae-cbbb-526e-830d-1a782fe1b2e4"
+            }
+          ]
+        },
+        "Id": "409f81ae-cbbb-526e-830d-1a782fe1b2e4",
+        "ScoringModelId": "555853ab-0bb6-59b1-a78a-b67aeadd2f11"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Range of effects",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "Very Low - The effects of the error, accident, or act of nature are minimal, involving few if any of the cyber resources of the [Tier 3: information systems; Tier 2: mission/business processes or EA segments, common infrastructure, or support services; Tier 1: organization/governance structure], and involving no critical resources.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "b05c53c2-5ac1-5602-a762-587ed54fdb77",
+              "ScoringCategoryId": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "Low - The effects of the error, accident, or act of nature are limited, involving some of the cyber resources of the [Tier 3: information systems; Tier 2: mission/business processes or EA segments, common infrastructure, or support services; Tier 1: organization/governance structure], but involving no critical resources.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "37fa5127-ed43-56b7-bf69-243813f2a036",
+              "ScoringCategoryId": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "Moderate - The effects of the error, accident, or act of nature are wide-ranging, involving a significant portion of the cyber resources of the [Tier 3: information systems; Tier 2: mission/business processes or EA segments, common infrastructure, or support services; Tier 1: organization/governance structure], including some critical resources.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "dc4a1cf3-83ed-5a47-a817-2a55aa06545b",
+              "ScoringCategoryId": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "High - The effects of the error, accident, or act of nature are extensive, involving most of the cyber resources of the [Tier 3: information systems; Tier 2: mission/business processes or EA segments, common infrastructure, or support services; Tier 1: organization/governance structure], including many critical resources.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "8155fbe3-b4ef-5ae2-a24f-6fbc33221b6e",
+              "ScoringCategoryId": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 5,
+              "Description": "Very High - The effects of the error, accident, or act of nature are sweeping, involving almost all of the cyber resources of the [Tier 3: information systems; Tier 2: mission/business processes or EA segments, common infrastructure, or support services; Tier 1: organization/governance structure].",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "9f2cf635-df56-51a7-927b-02ce101a79fc",
+              "ScoringCategoryId": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2"
+            }
+          ]
+        },
+        "Id": "d55c78f7-eaba-5c5e-83f9-befb0bdd61c2",
+        "ScoringModelId": "555853ab-0bb6-59b1-a78a-b67aeadd2f11"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "17",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "18",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "555853ab-0bb6-59b1-a78a-b67aeadd2f11"
+}

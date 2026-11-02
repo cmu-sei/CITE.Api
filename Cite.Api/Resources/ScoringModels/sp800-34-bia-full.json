@@ -1,0 +1,322 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-34 Business Impact Analysis",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Outage impact (Business Impact Analysis)</h4><p>Rate the impact on the organization if the mission/business processes affected in this move could not be performed. Name the processes in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Cost (template example)</th><th>Value</th></tr><tr><td>Severe</td><td>e.g. temp staffing, overtime, fees greater than $1 million</td></tr><tr><td>Moderate</td><td>e.g. fines, penalties, liabilities, potential $550k</td></tr><tr><td>Minimal</td><td>e.g. new contracts, supplies, $75k</td></tr></table><p>The thresholds are the BIA template's sample values; your organization should set its own.</p><h4>Downtime and recovery</h4><p>Compare this move's expected outage and data loss with the objectives for each affected mission/business process.</p><ul><li><b>MTD</b> - the total outage leaders are willing to accept, including all impact considerations.</li><li><b>RTO</b> - the maximum time a system resource can be unavailable before an unacceptable impact; normally shorter than the MTD.</li><li><b>RPO</b> - the point in time to which data can be recovered from the most recent backup; not part of the MTD.</li></ul><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Mission/business process</th><th>MTD</th><th>RTO</th><th>RPO</th></tr><tr><td>Pay vendor invoice (template example)</td><td>72 hours</td><td>48 hours</td><td>12 hours (last backup)</td></tr><tr><td>{your process}</td><td></td><td></td><td></td></tr></table><p><i>Source: NIST SP 800-34 Rev. 1, Contingency Planning Guide for Federal Information Systems (2010), Section 3.2 and Appendix B (BIA template).</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Cost - staffing, overtime, fees, fines, penalties, liabilities",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 2.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "df0b100a-704e-5297-bc4b-0b789209d089",
+              "ScoringCategoryId": "084f7f8e-8fd0-5ab4-ae10-5d457e2d1e73"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "64b2ba7b-f3c2-52be-a9c7-f40e8ba6884e",
+              "ScoringCategoryId": "084f7f8e-8fd0-5ab4-ae10-5d457e2d1e73"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "b449f88a-97b6-5dc9-8d45-ea1c0de3fef9",
+              "ScoringCategoryId": "084f7f8e-8fd0-5ab4-ae10-5d457e2d1e73"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "64e571e7-f63c-5e5e-a01e-fedc0c00e06c",
+              "ScoringCategoryId": "084f7f8e-8fd0-5ab4-ae10-5d457e2d1e73"
+            }
+          ]
+        },
+        "Id": "084f7f8e-8fd0-5ab4-ae10-5d457e2d1e73",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Harm to individuals",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 2.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "8d7e21fd-752d-5721-b3b4-4f33c10e0e4d",
+              "ScoringCategoryId": "3334a66d-07cd-5ff7-9737-abf4db7f2495"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "64b3b461-911f-50b3-8a5d-55706fcea845",
+              "ScoringCategoryId": "3334a66d-07cd-5ff7-9737-abf4db7f2495"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "40b0e23e-2ce2-56a6-bd2f-c8e51093f21e",
+              "ScoringCategoryId": "3334a66d-07cd-5ff7-9737-abf4db7f2495"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "050692e9-1277-5a84-9d06-bdf7970a8d35",
+              "ScoringCategoryId": "3334a66d-07cd-5ff7-9737-abf4db7f2495"
+            }
+          ]
+        },
+        "Id": "3334a66d-07cd-5ff7-9737-abf4db7f2495",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 3,
+        "Description": "Ability to perform mission",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 2.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Not affected",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "29e085d1-a8c9-5eec-90dd-2cbd6e6a2449",
+              "ScoringCategoryId": "eb820dc2-e015-57e6-b67e-f14cec3decb2"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Minimal",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "3b8a08ac-759a-5649-b7b9-441bfba253a8",
+              "ScoringCategoryId": "eb820dc2-e015-57e6-b67e-f14cec3decb2"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "aa8f6d6c-b6b7-5419-aa11-4fbba76f49a6",
+              "ScoringCategoryId": "eb820dc2-e015-57e6-b67e-f14cec3decb2"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 4,
+              "Description": "Severe",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "f5672942-525d-5052-a363-5cd72d6c2c4b",
+              "ScoringCategoryId": "eb820dc2-e015-57e6-b67e-f14cec3decb2"
+            }
+          ]
+        },
+        "Id": "eb820dc2-e015-57e6-b67e-f14cec3decb2",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      },
+      {
+        "$id": "21",
+        "DisplayOrder": 4,
+        "Description": "Estimated downtime vs recovery objectives",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 2.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "22",
+          "$values": [
+            {
+              "$id": "23",
+              "DisplayOrder": 1,
+              "Description": "Within the Recovery Time Objective (RTO)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "88756f2e-e7cd-516d-bc0c-d7ab44dad117",
+              "ScoringCategoryId": "2f240368-3ae2-5172-a1dc-e53c65ffb2ff"
+            },
+            {
+              "$id": "24",
+              "DisplayOrder": 2,
+              "Description": "Beyond the RTO, within the Maximum Tolerable Downtime (MTD)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "c23c1d7f-3452-53a4-8624-4b256c2c7793",
+              "ScoringCategoryId": "2f240368-3ae2-5172-a1dc-e53c65ffb2ff"
+            },
+            {
+              "$id": "25",
+              "DisplayOrder": 3,
+              "Description": "Beyond the MTD",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "a00a2db6-eaa5-5421-ba5b-ed4d9331ac33",
+              "ScoringCategoryId": "2f240368-3ae2-5172-a1dc-e53c65ffb2ff"
+            }
+          ]
+        },
+        "Id": "2f240368-3ae2-5172-a1dc-e53c65ffb2ff",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      },
+      {
+        "$id": "26",
+        "DisplayOrder": 5,
+        "Description": "Data recovery vs Recovery Point Objective (RPO)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "27",
+          "$values": [
+            {
+              "$id": "28",
+              "DisplayOrder": 1,
+              "Description": "Data recoverable within the RPO",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "63abd375-8980-59ee-b45d-e0d05fa3e11e",
+              "ScoringCategoryId": "f95ae4da-0f27-52be-aa26-df6b81412d2c"
+            },
+            {
+              "$id": "29",
+              "DisplayOrder": 2,
+              "Description": "Data loss beyond the RPO",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "591df5ed-f781-5ed8-8009-726d15eb76f9",
+              "ScoringCategoryId": "f95ae4da-0f27-52be-aa26-df6b81412d2c"
+            }
+          ]
+        },
+        "Id": "f95ae4da-0f27-52be-aa26-df6b81412d2c",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      },
+      {
+        "$id": "30",
+        "DisplayOrder": 6,
+        "Description": "Recovery priority of the affected system resources",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "31",
+          "$values": [
+            {
+              "$id": "32",
+              "DisplayOrder": 1,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "e5cbf2c1-aabc-5a07-8dd8-7019394970ef",
+              "ScoringCategoryId": "27411d7f-b2e8-5021-85cb-506449972ac7"
+            },
+            {
+              "$id": "33",
+              "DisplayOrder": 2,
+              "Description": "Medium",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "c689aebb-24cb-5a4c-8085-67e888ffe0e3",
+              "ScoringCategoryId": "27411d7f-b2e8-5021-85cb-506449972ac7"
+            },
+            {
+              "$id": "34",
+              "DisplayOrder": 3,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "40bdb443-8c5d-5443-a1cf-62da339fd212",
+              "ScoringCategoryId": "27411d7f-b2e8-5021-85cb-506449972ac7"
+            }
+          ]
+        },
+        "Id": "27411d7f-b2e8-5021-85cb-506449972ac7",
+        "ScoringModelId": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "35",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "36",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "c2729c60-0627-503d-a27d-0f6647d8c4af"
+}

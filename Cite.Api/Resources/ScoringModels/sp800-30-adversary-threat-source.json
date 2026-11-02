@@ -1,0 +1,223 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-30 Adversary Threat Source (Capability, Intent, Targeting)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Characteristics of the adversary</h4><p>Assess the adversary behind this move's events. Explain your evidence in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Value</th><th>0-100</th><th>0-10</th></tr><tr><td>Very High</td><td>96-100</td><td>10</td></tr><tr><td>High</td><td>80-95</td><td>8</td></tr><tr><td>Moderate</td><td>21-79</td><td>5</td></tr><tr><td>Low</td><td>5-20</td><td>2</td></tr><tr><td>Very Low</td><td>0-4</td><td>0</td></tr></table><p><i>Source: NIST SP 800-30 Rev. 1, Guide for Conducting Risk Assessments (2012), Appendix D, Tables D-3, D-4 and D-5. The guide's scales are a starting point for tailoring; it does not prescribe how to combine them.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Adversary capability",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Very Low - The adversary has very limited resources, expertise, and opportunities to support a successful attack.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "711fb674-5b9c-562a-98d9-c034314b2c71",
+              "ScoringCategoryId": "ed973056-5909-5802-87f1-b440e6325e79"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - The adversary has limited resources, expertise, and opportunities to support a successful attack.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "0559fa7c-09ef-572f-ac86-69455eed19df",
+              "ScoringCategoryId": "ed973056-5909-5802-87f1-b440e6325e79"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - The adversary has moderate resources, expertise, and opportunities to support multiple successful attacks.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "54a92c4b-c22b-58be-bd4f-fff556ec2762",
+              "ScoringCategoryId": "ed973056-5909-5802-87f1-b440e6325e79"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - The adversary has a sophisticated level of expertise, with significant resources and opportunities to support multiple successful coordinated attacks.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "5a36cf25-1c0b-53e5-8604-740f43bd226b",
+              "ScoringCategoryId": "ed973056-5909-5802-87f1-b440e6325e79"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "Very High - The adversary has a very sophisticated level of expertise, is well-resourced, and can generate opportunities to support multiple successful, continuous, and coordinated attacks.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "a1ed8957-4292-5f3f-bc53-be257fca2bae",
+              "ScoringCategoryId": "ed973056-5909-5802-87f1-b440e6325e79"
+            }
+          ]
+        },
+        "Id": "ed973056-5909-5802-87f1-b440e6325e79",
+        "ScoringModelId": "ea9bcd72-0bbc-5c79-ae95-54b112ba77ce"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Adversary intent",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "Very Low - The adversary seeks to usurp, disrupt, or deface the organization's cyber resources, and does so without concern about attack detection/disclosure of tradecraft.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "7adbbbb8-2447-57fe-b071-e23e637d0ead",
+              "ScoringCategoryId": "00ba37ba-2d21-5913-b845-0889979e4bc7"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "Low - The adversary actively seeks to obtain critical or sensitive information or to usurp/disrupt the organization's cyber resources, and does so without concern about attack detection/disclosure of tradecraft.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "96594af5-0a47-58e6-8e4b-cfe87a00690f",
+              "ScoringCategoryId": "00ba37ba-2d21-5913-b845-0889979e4bc7"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "Moderate - The adversary seeks to obtain or modify specific critical or sensitive information or usurp/disrupt the organization's cyber resources by establishing a foothold in the organization's information systems or infrastructure. The adversary is concerned about minimizing attack detection/disclosure of tradecraft, particularly when carrying out attacks over long time periods. The adversary is willing to impede aspects of the organization's missions/business functions to achieve these ends.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "d48dedc7-32f2-5d6f-a880-05c17602c2ac",
+              "ScoringCategoryId": "00ba37ba-2d21-5913-b845-0889979e4bc7"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "High - The adversary seeks to undermine/impede critical aspects of a core mission or business function, program, or enterprise, or place itself in a position to do so in the future, by maintaining a presence in the organization's information systems or infrastructure. The adversary is very concerned about minimizing attack detection/disclosure of tradecraft, particularly while preparing for future attacks.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "6f4b8f17-247b-5e39-b948-5d5d5ac6c82a",
+              "ScoringCategoryId": "00ba37ba-2d21-5913-b845-0889979e4bc7"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 5,
+              "Description": "Very High - The adversary seeks to undermine, severely impede, or destroy a core mission or business function, program, or enterprise by exploiting a presence in the organization's information systems or infrastructure. The adversary is concerned about disclosure of tradecraft only to the extent that it would impede its ability to complete stated goals.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "105a495d-1622-5673-8e02-036f37df6687",
+              "ScoringCategoryId": "00ba37ba-2d21-5913-b845-0889979e4bc7"
+            }
+          ]
+        },
+        "Id": "00ba37ba-2d21-5913-b845-0889979e4bc7",
+        "ScoringModelId": "ea9bcd72-0bbc-5c79-ae95-54b112ba77ce"
+      },
+      {
+        "$id": "17",
+        "DisplayOrder": 3,
+        "Description": "Adversary targeting",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "18",
+          "$values": [
+            {
+              "$id": "19",
+              "DisplayOrder": 1,
+              "Description": "Very Low - The adversary may or may not target any specific organizations or classes of organizations.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "aab80bd2-89ea-5894-85f1-9e748a52e113",
+              "ScoringCategoryId": "874db969-490b-5f26-a680-74064a02362c"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 2,
+              "Description": "Low - The adversary uses publicly available information to target a class of high-value organizations or information, and seeks targets of opportunity within that class.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "679ed228-a842-5bcd-a8a1-ec05844148b3",
+              "ScoringCategoryId": "874db969-490b-5f26-a680-74064a02362c"
+            },
+            {
+              "$id": "21",
+              "DisplayOrder": 3,
+              "Description": "Moderate - The adversary analyzes publicly available information to target persistently specific high-value organizations (and key positions, such as Chief Information Officer), programs, or information.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "b94fcb12-07e0-5cfd-b3a0-30aa7dccca94",
+              "ScoringCategoryId": "874db969-490b-5f26-a680-74064a02362c"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 4,
+              "Description": "High - The adversary analyzes information obtained via reconnaissance to target persistently a specific organization, enterprise, program, mission or business function, focusing on specific high-value or mission-critical information, resources, supply flows, or functions, specific employees supporting those functions, or key positions.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "de2a2d3a-e933-5d93-94d8-fc0f4ee821aa",
+              "ScoringCategoryId": "874db969-490b-5f26-a680-74064a02362c"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 5,
+              "Description": "Very High - The adversary analyzes information obtained via reconnaissance and attacks to target persistently a specific organization, enterprise, program, mission or business function, focusing on specific high-value or mission-critical information, resources, supply flows, or functions; specific employees or positions; supporting infrastructure providers/suppliers; or partnering organizations.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "3084bf3d-c575-55fe-a01f-03f5b4a43004",
+              "ScoringCategoryId": "874db969-490b-5f26-a680-74064a02362c"
+            }
+          ]
+        },
+        "Id": "874db969-490b-5f26-a680-74064a02362c",
+        "ScoringModelId": "ea9bcd72-0bbc-5c79-ae95-54b112ba77ce"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "24",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "25",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "ea9bcd72-0bbc-5c79-ae95-54b112ba77ce"
+}

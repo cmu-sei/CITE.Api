@@ -1,0 +1,97 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-30 Impact of Threat Events",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Impact</h4><p>Assess the impact of this move's threat event. Name the types of harm in the comments.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Type of impact (Table H-2)</th><th>Examples</th></tr><tr><td>Harm to operations</td><td>inability to perform current or future missions/business functions; inability to restore them; harms due to noncompliance; direct financial costs; relational harms</td></tr><tr><td>Harm to assets</td><td>damage to or loss of facilities, information systems or networks, equipment, component parts or supplies, information assets; loss of intellectual property</td></tr><tr><td>Harm to individuals</td><td>injury or loss of life; physical or psychological mistreatment; identity theft; loss of PII; damage to image or reputation</td></tr><tr><td>Harm to other organizations</td><td>harms due to noncompliance; direct financial costs; relational harms</td></tr><tr><td>Harm to the Nation</td><td>damage to or incapacitation of a critical infrastructure sector; loss of government continuity of operations; relational harms; damage to ability to achieve national objectives; harm to national security</td></tr></table><p><i>Source: NIST SP 800-30 Rev. 1, Guide for Conducting Risk Assessments (2012), Appendix H, Tables H-2 and H-3. The guide's scales are a starting point for tailoring; it does not prescribe how to combine them.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Impact of the threat event",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Very Low - The threat event could be expected to have a negligible adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "5b5352c0-7ee6-5b11-a7e5-e99867232812",
+              "ScoringCategoryId": "d30fbe94-8722-5edd-aa42-08ea8a72de76"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - The threat event could be expected to have a limited adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "2306a606-d046-5be1-9436-f7e78c64f93c",
+              "ScoringCategoryId": "d30fbe94-8722-5edd-aa42-08ea8a72de76"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - The threat event could be expected to have a serious adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "75809477-a71c-5814-a33e-063be7a8f031",
+              "ScoringCategoryId": "d30fbe94-8722-5edd-aa42-08ea8a72de76"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - The threat event could be expected to have a severe or catastrophic adverse effect on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "8261abb8-9371-5409-8476-92b8e528c40e",
+              "ScoringCategoryId": "d30fbe94-8722-5edd-aa42-08ea8a72de76"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "Very High - The threat event could be expected to have multiple severe or catastrophic adverse effects on organizational operations, organizational assets, individuals, other organizations, or the Nation.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "6af27b89-92f8-5088-8727-4702bf641c9a",
+              "ScoringCategoryId": "d30fbe94-8722-5edd-aa42-08ea8a72de76"
+            }
+          ]
+        },
+        "Id": "d30fbe94-8722-5edd-aa42-08ea8a72de76",
+        "ScoringModelId": "a822ea89-68c1-5af2-a9cc-95ba031188c4"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "10",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "11",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "a822ea89-68c1-5af2-a9cc-95ba031188c4"
+}

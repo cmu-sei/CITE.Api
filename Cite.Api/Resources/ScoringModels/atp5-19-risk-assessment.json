@@ -1,0 +1,205 @@
+{
+  "$id": "1",
+  "Description": "ATP 5-19 Risk Assessment (Probability x Severity)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": false,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Risk assessment matrix</h4><p>Assess the hazard in this move: its probability and the severity of its consequences. Read the risk level from the matrix, then decide whether the residual risk is within the commander's risk tolerance or must be elevated. Only the risk level is scored.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Severity / probability</th><th>A Frequent</th><th>B Likely</th><th>C Occasional</th><th>D Seldom</th><th>E Unlikely</th></tr><tr><td>I Catastrophic</td><td>EH</td><td>EH</td><td>H</td><td>H</td><td>M</td></tr><tr><td>II Critical</td><td>EH</td><td>H</td><td>H</td><td>M</td><td>L</td></tr><tr><td>III Moderate</td><td>H</td><td>M</td><td>M</td><td>L</td><td>L</td></tr><tr><td>IV Negligible</td><td>M</td><td>L</td><td>L</td><td>L</td><td>L</td></tr></table><p><i>Source: ATP 5-19, Risk Management (Department of the Army, November 2021), paragraphs 1-30 to 1-48 and Tables 1-1 and 1-2. Approved for public release; distribution is unlimited. As ATP 5-19 notes, judgment and experience weigh higher than any set of codes.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Probability",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "E Unlikely - Probability is assessed as unlikely if a harmful occurrence resulting from exposure is possible but improbable. Planners assume it will not occur, but the occurrence is not impossible.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "e83bfe6b-2804-5c9b-96fd-7db297e9212f",
+              "ScoringCategoryId": "19b09980-3c79-584c-8020-42d83a020bb2"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "D Seldom - Probability is assessed as seldom when a harmful occurrence resulting from exposure is infrequent - the event is remotely possible and could occur at some time. Usually, several things must go wrong at once for the harmful event to happen.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "9b75d3c9-2177-5faf-a285-be2b50ba621a",
+              "ScoringCategoryId": "19b09980-3c79-584c-8020-42d83a020bb2"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "C Occasional - Probability is assessed as occasional if a harmful occurrence is expected to happen sporadically or intermittently because of exposure - the event is neither common nor uncommon.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "5b5f1d9a-cbbf-56a5-8035-14317907e49c",
+              "ScoringCategoryId": "19b09980-3c79-584c-8020-42d83a020bb2"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "B Likely - Probability is assessed as likely if a harmful occurrence is expected to happen several or numerous times - the event commonly happens because of exposure.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "c238a5c7-cedb-5b76-b1be-db24f90cba6c",
+              "ScoringCategoryId": "19b09980-3c79-584c-8020-42d83a020bb2"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "A Frequent - Probability is assessed as frequent if a harmful occurrence is known to happen continuously, regularly, or inevitably because of exposure.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "9a6d9e02-3c32-5120-83d9-140a0abbdaf0",
+              "ScoringCategoryId": "19b09980-3c79-584c-8020-42d83a020bb2"
+            }
+          ]
+        },
+        "Id": "19b09980-3c79-584c-8020-42d83a020bb2",
+        "ScoringModelId": "8ad27e19-0a5d-56a6-9b47-77167f9b2874"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Severity",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "IV Negligible - consequences are expected to include minimal injury, loss, or damage; little or no impact to unit readiness; or little or no impact to mission capability.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "c4665bad-af54-5b41-8deb-4f0e22852ec6",
+              "ScoringCategoryId": "42183e4a-7de5-59ec-885f-b09e2a7b5413"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "III Moderate - consequences are expected to include minor injury, illness, loss, or damage; degraded unit readiness; or degraded mission capability.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "967efafd-72da-57d2-bbff-a0fe5693e09e",
+              "ScoringCategoryId": "42183e4a-7de5-59ec-885f-b09e2a7b5413"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "II Critical - consequences are expected to include severe injury, illness, loss, or damage; significantly degraded unit readiness; or significantly degraded mission capability.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "aa93df5a-ba6f-56e4-97dd-c3da144562d9",
+              "ScoringCategoryId": "42183e4a-7de5-59ec-885f-b09e2a7b5413"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "I Catastrophic - consequences are expected to include death, unacceptable loss or damage, mission failure, or the loss of unit readiness.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "02945d65-5675-5904-9bf1-de63f63e6354",
+              "ScoringCategoryId": "42183e4a-7de5-59ec-885f-b09e2a7b5413"
+            }
+          ]
+        },
+        "Id": "42183e4a-7de5-59ec-885f-b09e2a7b5413",
+        "ScoringModelId": "8ad27e19-0a5d-56a6-9b47-77167f9b2874"
+      },
+      {
+        "$id": "16",
+        "DisplayOrder": 3,
+        "Description": "Risk level - from the risk assessment matrix (Table 1-1)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "17",
+          "$values": [
+            {
+              "$id": "18",
+              "DisplayOrder": 1,
+              "Description": "L Low - expected losses that would have little or no impact on accomplishing the mission.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "b9ed18ac-d312-5a7d-af98-d35b0eb32a88",
+              "ScoringCategoryId": "1fb0f17b-e690-591a-88f8-da19f817a96d"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 2,
+              "Description": "M Medium - the expectation of degraded mission capabilities in terms of the necessary standard and reduced mission capability if exposure occurs during operations.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "3cea2953-ee89-5319-8e1c-40520338ef9e",
+              "ScoringCategoryId": "1fb0f17b-e690-591a-88f8-da19f817a96d"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 3,
+              "Description": "H High - significant degradation of mission capabilities in terms of the necessary standard, inability to accomplish all parts of the mission, or inability to complete the mission to standard if exposure occurs during operations.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "6d406429-93a9-5e45-abe1-99267f48bbd5",
+              "ScoringCategoryId": "1fb0f17b-e690-591a-88f8-da19f817a96d"
+            },
+            {
+              "$id": "21",
+              "DisplayOrder": 4,
+              "Description": "EH Extremely High - expected loss of ability to accomplish the mission if exposure occurs during operations.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "a91941c3-d50f-5e0d-8979-a0bfa4fc8a7e",
+              "ScoringCategoryId": "1fb0f17b-e690-591a-88f8-da19f817a96d"
+            }
+          ]
+        },
+        "Id": "1fb0f17b-e690-591a-88f8-da19f817a96d",
+        "ScoringModelId": "8ad27e19-0a5d-56a6-9b47-77167f9b2874"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "22",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "23",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "8ad27e19-0a5d-56a6-9b47-77167f9b2874"
+}

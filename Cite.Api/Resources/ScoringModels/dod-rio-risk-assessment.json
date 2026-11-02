@@ -1,0 +1,331 @@
+{
+  "$id": "1",
+  "Description": "DoD RIO Risk Assessment (Likelihood x Consequence)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": false,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Risk reporting matrix</h4><p>Rate the likelihood and the cost, schedule and performance consequence of this move's risk as if fully realized. The consequence is the <b>greatest</b> of the three (e.g. cost 2, schedule 3, performance 2 is a 3). Read the risk level from the matrix. Only the risk level is scored.</p><p>Rows: likelihood; columns: consequence 1 to 5.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr><tr><td>5</td><td>Low</td><td>Moderate</td><td>High</td><td>High</td><td>High</td></tr><tr><td>4</td><td>Low</td><td>Moderate</td><td>Moderate</td><td>High</td><td>High</td></tr><tr><td>3</td><td>Low</td><td>Low</td><td>Moderate</td><td>Moderate</td><td>High</td></tr><tr><td>2</td><td>Low</td><td>Low</td><td>Low</td><td>Moderate</td><td>Moderate</td></tr><tr><td>1</td><td>Low</td><td>Low</td><td>Low</td><td>Low</td><td>Moderate</td></tr></table><p>A probability of 1 (or approaching 1) is an issue, not a risk.</p><p><i>Source: Department of Defense Risk, Issue, and Opportunity (RIO) Management Guide for Defense Acquisition Programs (OUSD(R&amp;E), September 2023), Tables 2-1 and 2-2 and Figure 2-5. Distribution Statement A. The guide's levels are ordinal; it advises against fractional scores. Figure 2-5 is shown with likelihood 5 at the top, as in the guide's Figure 2-6.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Likelihood",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "1 Not Likely - greater than 1% to 20% probability of occurrence",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "c757d370-79e2-5a6c-ad6c-146ce88aee59",
+              "ScoringCategoryId": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "2 Low Likelihood - greater than 20% to 40%",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "12cf4788-b334-57a3-b988-ef72170e643b",
+              "ScoringCategoryId": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "3 Likely - greater than 40% to 60%",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "3685d5d5-7859-53f2-b284-84ed9c0e6ba0",
+              "ScoringCategoryId": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "4 Highly Likely - greater than 60% to 80%",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "e21419af-0689-51f3-9af6-50db620765e1",
+              "ScoringCategoryId": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "5 Near Certainty - greater than 80% to 99%",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "36c47ddd-ec1f-52ca-abcd-1365729d481d",
+              "ScoringCategoryId": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1"
+            }
+          ]
+        },
+        "Id": "fef6d03c-1c17-54cf-ac7c-1d7261d8cdd1",
+        "ScoringModelId": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Cost consequence",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "1 Minimal Impact - Minimal impact. Costs expected to meet approved funding levels.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "1df3c6a2-c615-5c10-ad80-2a39d5d044f0",
+              "ScoringCategoryId": "21d23804-a488-581e-8b96-d15c253bd6d0"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "2 Minor Impact - Costs that drive unit production cost (e.g., APUC) increase of less than 1% over budget. Cost increase, but can be managed internally.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "8a2bfd99-f3a4-57d1-93df-98123edfa0f7",
+              "ScoringCategoryId": "21d23804-a488-581e-8b96-d15c253bd6d0"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "3 Moderate Impact - 1% to less than 5% increase over APB objective values for RDT&E, PAUC, or APUC. Manageable with PEO or Service assistance.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "02028923-b448-5f4d-8e36-59b919e7194c",
+              "ScoringCategoryId": "21d23804-a488-581e-8b96-d15c253bd6d0"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "4 Significant Impact - 5% to less than 10% increase over APB objective values for RDT&E, PAUC, or APUC. Costs exceed life cycle ownership cost KSA.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "36c3919b-f58e-5a9c-8deb-73f61c4887c7",
+              "ScoringCategoryId": "21d23804-a488-581e-8b96-d15c253bd6d0"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 5,
+              "Description": "5 Critical Impact - 10% or greater increase over APB objective values for RDT&E, PAUC, or APUC. Cost increase causes program to exceed affordability caps.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "6d61ad24-7633-593f-a091-8651a8a4bb49",
+              "ScoringCategoryId": "21d23804-a488-581e-8b96-d15c253bd6d0"
+            }
+          ]
+        },
+        "Id": "21d23804-a488-581e-8b96-d15c253bd6d0",
+        "ScoringModelId": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+      },
+      {
+        "$id": "17",
+        "DisplayOrder": 3,
+        "Description": "Schedule consequence",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "18",
+          "$values": [
+            {
+              "$id": "19",
+              "DisplayOrder": 1,
+              "Description": "1 Minimal Impact - Minimal schedule impact.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "8c8ad25b-c3b6-5d6e-9191-582a4eeb557c",
+              "ScoringCategoryId": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 2,
+              "Description": "2 Minor Impact - Some schedule slip, but can meet APB objective dates and non-APB key event dates.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "96daf2a4-7d30-50bd-ae04-6ab974a2daea",
+              "ScoringCategoryId": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce"
+            },
+            {
+              "$id": "21",
+              "DisplayOrder": 3,
+              "Description": "3 Moderate Impact - Can meet APB objective schedule dates, but other non-APB key events (e.g., SETRs or other Tier 1 schedule events) may slip. Schedule slip has an impact on synchronization with interdependent programs by greater than 2 months.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "231b2ef9-fdcc-57a9-9abb-089a08a0f819",
+              "ScoringCategoryId": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 4,
+              "Description": "4 Significant Impact - Schedule deviations will slip program to within 2 months of approved APB threshold date. Schedule slip puts funding at risk. Fielding of capability to operational units delayed by more than 6 months.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "c3ef4451-9779-50be-9f09-fcec3c3411ff",
+              "ScoringCategoryId": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 5,
+              "Description": "5 Critical Impact - Schedule slip will require a major schedule rebaseline. Precludes program from meeting its APB schedule threshold dates.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "682c4349-632b-55e3-840e-9daa24c6ebbc",
+              "ScoringCategoryId": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce"
+            }
+          ]
+        },
+        "Id": "653f13d8-dbd4-57a0-b835-2508ca9ee8ce",
+        "ScoringModelId": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+      },
+      {
+        "$id": "24",
+        "DisplayOrder": 4,
+        "Description": "Performance consequence",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "25",
+          "$values": [
+            {
+              "$id": "26",
+              "DisplayOrder": 1,
+              "Description": "1 Minimal Impact - Minimal consequences to meeting technical performance or supportability requirements. Design margins will be met; margin to planned tripwires.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "f7576c15-01ac-52d6-b50e-57bbe8489a39",
+              "ScoringCategoryId": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10"
+            },
+            {
+              "$id": "27",
+              "DisplayOrder": 2,
+              "Description": "2 Minor Impact - Reduced technical performance or supportability; can be tolerated with little impact on program objectives. Design margins reduced, within trade space.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "9b6ca89f-6b5e-50eb-9066-763a68db206d",
+              "ScoringCategoryId": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10"
+            },
+            {
+              "$id": "28",
+              "DisplayOrder": 3,
+              "Description": "3 Moderate Impact - Unable to meet lower tier attributes, TPMs, or CTPs. Design or supportability margins reduced. Minor performance impact affecting system-of-systems interdependencies. Work-arounds required to achieve mission tasks.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "481ce0ee-d38d-5956-8c3e-78001caf8315",
+              "ScoringCategoryId": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10"
+            },
+            {
+              "$id": "29",
+              "DisplayOrder": 4,
+              "Description": "4 Significant Impact - Degradation impairs ability to meet a KSA. Technical design or supportability margin exhausted in key areas. Significant performance impact affecting system-of-systems interdependencies. Work-arounds required to meet mission objectives.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "6f3f448d-20fa-5659-9004-a20627ad9a38",
+              "ScoringCategoryId": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10"
+            },
+            {
+              "$id": "30",
+              "DisplayOrder": 5,
+              "Description": "5 Critical Impact - Degradation precludes system from meeting a KPP or key technical/supportability threshold; will jeopardize program success. Unable to meet mission objectives (defined in mission threads, ConOps, OMS/MP).",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "c1b6ae95-49f4-51a0-b1bd-6c5941313ad5",
+              "ScoringCategoryId": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10"
+            }
+          ]
+        },
+        "Id": "04a3e4a4-c6e1-50c3-b888-c1bf14658c10",
+        "ScoringModelId": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+      },
+      {
+        "$id": "31",
+        "DisplayOrder": 5,
+        "Description": "Risk level - likelihood against the greatest of the cost, schedule and performance consequences (Figure 2-5)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "32",
+          "$values": [
+            {
+              "$id": "33",
+              "DisplayOrder": 1,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "519aef0a-9415-5428-b90a-607a26f7e4b1",
+              "ScoringCategoryId": "dc9532b3-ee79-55ad-b4cf-c58f6e79f8fc"
+            },
+            {
+              "$id": "34",
+              "DisplayOrder": 2,
+              "Description": "Moderate",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "ef4c5c95-2ea4-5d6a-9353-c102b916a2f3",
+              "ScoringCategoryId": "dc9532b3-ee79-55ad-b4cf-c58f6e79f8fc"
+            },
+            {
+              "$id": "35",
+              "DisplayOrder": 3,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "f96aa68f-fcaa-58d8-96f9-4235579514e2",
+              "ScoringCategoryId": "dc9532b3-ee79-55ad-b4cf-c58f6e79f8fc"
+            }
+          ]
+        },
+        "Id": "dc9532b3-ee79-55ad-b4cf-c58f6e79f8fc",
+        "ScoringModelId": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "36",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "37",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "9f59097e-89c8-5f92-8a8b-9e648a491476"
+}

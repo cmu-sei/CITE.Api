@@ -1,0 +1,358 @@
+{
+  "$id": "1",
+  "Description": "NIST CSF 2.0 Respond and Recover (per move)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>RESPOND and RECOVER outcomes this move</h4><p>For each Category, rate how far the team achieved the CSF outcome during this move. The Category statements are CSF 2.0's own; the four performance levels are this model's, not CSF's. Record what was done in the comments.</p><p>Subcategories to consider: RS.MA-01 to -05 (plan executed with third parties; reports triaged and validated; incidents categorized, prioritized, escalated); RS.AN-03, -06 to -08 (root cause; records preserved; magnitude estimated); RS.CO-02, -03 (stakeholders notified; information shared); RS.MI-01, -02 (contained; eradicated); RC.RP-01 to -06; RC.CO-03, -04 (recovery progress communicated; public updates via approved messaging).</p><p><i>Source: The NIST Cybersecurity Framework (CSF) 2.0, NIST CSWP 29 (February 26, 2024), Appendix A, RESPOND (RS) and RECOVER (RC) Categories. Public domain. CSF 2.0 says the Tiers \"characterize the rigor of an organization's cybersecurity risk governance and management practices\"; Appendix B is a \"notional illustration\". They are not maturity levels.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Incident Management (RS.MA) - Responses to detected cybersecurity incidents are managed",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "59e4dc1f-2958-5528-bcaf-cffc7839ed63",
+              "ScoringCategoryId": "98dc9ace-8d9d-5fe9-8b12-7d14961f10d0"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "e285bc86-867a-5b4b-9ecb-635a7ca7fdae",
+              "ScoringCategoryId": "98dc9ace-8d9d-5fe9-8b12-7d14961f10d0"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "1355865d-9c43-5047-b6a1-a0887312645f",
+              "ScoringCategoryId": "98dc9ace-8d9d-5fe9-8b12-7d14961f10d0"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "e8afa767-8064-5e8b-abee-c031d2d707c8",
+              "ScoringCategoryId": "98dc9ace-8d9d-5fe9-8b12-7d14961f10d0"
+            }
+          ]
+        },
+        "Id": "98dc9ace-8d9d-5fe9-8b12-7d14961f10d0",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Incident Analysis (RS.AN) - Investigations are conducted to ensure effective response and support forensics and recovery activities",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "c17a6c44-f452-5f00-a60e-0427f52d8ba6",
+              "ScoringCategoryId": "e2497746-d2aa-5f04-b6da-2ee804762ae9"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "42327a5d-d0f4-58f5-b54e-e675fc0ed38f",
+              "ScoringCategoryId": "e2497746-d2aa-5f04-b6da-2ee804762ae9"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "fde5cf25-f6c2-5efe-b577-e9091683a7c6",
+              "ScoringCategoryId": "e2497746-d2aa-5f04-b6da-2ee804762ae9"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "6605a054-fe69-5bf0-8f11-4256271c40b1",
+              "ScoringCategoryId": "e2497746-d2aa-5f04-b6da-2ee804762ae9"
+            }
+          ]
+        },
+        "Id": "e2497746-d2aa-5f04-b6da-2ee804762ae9",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 3,
+        "Description": "Incident Response Reporting and Communication (RS.CO) - Response activities are coordinated with internal and external stakeholders as required by laws, regulations, or policies",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "4f647917-8dc9-5333-bc3e-63f8cc050ef5",
+              "ScoringCategoryId": "ca3f1c15-eb38-51af-a5b4-dcc6058e0ade"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "8748d523-d6d8-58df-9321-39988de7da25",
+              "ScoringCategoryId": "ca3f1c15-eb38-51af-a5b4-dcc6058e0ade"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "d61c0c4a-880b-5117-a742-e7d095178a6e",
+              "ScoringCategoryId": "ca3f1c15-eb38-51af-a5b4-dcc6058e0ade"
+            },
+            {
+              "$id": "20",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "57633b9c-8035-5774-8ad2-a88781f4ede5",
+              "ScoringCategoryId": "ca3f1c15-eb38-51af-a5b4-dcc6058e0ade"
+            }
+          ]
+        },
+        "Id": "ca3f1c15-eb38-51af-a5b4-dcc6058e0ade",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      },
+      {
+        "$id": "21",
+        "DisplayOrder": 4,
+        "Description": "Incident Mitigation (RS.MI) - Activities are performed to prevent expansion of an event and mitigate its effects",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "22",
+          "$values": [
+            {
+              "$id": "23",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "757d4331-a669-50d8-b571-8367a430669f",
+              "ScoringCategoryId": "e84b6717-2f22-5785-8d01-347335c56db7"
+            },
+            {
+              "$id": "24",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "699addf0-6765-5d0a-9d19-271180c82c73",
+              "ScoringCategoryId": "e84b6717-2f22-5785-8d01-347335c56db7"
+            },
+            {
+              "$id": "25",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "a6a275d7-aa85-57df-b51f-2a47ac0b4f8f",
+              "ScoringCategoryId": "e84b6717-2f22-5785-8d01-347335c56db7"
+            },
+            {
+              "$id": "26",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "933f5b27-6015-5eef-acfa-5a5af276a017",
+              "ScoringCategoryId": "e84b6717-2f22-5785-8d01-347335c56db7"
+            }
+          ]
+        },
+        "Id": "e84b6717-2f22-5785-8d01-347335c56db7",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      },
+      {
+        "$id": "27",
+        "DisplayOrder": 5,
+        "Description": "Incident Recovery Plan Execution (RC.RP) - Restoration activities are performed to ensure operational availability of systems and services affected by cybersecurity incidents",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "28",
+          "$values": [
+            {
+              "$id": "29",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "a90ab074-185c-5d03-9880-137b5c325df7",
+              "ScoringCategoryId": "f12aa861-93fd-5c01-af0b-b1e785a6e0ee"
+            },
+            {
+              "$id": "30",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "17999233-43af-51d6-a32f-aa8da09e4db0",
+              "ScoringCategoryId": "f12aa861-93fd-5c01-af0b-b1e785a6e0ee"
+            },
+            {
+              "$id": "31",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "ac0c075c-e43d-5dd4-9322-ebacaba1530b",
+              "ScoringCategoryId": "f12aa861-93fd-5c01-af0b-b1e785a6e0ee"
+            },
+            {
+              "$id": "32",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "c6720d12-af20-5461-9e9f-1765af051ade",
+              "ScoringCategoryId": "f12aa861-93fd-5c01-af0b-b1e785a6e0ee"
+            }
+          ]
+        },
+        "Id": "f12aa861-93fd-5c01-af0b-b1e785a6e0ee",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      },
+      {
+        "$id": "33",
+        "DisplayOrder": 6,
+        "Description": "Incident Recovery Communication (RC.CO) - Restoration activities are coordinated with internal and external parties",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "34",
+          "$values": [
+            {
+              "$id": "35",
+              "DisplayOrder": 1,
+              "Description": "Not performed - the outcome was not addressed this move",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "f22421e3-2be0-5ac7-ab30-009250b8805b",
+              "ScoringCategoryId": "d5e01cbd-681f-5419-b7dd-2ccd4e8a17d7"
+            },
+            {
+              "$id": "36",
+              "DisplayOrder": 2,
+              "Description": "Partially performed - addressed, with significant gaps",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "b7abfc16-0c76-56c6-a6d7-dc00cfe03b73",
+              "ScoringCategoryId": "d5e01cbd-681f-5419-b7dd-2ccd4e8a17d7"
+            },
+            {
+              "$id": "37",
+              "DisplayOrder": 3,
+              "Description": "Largely performed - addressed, with minor gaps",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "b303db24-4cdc-509f-94b4-96c0f7b9230e",
+              "ScoringCategoryId": "d5e01cbd-681f-5419-b7dd-2ccd4e8a17d7"
+            },
+            {
+              "$id": "38",
+              "DisplayOrder": 4,
+              "Description": "Fully performed - the outcome was achieved",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "bb708b27-2585-5233-8cec-e5027d6c2f67",
+              "ScoringCategoryId": "d5e01cbd-681f-5419-b7dd-2ccd4e8a17d7"
+            }
+          ]
+        },
+        "Id": "d5e01cbd-681f-5419-b7dd-2ccd4e8a17d7",
+        "ScoringModelId": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "39",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "40",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "7e020292-e4a6-582d-8ae7-938f144e3f30"
+}

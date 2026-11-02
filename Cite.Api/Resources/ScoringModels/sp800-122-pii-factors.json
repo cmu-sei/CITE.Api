@@ -1,0 +1,367 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-122 PII Confidentiality Impact (Factors)",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>PII confidentiality impact factors</h4><p>Assess each factor for the PII involved in this move, then decide the overall level. The factors are considered together: one may indicate low and another high, and the higher can override. Only the overall level is scored.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Overall level</th><th>Harm</th></tr><tr><td>Not applicable</td><td>PII the organization may release publicly</td></tr><tr><td>Low</td><td>would not cause harm greater than inconvenience, such as changing a telephone number</td></tr><tr><td>Moderate</td><td>financial loss due to identity theft or denial of benefits, public humiliation, discrimination, or potential for blackmail</td></tr><tr><td>High</td><td>serious physical, social, or financial harm, resulting in potential loss of life, loss of livelihood, or inappropriate physical detention</td></tr></table><p><i>Source: NIST SP 800-122 (2010), Sections 3.1 and 3.2. The factor scales are adapted from the guide's examples; the guide treats factor levels as illustrative and leaves the choice of factors to each organization.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Identifiability - how easily the PII identifies specific individuals",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Does not identify individuals",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "71913398-b2e9-57be-a846-d6ea86bad9ac",
+              "ScoringCategoryId": "60e4eca7-5a9d-5a5d-bf57-6fa3e8cb6b14"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Indirectly identifying, or narrows a dataset (e.g. ZIP code and date of birth)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a6ee1ad2-6769-5777-8b1d-69f27d8b4620",
+              "ScoringCategoryId": "60e4eca7-5a9d-5a5d-bf57-6fa3e8cb6b14"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Combinations that single out individuals",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "f1e6ad54-c534-55c5-ae05-57ddeee843c7",
+              "ScoringCategoryId": "60e4eca7-5a9d-5a5d-bf57-6fa3e8cb6b14"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "Uniquely and directly identifying (e.g. name, SSN, fingerprints)",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "5db13fbd-06a7-595f-ae17-0dd93fac047d",
+              "ScoringCategoryId": "60e4eca7-5a9d-5a5d-bf57-6fa3e8cb6b14"
+            }
+          ]
+        },
+        "Id": "60e4eca7-5a9d-5a5d-bf57-6fa3e8cb6b14",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "9",
+        "DisplayOrder": 2,
+        "Description": "Quantity of PII - how many individuals are identified (may raise the level, never lower it)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "10",
+          "$values": [
+            {
+              "$id": "11",
+              "DisplayOrder": 1,
+              "Description": "Small number of records",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "e8f4e28c-3bfa-5ede-8c8e-dcc07c379837",
+              "ScoringCategoryId": "be0545d6-65fe-5b37-ae25-16aefc1fd2e4"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 2,
+              "Description": "Large dataset",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "e29b90c4-df59-5629-9466-bf0876eee8a6",
+              "ScoringCategoryId": "be0545d6-65fe-5b37-ae25-16aefc1fd2e4"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 3,
+              "Description": "Very large or population-scale dataset",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "1be7eeef-57a0-53d8-8dc4-6330059f53c9",
+              "ScoringCategoryId": "be0545d6-65fe-5b37-ae25-16aefc1fd2e4"
+            }
+          ]
+        },
+        "Id": "be0545d6-65fe-5b37-ae25-16aefc1fd2e4",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "14",
+        "DisplayOrder": 3,
+        "Description": "Data field sensitivity - individual fields and combinations",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "15",
+          "$values": [
+            {
+              "$id": "16",
+              "DisplayOrder": 1,
+              "Description": "Low-sensitivity fields (e.g. phone number, ZIP code)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "2ac76dcc-6f6b-5ae4-a87d-041a13538ea9",
+              "ScoringCategoryId": "a0ff448d-f13c-5416-9c99-a29fbfaa9db2"
+            },
+            {
+              "$id": "17",
+              "DisplayOrder": 2,
+              "Description": "Sensitive fields or sensitive combinations (e.g. name with credit card number)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "933de70f-bde0-5d20-83c8-1a8b02db2301",
+              "ScoringCategoryId": "a0ff448d-f13c-5416-9c99-a29fbfaa9db2"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 3,
+              "Description": "Highly sensitive fields (e.g. SSN, medical history, financial account information)",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "4510d061-e99d-5406-8a84-c3313bd82961",
+              "ScoringCategoryId": "a0ff448d-f13c-5416-9c99-a29fbfaa9db2"
+            }
+          ]
+        },
+        "Id": "a0ff448d-f13c-5416-9c99-a29fbfaa9db2",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "19",
+        "DisplayOrder": 4,
+        "Description": "Context of use - the purpose for which the PII is collected and used",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "20",
+          "$values": [
+            {
+              "$id": "21",
+              "DisplayOrder": 1,
+              "Description": "Low-harm context (e.g. general newsletter list)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "a6833321-900f-5e53-be17-4dbe0ac4bf82",
+              "ScoringCategoryId": "52590999-98cc-5424-ab42-ef074dc406b4"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 2,
+              "Description": "Benefits, eligibility or similar (e.g. retirement benefits)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "25a67572-4411-5394-b2e1-44977c11ab03",
+              "ScoringCategoryId": "52590999-98cc-5424-ab42-ef074dc406b4"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 3,
+              "Description": "Disclosure could endanger individuals or compromise investigations (e.g. undercover officers)",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "a7850b74-0132-5c7d-959f-1acfb840f7b5",
+              "ScoringCategoryId": "52590999-98cc-5424-ab42-ef074dc406b4"
+            }
+          ]
+        },
+        "Id": "52590999-98cc-5424-ab42-ef074dc406b4",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "24",
+        "DisplayOrder": 5,
+        "Description": "Obligation to protect confidentiality - laws, regulations, mandates and policy",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "25",
+          "$values": [
+            {
+              "$id": "26",
+              "DisplayOrder": 1,
+              "Description": "Organizational policy only",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "aff80587-02c3-5f6c-82a2-00bb53e3ae90",
+              "ScoringCategoryId": "e0f55748-e0b1-572f-b1b0-9cd131ea237d"
+            },
+            {
+              "$id": "27",
+              "DisplayOrder": 2,
+              "Description": "A specific law or mandate applies (e.g. Privacy Act, HIPAA, GLBA)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "eb75d145-ff31-52c1-be11-f4dca8fc85e8",
+              "ScoringCategoryId": "e0f55748-e0b1-572f-b1b0-9cd131ea237d"
+            },
+            {
+              "$id": "28",
+              "DisplayOrder": 3,
+              "Description": "A specific law with civil or criminal penalties for disclosure",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "d6581b7c-6a6b-5461-933f-14febac7809c",
+              "ScoringCategoryId": "e0f55748-e0b1-572f-b1b0-9cd131ea237d"
+            }
+          ]
+        },
+        "Id": "e0f55748-e0b1-572f-b1b0-9cd131ea237d",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "29",
+        "DisplayOrder": 6,
+        "Description": "Access to and location of PII",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "30",
+          "$values": [
+            {
+              "$id": "31",
+              "DisplayOrder": 1,
+              "Description": "Limited, controlled access within the organization",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "27593953-77f9-5843-b2a8-843a1ca5583f",
+              "ScoringCategoryId": "57f0016d-01e0-53bf-b0bb-94a45605fd3f"
+            },
+            {
+              "$id": "32",
+              "DisplayOrder": 2,
+              "Description": "Accessed often or by many people and systems",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "84d48742-b9d4-56bf-a8a3-db3703ba7a14",
+              "ScoringCategoryId": "57f0016d-01e0-53bf-b0bb-94a45605fd3f"
+            },
+            {
+              "$id": "33",
+              "DisplayOrder": 3,
+              "Description": "Stored or accessed outside the organization's direct control (e.g. telework devices, external web applications)",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "6084262a-18e7-51c4-a2d0-79835b4a042f",
+              "ScoringCategoryId": "57f0016d-01e0-53bf-b0bb-94a45605fd3f"
+            }
+          ]
+        },
+        "Id": "57f0016d-01e0-53bf-b0bb-94a45605fd3f",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      },
+      {
+        "$id": "34",
+        "DisplayOrder": 7,
+        "Description": "Overall PII confidentiality impact level - consider the factors together; one factor can override another",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "35",
+          "$values": [
+            {
+              "$id": "36",
+              "DisplayOrder": 1,
+              "Description": "Not applicable - PII the organization may release publicly",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "01f25ff2-b4a1-5da8-a4d1-9788b52c4cbd",
+              "ScoringCategoryId": "2ebd6da1-4c19-5a67-9b43-963beae22d7e"
+            },
+            {
+              "$id": "37",
+              "DisplayOrder": 2,
+              "Description": "Low - would not cause harm greater than inconvenience, such as changing a telephone number",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "b6b0a417-7aa9-590a-820d-7ff876bbbfa4",
+              "ScoringCategoryId": "2ebd6da1-4c19-5a67-9b43-963beae22d7e"
+            },
+            {
+              "$id": "38",
+              "DisplayOrder": 3,
+              "Description": "Moderate - financial loss due to identity theft or denial of benefits, public humiliation, discrimination, or potential for blackmail",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "96d0ea9b-f1c6-5296-bd68-d363dd8ce929",
+              "ScoringCategoryId": "2ebd6da1-4c19-5a67-9b43-963beae22d7e"
+            },
+            {
+              "$id": "39",
+              "DisplayOrder": 4,
+              "Description": "High - serious physical, social, or financial harm, resulting in potential loss of life, loss of livelihood, or inappropriate physical detention",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "793c8a32-bf8d-55eb-ac1c-bc09f6dd266c",
+              "ScoringCategoryId": "2ebd6da1-4c19-5a67-9b43-963beae22d7e"
+            }
+          ]
+        },
+        "Id": "2ebd6da1-4c19-5a67-9b43-963beae22d7e",
+        "ScoringModelId": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "40",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "41",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "d0e6918f-ad8c-5868-abce-40ff618ea70b"
+}

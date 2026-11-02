@@ -1,0 +1,214 @@
+{
+  "$id": "1",
+  "Description": "JP 5-0 Course of Action Validity",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Test the validity of the COA</h4><p>Test your team's course of action against the five validity criteria. Reject any COA that does not meet all five. Record the evidence for each in the comments.</p><p><i>Source: JP 5-0, Joint Planning (01 December 2020), Chapter III, step 3 (q) Test the Validity of Each COA. Unclassified; access to unclassified joint publications is unrestricted.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Suitable - can accomplish the mission within the commander's guidance (accomplishes the mission, meets the commander's intent, accomplishes all the essential tasks, meets the conditions for the end state)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "46e9c240-46b1-5179-9137-f36495f551c4",
+              "ScoringCategoryId": "4918b5b1-5677-5888-ac70-45951f61f17d"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "90c2d3a9-8a29-5fc4-bfe9-91c3b35b5567",
+              "ScoringCategoryId": "4918b5b1-5677-5888-ac70-45951f61f17d"
+            }
+          ]
+        },
+        "Id": "4918b5b1-5677-5888-ac70-45951f61f17d",
+        "ScoringModelId": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+      },
+      {
+        "$id": "7",
+        "DisplayOrder": 2,
+        "Description": "Feasible - can accomplish the mission within the established time, space, and resource limitations",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "8",
+          "$values": [
+            {
+              "$id": "9",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "b84df35c-9c57-5504-a7f1-2a176c213901",
+              "ScoringCategoryId": "53cb75e7-1fd9-5587-8a87-5f4f8f1fbc68"
+            },
+            {
+              "$id": "10",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "8d12df72-2107-5d71-ab78-6e1c1b1800b0",
+              "ScoringCategoryId": "53cb75e7-1fd9-5587-8a87-5f4f8f1fbc68"
+            }
+          ]
+        },
+        "Id": "53cb75e7-1fd9-5587-8a87-5f4f8f1fbc68",
+        "ScoringModelId": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+      },
+      {
+        "$id": "11",
+        "DisplayOrder": 3,
+        "Description": "Acceptable - must balance cost and risk with the advantage gained (the estimated results justify the risks)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "12",
+          "$values": [
+            {
+              "$id": "13",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "25e887e7-35f1-5927-b0a3-da42a1ea4de4",
+              "ScoringCategoryId": "f684c1ef-dac9-562a-9502-cf2742b90e59"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "c56da1e6-50b0-5469-b1d3-479a021d0637",
+              "ScoringCategoryId": "f684c1ef-dac9-562a-9502-cf2742b90e59"
+            }
+          ]
+        },
+        "Id": "f684c1ef-dac9-562a-9502-cf2742b90e59",
+        "ScoringModelId": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 4,
+        "Description": "Distinguishable - must be sufficiently different from other COAs (main effort, scheme of maneuver, sequencing, primary mechanism, task organization, use of reserves)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "5ee5e73c-6b09-5993-92ad-3dc94aba3be4",
+              "ScoringCategoryId": "2fcd891c-f083-50b2-b1a7-fa5b96d98e24"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "7dab9e5f-e985-5970-a6d1-188e39c2a770",
+              "ScoringCategoryId": "2fcd891c-f083-50b2-b1a7-fa5b96d98e24"
+            }
+          ]
+        },
+        "Id": "2fcd891c-f083-50b2-b1a7-fa5b96d98e24",
+        "ScoringModelId": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+      },
+      {
+        "$id": "19",
+        "DisplayOrder": 5,
+        "Description": "Complete - answers who, what, where, when, how, and why (objectives, effects and tasks; forces and capabilities; deployment, employment and sustainment; time estimates; end state and success criteria)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "20",
+          "$values": [
+            {
+              "$id": "21",
+              "DisplayOrder": 1,
+              "Description": "Does not meet",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "84a45fc7-ee53-5119-81a6-31d7f0694e38",
+              "ScoringCategoryId": "9a25a573-8b5e-5d84-a350-de0536842404"
+            },
+            {
+              "$id": "22",
+              "DisplayOrder": 2,
+              "Description": "Meets",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "f29534a1-8ce8-50bb-bb1c-f1c3200467a0",
+              "ScoringCategoryId": "9a25a573-8b5e-5d84-a350-de0536842404"
+            }
+          ]
+        },
+        "Id": "9a25a573-8b5e-5d84-a350-de0536842404",
+        "ScoringModelId": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "23",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "24",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "147a8ae1-c4db-5e99-927f-9a1bc55b74a6"
+}

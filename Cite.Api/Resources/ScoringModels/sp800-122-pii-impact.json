@@ -1,0 +1,88 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-122 PII Confidentiality Impact Level",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>PII confidentiality impact level</h4><p>Rate the potential harm to the individuals and to the organization from the PII exposed in this move. Harm to the organization includes administrative burden, financial losses, loss of public reputation and confidence, and legal liability.</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Level</th><th>Harm (SP 800-122 examples)</th></tr><tr><td>Not applicable</td><td>PII the organization may release publicly</td></tr><tr><td>Low</td><td>would not cause harm greater than inconvenience, such as changing a telephone number</td></tr><tr><td>Moderate</td><td>financial loss due to identity theft or denial of benefits, public humiliation, discrimination, or potential for blackmail</td></tr><tr><td>High</td><td>serious physical, social, or financial harm, resulting in potential loss of life, loss of livelihood, or inappropriate physical detention</td></tr></table><p>This level supplements the FIPS 199 confidentiality impact; it does not replace it.</p><p><i>Source: NIST SP 800-122, Guide to Protecting the Confidentiality of Personally Identifiable Information (PII) (2010), Section 3.1.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "PII confidentiality impact level - harm to individuals and the organization if the PII were inappropriately accessed, used, or disclosed",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Not applicable - PII the organization may release publicly",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "a863e5ea-e48d-5dda-8413-5f98cb0f304d",
+              "ScoringCategoryId": "d2234ec8-4516-533f-82db-3d755af5f672"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - would not cause harm greater than inconvenience, such as changing a telephone number",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "289dfa47-35b2-5206-89f2-08640730bdf5",
+              "ScoringCategoryId": "d2234ec8-4516-533f-82db-3d755af5f672"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - financial loss due to identity theft or denial of benefits, public humiliation, discrimination, or potential for blackmail",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "c4477968-665b-559a-9adc-93d635ab9e72",
+              "ScoringCategoryId": "d2234ec8-4516-533f-82db-3d755af5f672"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - serious physical, social, or financial harm, resulting in potential loss of life, loss of livelihood, or inappropriate physical detention",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "fee9fbf7-0c56-5bc3-bb49-6392baa13179",
+              "ScoringCategoryId": "d2234ec8-4516-533f-82db-3d755af5f672"
+            }
+          ]
+        },
+        "Id": "d2234ec8-4516-533f-82db-3d755af5f672",
+        "ScoringModelId": "5a91f160-991c-502f-9c7c-1d1cd463641a"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "9",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "10",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "5a91f160-991c-502f-9c7c-1d1cd463641a"
+}

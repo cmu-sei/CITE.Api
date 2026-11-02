@@ -1,0 +1,160 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-30 Likelihood of Adversarial Threat Events",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Likelihood</h4><p>Assess how likely the adversary is to initiate this move's threat event, and how likely it is to cause adverse impacts if it does. The score is the equal-weighted average of the two (SP 800-30 combination rule (v)); Table G-5 shows the guide's example combination.</p><p><b>Table G-5, overall likelihood</b> (rows: initiation or occurrence; columns: results in adverse impacts)</p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th></th><th>Very Low</th><th>Low</th><th>Moderate</th><th>High</th><th>Very High</th></tr><tr><td>Very High</td><td>Low</td><td>Moderate</td><td>High</td><td>Very High</td><td>Very High</td></tr><tr><td>High</td><td>Low</td><td>Moderate</td><td>Moderate</td><td>High</td><td>Very High</td></tr><tr><td>Moderate</td><td>Low</td><td>Low</td><td>Moderate</td><td>Moderate</td><td>High</td></tr><tr><td>Low</td><td>Very Low</td><td>Low</td><td>Low</td><td>Moderate</td><td>Moderate</td></tr><tr><td>Very Low</td><td>Very Low</td><td>Very Low</td><td>Low</td><td>Low</td><td>Low</td></tr></table><p><i>Source: NIST SP 800-30 Rev. 1, Guide for Conducting Risk Assessments (2012), Appendix G, Tables G-2, G-4 and G-5; Task 2-4. The guide's scales are a starting point for tailoring; it does not prescribe how to combine them.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Likelihood of threat event initiation",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Very Low - Adversary is highly unlikely to initiate the threat event.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "16b35fa4-3f5b-5f27-b94f-bc5866ecf4c1",
+              "ScoringCategoryId": "f224f987-6321-53bc-b008-026145338acd"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Low - Adversary is unlikely to initiate the threat event.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "7c0da951-9716-58a0-ad1a-8678131ceab0",
+              "ScoringCategoryId": "f224f987-6321-53bc-b008-026145338acd"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Moderate - Adversary is somewhat likely to initiate the threat event.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "1e0f2d1b-f25c-50aa-a2b1-25bde1bc91cf",
+              "ScoringCategoryId": "f224f987-6321-53bc-b008-026145338acd"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "High - Adversary is highly likely to initiate the threat event.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "56baf591-9c68-54a0-be61-f78f7a8d1ed3",
+              "ScoringCategoryId": "f224f987-6321-53bc-b008-026145338acd"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "Very High - Adversary is almost certain to initiate the threat event.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "9fc0168a-183d-5cba-987b-fff752220c86",
+              "ScoringCategoryId": "f224f987-6321-53bc-b008-026145338acd"
+            }
+          ]
+        },
+        "Id": "f224f987-6321-53bc-b008-026145338acd",
+        "ScoringModelId": "c796d790-6309-56eb-9c68-e53d2de47835"
+      },
+      {
+        "$id": "10",
+        "DisplayOrder": 2,
+        "Description": "Likelihood the threat event results in adverse impacts",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "11",
+          "$values": [
+            {
+              "$id": "12",
+              "DisplayOrder": 1,
+              "Description": "Very Low - If the threat event is initiated or occurs, it is highly unlikely to have adverse impacts.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "527b526b-bedc-5bac-ba68-078f571bbdcc",
+              "ScoringCategoryId": "919de387-1ff4-5d07-8996-eb49a89fec18"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 2,
+              "Description": "Low - If the threat event is initiated or occurs, it is unlikely to have adverse impacts.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "6e8e8d0c-8ebb-566a-82e7-14f89a3d88b4",
+              "ScoringCategoryId": "919de387-1ff4-5d07-8996-eb49a89fec18"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 3,
+              "Description": "Moderate - If the threat event is initiated or occurs, it is somewhat likely to have adverse impacts.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "915657fd-f22e-5ea8-9c21-daa7c5fba596",
+              "ScoringCategoryId": "919de387-1ff4-5d07-8996-eb49a89fec18"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 4,
+              "Description": "High - If the threat event is initiated or occurs, it is highly likely to have adverse impacts.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "4132f1eb-ec26-5c9e-8542-1178d0148ca4",
+              "ScoringCategoryId": "919de387-1ff4-5d07-8996-eb49a89fec18"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 5,
+              "Description": "Very High - If the threat event is initiated or occurs, it is almost certain to have adverse impacts.",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "fb0b98b8-8dd0-5f70-901b-92ea05db6701",
+              "ScoringCategoryId": "919de387-1ff4-5d07-8996-eb49a89fec18"
+            }
+          ]
+        },
+        "Id": "919de387-1ff4-5d07-8996-eb49a89fec18",
+        "ScoringModelId": "c796d790-6309-56eb-9c68-e53d2de47835"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "17",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "18",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "c796d790-6309-56eb-9c68-e53d2de47835"
+}

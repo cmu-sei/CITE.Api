@@ -1,0 +1,169 @@
+{
+  "$id": "1",
+  "Description": "CNSSI 1253 Security Categorization (C-I-A Trigraph)",
+  "CalculationEquation": "{sum}",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Security categorization for a national security system</h4><p>Rate the impact level for each security objective separately; for each, take the highest level across the information types on the system. The result is a trigraph such as L-L-L or M-M-H, never a single overall level.</p><p><b>Reading the score.</b> Each digit is one objective: hundreds = confidentiality, tens = integrity, units = availability; 1 = Low, 2 = Moderate, 3 = High (e.g. <b>223</b> = M-M-H).</p><p><i>Source: CNSSI No. 1253, Categorization and Control Selection for National Security Systems (29 July 2022), sections 1.2, 2.1 and 3.1. CNSSI 1253 adopts the FIPS 199 impact levels but does not combine them into a single high-water mark; impact definitions are those of FIPS 199.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Confidentiality",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "1bf7ab90-40fc-56c5-9ec4-671f2396d012",
+              "ScoringCategoryId": "38ae5e99-8f5d-58df-8441-8d8edea4d115"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 200.0,
+              "Id": "3eac1d37-227c-5d6a-b1e5-48b69821bfe4",
+              "ScoringCategoryId": "38ae5e99-8f5d-58df-8441-8d8edea4d115"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 300.0,
+              "Id": "69675ca7-22d4-581a-878e-6e38fe1e3ea7",
+              "ScoringCategoryId": "38ae5e99-8f5d-58df-8441-8d8edea4d115"
+            }
+          ]
+        },
+        "Id": "38ae5e99-8f5d-58df-8441-8d8edea4d115",
+        "ScoringModelId": "c4e4cc6a-f717-5574-8e24-f7d4e7b62dd0"
+      },
+      {
+        "$id": "8",
+        "DisplayOrder": 2,
+        "Description": "Integrity",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "9",
+          "$values": [
+            {
+              "$id": "10",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "cf5d3fef-569b-56c6-bac1-a0e492020975",
+              "ScoringCategoryId": "fb825caf-2b4c-57e6-a5f2-9843ef05c49b"
+            },
+            {
+              "$id": "11",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 20.0,
+              "Id": "9a7f0ae3-dba6-5ceb-ad32-4dfb123f0f2a",
+              "ScoringCategoryId": "fb825caf-2b4c-57e6-a5f2-9843ef05c49b"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 30.0,
+              "Id": "5b7c291c-65d8-5868-9fd0-43c00e6f9436",
+              "ScoringCategoryId": "fb825caf-2b4c-57e6-a5f2-9843ef05c49b"
+            }
+          ]
+        },
+        "Id": "fb825caf-2b4c-57e6-a5f2-9843ef05c49b",
+        "ScoringModelId": "c4e4cc6a-f717-5574-8e24-f7d4e7b62dd0"
+      },
+      {
+        "$id": "13",
+        "DisplayOrder": 3,
+        "Description": "Availability",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "14",
+          "$values": [
+            {
+              "$id": "15",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "cf896d31-93df-5f9f-bac5-a670c7abb1c0",
+              "ScoringCategoryId": "4b1ce494-d51e-5a32-932a-7679981103bf"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "252cc408-caf6-5308-b00c-3117065e82e7",
+              "ScoringCategoryId": "4b1ce494-d51e-5a32-932a-7679981103bf"
+            },
+            {
+              "$id": "17",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "d3294ef8-cece-5922-b2ef-8a50511020f6",
+              "ScoringCategoryId": "4b1ce494-d51e-5a32-932a-7679981103bf"
+            }
+          ]
+        },
+        "Id": "4b1ce494-d51e-5a32-932a-7679981103bf",
+        "ScoringModelId": "c4e4cc6a-f717-5574-8e24-f7d4e7b62dd0"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "18",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "19",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "c4e4cc6a-f717-5574-8e24-f7d4e7b62dd0"
+}

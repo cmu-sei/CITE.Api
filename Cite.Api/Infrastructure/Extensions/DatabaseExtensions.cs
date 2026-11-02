@@ -12,10 +12,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Services;
+using Cite.Api.ViewModels;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -74,6 +76,15 @@ namespace Cite.Api.Infrastructure.Extensions
                         if (seedDataOptions != null)
                         {
                             ProcessSeedDataOptions(seedDataOptions, ctx);
+                        }
+                        if (databaseOptions.SeedStockScoringModels)
+                        {
+                            var added = SeedStockScoringModels(ctx, Path.Combine(env.ContentRootPath, "Resources", "ScoringModels"));
+                            if (added > 0)
+                                services.GetRequiredService<ILogger<Program>>().LogInformation("Seeded {Count} stock scoring models.", added);
+                        }
+                        if (seedDataOptions != null)
+                        {
                             ProcessScoringModelsBeforeTemplates(ctx);
                         }
                     }
@@ -90,6 +101,38 @@ namespace Cite.Api.Infrastructure.Extensions
             }
 
             return webHost;
+        }
+
+        /// <summary>
+        /// Adds the stock scoring models shipped in <paramref name="directory"/>: one JSON file per model, in the same
+        /// format the Scoring Models page imports and downloads, each with fixed ids. A model whose id is already in
+        /// the database is left alone, so this runs on every start-up without duplicating or overwriting anything,
+        /// and a planner's edits to a stock model survive. Returns how many models were added.
+        /// </summary>
+        public static int SeedStockScoringModels(CiteContext context, string directory)
+        {
+            if (!Directory.Exists(directory))
+                return 0;
+
+            var options = new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve };
+            var existingIds = context.ScoringModels.Select(m => m.Id).ToHashSet();
+            var added = 0;
+            foreach (var file in Directory.GetFiles(directory, "*.json").OrderBy(f => f, StringComparer.Ordinal))
+            {
+                var scoringModel = JsonSerializer.Deserialize<ScoringModelEntity>(File.ReadAllText(file), options)
+                    ?? throw new InvalidOperationException($"Stock scoring model file {Path.GetFileName(file)} is empty.");
+                if (scoringModel.Id == Guid.Empty)
+                    throw new InvalidOperationException($"Stock scoring model file {Path.GetFileName(file)} has no Id; stock models need fixed ids.");
+                if (existingIds.Contains(scoringModel.Id))
+                    continue;
+                // the file is read straight into the database model, so the API model's checks haven't run
+                SeverityLevelRules.ThrowIfInvalid(scoringModel.SeverityLevels);
+                context.ScoringModels.Add(scoringModel);
+                context.SaveChanges();
+                existingIds.Add(scoringModel.Id);
+                added++;
+            }
+            return added;
         }
 
         private static void ProcessSeedDataOptions(SeedDataOptions options, CiteContext context)

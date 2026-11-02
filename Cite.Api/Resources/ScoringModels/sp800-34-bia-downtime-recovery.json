@@ -1,0 +1,160 @@
+{
+  "$id": "1",
+  "Description": "NIST SP 800-34 BIA Downtime and Recovery",
+  "CalculationEquation": "100.0 > 100.0 * ({sum} - {minPossible}) / ({maxPossible} - {minPossible}) > 0.0",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Downtime and recovery</h4><p>Compare this move's expected outage and data loss with the objectives for each affected mission/business process.</p><ul><li><b>MTD</b> - the total outage leaders are willing to accept, including all impact considerations.</li><li><b>RTO</b> - the maximum time a system resource can be unavailable before an unacceptable impact; normally shorter than the MTD.</li><li><b>RPO</b> - the point in time to which data can be recovered from the most recent backup; not part of the MTD.</li></ul><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Mission/business process</th><th>MTD</th><th>RTO</th><th>RPO</th></tr><tr><td>Pay vendor invoice (template example)</td><td>72 hours</td><td>48 hours</td><td>12 hours (last backup)</td></tr><tr><td>{your process}</td><td></td><td></td><td></td></tr></table><p><i>Source: NIST SP 800-34 Rev. 1, Contingency Planning Guide for Federal Information Systems (2010), Section 3.2 and Appendix B (BIA template).</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Estimated downtime vs recovery objectives",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "Within the Recovery Time Objective (RTO)",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "908d5c6c-9d23-58b0-b287-eb7c253d3d37",
+              "ScoringCategoryId": "a0b7fc35-57a8-514e-a182-9e31f3fa93b8"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "Beyond the RTO, within the Maximum Tolerable Downtime (MTD)",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "248c365a-3ce9-5eb6-84a0-2a2f47eeb919",
+              "ScoringCategoryId": "a0b7fc35-57a8-514e-a182-9e31f3fa93b8"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "Beyond the MTD",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "d49c6914-e53a-51d6-8a25-30e716b37c72",
+              "ScoringCategoryId": "a0b7fc35-57a8-514e-a182-9e31f3fa93b8"
+            }
+          ]
+        },
+        "Id": "a0b7fc35-57a8-514e-a182-9e31f3fa93b8",
+        "ScoringModelId": "6fc860d3-c39a-566e-abbb-3f642ce00391"
+      },
+      {
+        "$id": "8",
+        "DisplayOrder": 2,
+        "Description": "Data recovery vs Recovery Point Objective (RPO)",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "9",
+          "$values": [
+            {
+              "$id": "10",
+              "DisplayOrder": 1,
+              "Description": "Data recoverable within the RPO",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "f9ae2844-1995-51a9-ac28-1700c8ba581a",
+              "ScoringCategoryId": "127e06a6-c5b3-5112-bb6b-b939d19b1f9d"
+            },
+            {
+              "$id": "11",
+              "DisplayOrder": 2,
+              "Description": "Data loss beyond the RPO",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "420d1353-d421-59e5-88cd-8def0a0cd8db",
+              "ScoringCategoryId": "127e06a6-c5b3-5112-bb6b-b939d19b1f9d"
+            }
+          ]
+        },
+        "Id": "127e06a6-c5b3-5112-bb6b-b939d19b1f9d",
+        "ScoringModelId": "6fc860d3-c39a-566e-abbb-3f642ce00391"
+      },
+      {
+        "$id": "12",
+        "DisplayOrder": 3,
+        "Description": "Recovery priority of the affected system resources",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "13",
+          "$values": [
+            {
+              "$id": "14",
+              "DisplayOrder": 1,
+              "Description": "Low",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "3c424308-e45c-55a8-9e85-a53222ef3250",
+              "ScoringCategoryId": "a4d27bfb-3708-5fec-9238-c47f660ca1d3"
+            },
+            {
+              "$id": "15",
+              "DisplayOrder": 2,
+              "Description": "Medium",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "cc2dccd0-a94e-5dd4-a1bb-29e8f2e7fe63",
+              "ScoringCategoryId": "a4d27bfb-3708-5fec-9238-c47f660ca1d3"
+            },
+            {
+              "$id": "16",
+              "DisplayOrder": 3,
+              "Description": "High",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "c710bb37-d118-5459-a2ee-2f88dbb8ba27",
+              "ScoringCategoryId": "a4d27bfb-3708-5fec-9238-c47f660ca1d3"
+            }
+          ]
+        },
+        "Id": "a4d27bfb-3708-5fec-9238-c47f660ca1d3",
+        "ScoringModelId": "6fc860d3-c39a-566e-abbb-3f642ce00391"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "17",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "18",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "6fc860d3-c39a-566e-abbb-3f642ce00391"
+}

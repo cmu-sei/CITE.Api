@@ -1,0 +1,412 @@
+{
+  "$id": "1",
+  "Description": "CJCSM 6510.01B Cyber Incident Category and Impact",
+  "CalculationEquation": "{sum}",
+  "Status": 20,
+  "HideScoresOnScoreSheet": false,
+  "DisplayCommentTextBoxes": true,
+  "DisplayScoringModelByMoveNumber": true,
+  "ShowPastSituationDescriptions": true,
+  "UseSubmit": true,
+  "UseUserScore": true,
+  "UseTeamScore": true,
+  "UseTeamAverageScore": false,
+  "UseTypeAverageScore": false,
+  "UseOfficialScore": true,
+  "RightSideDisplay": 10,
+  "RightSideHtmlBlock": "<h4>Categorize and assess the incident</h4><p>Assign the category (precedence: CAT 1, 2, 4, 7, 3, 5, 6, 8, 9), then rate the technical impact (on the information network and IS machines) and the operational impact (on the ability to perform the mission) for each security objective. Only the impact is scored.</p><p><b>Reading the score.</b> Low = 1, Moderate = 10, High = 100: the hundreds digit counts High ratings, the tens Moderate, the units Low; the incident's impact is the highest non-zero digit.</p><p><b>Reporting timelines (Table C-A-1)</b></p><table border=\"1\" cellpadding=\"6\" cellspacing=\"0\"><tr><th>Category</th><th>Initial notification / initial report to next tier / initial JIMS submission</th><th>Minimum reporting</th></tr><tr><td>1 Root Level / 2 User Level Intrusion</td><td>High: 15 min / 4 h / 6 h; Moderate: 2 h / 8 h / 12 h; Low: 4 h / 12 h / 24 h</td><td>Tier I</td></tr><tr><td>4 Denial of Service</td><td>High: 15 min / 4 h / 6 h; Moderate: 15 min / 4 h / within 6 h of discovery; Low: as directed</td><td>Tier I</td></tr><tr><td>7 Malicious Logic</td><td>High: 15 min / 4 h / 6 h (Tier I); Moderate: 2 h / 8 h / 12 h; Low: as directed</td><td>Tier II</td></tr><tr><td>3 Unsuccessful Activity Attempt</td><td>Any: 4 h / 12 h / 24 h</td><td>Tier II</td></tr><tr><td>5 Non-Compliance Activity</td><td>4 h / 12 h / 48 h</td><td>Tier II</td></tr><tr><td>6 Reconnaissance</td><td>As directed</td><td>Tier II</td></tr><tr><td>8 Investigating</td><td>within 2 h (acknowledgement) / most severe possible interpretation / 24 h</td><td>Tier II</td></tr><tr><td>9 Explained Anomaly</td><td>N/A / 24 h / 72 h</td><td>Tier II</td></tr></table><p><i>Source: CJCSM 6510.01B, Cyber Incident Handling Program (10 July 2012, current as of 18 December 2014), Enclosure B Appendix A (Tables B-A-1, B-A-2), Enclosure C Appendix A (Table C-A-1), Enclosure D Appendix C (levels of impact). Approved for public release; distribution is unlimited.</i></p>",
+  "RightSideEmbeddedUrl": "",
+  "ScoringCategories": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "DisplayOrder": 1,
+        "Description": "Incident or event category - where more than one applies, use the precedence in Table B-A-1",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 0.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "4",
+          "$values": [
+            {
+              "$id": "5",
+              "DisplayOrder": 1,
+              "Description": "CAT 0 Training and Exercises - Operations performed for training purposes and support to CC/S/A/FA exercises.",
+              "IsModifier": false,
+              "Value": 0.0,
+              "Id": "904408ff-05b2-5f6f-afaa-24c7ee068321",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "6",
+              "DisplayOrder": 2,
+              "Description": "CAT 1 Root Level Intrusion (Incident) - Unauthorized privileged access to an IS.",
+              "IsModifier": false,
+              "Value": 9.0,
+              "Id": "ed7a2680-2708-5b91-b39c-8edc3bff6edd",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "7",
+              "DisplayOrder": 3,
+              "Description": "CAT 2 User Level Intrusion (Incident) - Unauthorized non-privileged access to an IS.",
+              "IsModifier": false,
+              "Value": 8.0,
+              "Id": "27aab68c-c2f0-5627-bacc-ecbbe27ccd32",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "8",
+              "DisplayOrder": 4,
+              "Description": "CAT 3 Unsuccessful Activity Attempt (Event) - Deliberate attempts to gain unauthorized access to an IS that are defeated by normal defensive mechanisms.",
+              "IsModifier": false,
+              "Value": 5.0,
+              "Id": "e15b18ae-6a88-5260-b93a-6bc6e3b43f57",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "9",
+              "DisplayOrder": 5,
+              "Description": "CAT 4 Denial of Service (Incident) - Activity that denies, degrades, or disrupts normal functionality of an IS or DoD information network.",
+              "IsModifier": false,
+              "Value": 7.0,
+              "Id": "dfdc2dc2-7c5d-5050-afe1-d2fdacc9c167",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "10",
+              "DisplayOrder": 6,
+              "Description": "CAT 5 Non-Compliance Activity (Event) - Activity that potentially exposes ISs to increased risk as a result of the action or inaction of authorized users.",
+              "IsModifier": false,
+              "Value": 4.0,
+              "Id": "30d89d73-bf01-556a-924b-30e595a1b850",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "11",
+              "DisplayOrder": 7,
+              "Description": "CAT 6 Reconnaissance (Event) - Activity that seeks to gather information used to characterize ISs, applications, DoD information networks, and users that may be useful in formulating an attack.",
+              "IsModifier": false,
+              "Value": 3.0,
+              "Id": "0a6d67a0-5202-5875-b0a6-6842a445fa23",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "12",
+              "DisplayOrder": 8,
+              "Description": "CAT 7 Malicious Logic (Incident) - Installation of software designed and/or deployed by adversaries with malicious intentions for the purpose of gaining access to resources or information without the consent or knowledge of the user.",
+              "IsModifier": false,
+              "Value": 6.0,
+              "Id": "3b966db9-5443-5360-9c47-9045ed1b6c8d",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "13",
+              "DisplayOrder": 9,
+              "Description": "CAT 8 Investigating (Event) - Events that are potentially malicious or anomalous activity deemed suspicious and warrant, or are undergoing, further review.",
+              "IsModifier": false,
+              "Value": 2.0,
+              "Id": "b7373988-5cd2-587b-bb37-36b84bf69440",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            },
+            {
+              "$id": "14",
+              "DisplayOrder": 10,
+              "Description": "CAT 9 Explained Anomaly (Event) - Suspicious events that after further investigation are determined to be non-malicious activity and do not fit the criteria for any other categories.",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "ccfce8ca-443a-597e-a6b3-211c1172bd8f",
+              "ScoringCategoryId": "72432126-a7c3-54c5-a2bb-51c9e6923abf"
+            }
+          ]
+        },
+        "Id": "72432126-a7c3-54c5-a2bb-51c9e6923abf",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "15",
+        "DisplayOrder": 2,
+        "Description": "Technical impact - confidentiality",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "16",
+          "$values": [
+            {
+              "$id": "17",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "ef0df655-5d1d-5140-ae8b-94d7edc21264",
+              "ScoringCategoryId": "8628266d-c130-5c95-acf6-3cfccff88e75"
+            },
+            {
+              "$id": "18",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "ae9698ce-4963-56cd-bd9b-e93504f25c42",
+              "ScoringCategoryId": "8628266d-c130-5c95-acf6-3cfccff88e75"
+            },
+            {
+              "$id": "19",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "8631de83-ae2d-5eda-8983-37e635420462",
+              "ScoringCategoryId": "8628266d-c130-5c95-acf6-3cfccff88e75"
+            }
+          ]
+        },
+        "Id": "8628266d-c130-5c95-acf6-3cfccff88e75",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "20",
+        "DisplayOrder": 3,
+        "Description": "Technical impact - integrity",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "21",
+          "$values": [
+            {
+              "$id": "22",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "5c2eb08f-1a57-56ad-8582-a4dd1cd70836",
+              "ScoringCategoryId": "48d4389b-12fb-567b-a8d3-2d898f380ed1"
+            },
+            {
+              "$id": "23",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "8764137f-f8fa-5066-bb57-e24a105bc40d",
+              "ScoringCategoryId": "48d4389b-12fb-567b-a8d3-2d898f380ed1"
+            },
+            {
+              "$id": "24",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "15b56b6b-4b01-5a09-9a7f-ccb4e8a7381b",
+              "ScoringCategoryId": "48d4389b-12fb-567b-a8d3-2d898f380ed1"
+            }
+          ]
+        },
+        "Id": "48d4389b-12fb-567b-a8d3-2d898f380ed1",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "25",
+        "DisplayOrder": 4,
+        "Description": "Technical impact - availability",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "26",
+          "$values": [
+            {
+              "$id": "27",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "1bf944cb-8354-53ee-8984-aef627794562",
+              "ScoringCategoryId": "57d94ac3-6ce9-5849-a4e8-e003cbf5eb18"
+            },
+            {
+              "$id": "28",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "9690e92d-f8d6-568a-8ddf-556a4393c527",
+              "ScoringCategoryId": "57d94ac3-6ce9-5849-a4e8-e003cbf5eb18"
+            },
+            {
+              "$id": "29",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "7a575734-8748-5dd6-a70a-78fb07a72449",
+              "ScoringCategoryId": "57d94ac3-6ce9-5849-a4e8-e003cbf5eb18"
+            }
+          ]
+        },
+        "Id": "57d94ac3-6ce9-5849-a4e8-e003cbf5eb18",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "30",
+        "DisplayOrder": 5,
+        "Description": "Operational impact - confidentiality",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "31",
+          "$values": [
+            {
+              "$id": "32",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "fea871c1-aacb-5ab7-b950-c8698745b582",
+              "ScoringCategoryId": "c34b2e82-7969-597d-85f5-7b08bbbdef95"
+            },
+            {
+              "$id": "33",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "79b0b656-9d55-5e13-bdc2-b563a3e97de5",
+              "ScoringCategoryId": "c34b2e82-7969-597d-85f5-7b08bbbdef95"
+            },
+            {
+              "$id": "34",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "6de135b9-0175-5340-beab-55f7bf2dcb9b",
+              "ScoringCategoryId": "c34b2e82-7969-597d-85f5-7b08bbbdef95"
+            }
+          ]
+        },
+        "Id": "c34b2e82-7969-597d-85f5-7b08bbbdef95",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "35",
+        "DisplayOrder": 6,
+        "Description": "Operational impact - integrity",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "36",
+          "$values": [
+            {
+              "$id": "37",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "ee0a4a6e-7f32-50e3-a205-fe0e2c1dfcf6",
+              "ScoringCategoryId": "9edf3b29-9798-5fcb-8455-5100fc6b1a3c"
+            },
+            {
+              "$id": "38",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "11c79eae-68f2-571d-ba00-d89131634864",
+              "ScoringCategoryId": "9edf3b29-9798-5fcb-8455-5100fc6b1a3c"
+            },
+            {
+              "$id": "39",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "93b99736-acf1-523c-a130-17d729cf4fa7",
+              "ScoringCategoryId": "9edf3b29-9798-5fcb-8455-5100fc6b1a3c"
+            }
+          ]
+        },
+        "Id": "9edf3b29-9798-5fcb-8455-5100fc6b1a3c",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      },
+      {
+        "$id": "40",
+        "DisplayOrder": 7,
+        "Description": "Operational impact - availability",
+        "CalculationEquation": "{max}",
+        "IsModifierRequired": false,
+        "ScoringWeight": 1.0,
+        "MoveNumberFirstDisplay": 1,
+        "MoveNumberLastDisplay": 99,
+        "ScoringOptionSelection": 0,
+        "ScoringOptions": {
+          "$id": "41",
+          "$values": [
+            {
+              "$id": "42",
+              "DisplayOrder": 1,
+              "Description": "Low - limited adverse effect",
+              "IsModifier": false,
+              "Value": 1.0,
+              "Id": "0c855038-5603-5fbc-a223-c5e943b38466",
+              "ScoringCategoryId": "358ecf9a-254e-582f-9907-93da1b11a612"
+            },
+            {
+              "$id": "43",
+              "DisplayOrder": 2,
+              "Description": "Moderate - serious adverse effect",
+              "IsModifier": false,
+              "Value": 10.0,
+              "Id": "1c059154-73f4-58b9-8312-f01bb1314cd6",
+              "ScoringCategoryId": "358ecf9a-254e-582f-9907-93da1b11a612"
+            },
+            {
+              "$id": "44",
+              "DisplayOrder": 3,
+              "Description": "High - severe or catastrophic adverse effect",
+              "IsModifier": false,
+              "Value": 100.0,
+              "Id": "739441c1-4437-506b-94c2-ec23523249a1",
+              "ScoringCategoryId": "358ecf9a-254e-582f-9907-93da1b11a612"
+            }
+          ]
+        },
+        "Id": "358ecf9a-254e-582f-9907-93da1b11a612",
+        "ScoringModelId": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+      }
+    ]
+  },
+  "Submissions": {
+    "$id": "45",
+    "$values": []
+  },
+  "Memberships": {
+    "$id": "46",
+    "$values": []
+  },
+  "EvaluationId": null,
+  "Id": "71f3cc6c-8b72-5e4c-a7f3-915d4f659402"
+}
