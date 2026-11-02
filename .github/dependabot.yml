@@ -1,12 +1,64 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
 updates:
-  - package-ecosystem: "nuget" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # GitHub Actions used by .github/workflows, including the floating-tag
+  # cmu-sei/Crucible-Github-Actions refs (bumped only if a dotted tag appears).
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "daily"
-  open-pull-requests-limit: 25
+      interval: weekly
+    # Wait before taking new releases: hijacked versions are usually caught and pulled within days.
+    cooldown:
+      default-days: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore(deps)
+
+  # Base images in the root Dockerfile.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait before taking new releases: hijacked versions are usually caught and pulled within days.
+    cooldown:
+      default-days: 5
+
+  # The API's NuGet dependencies.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait before taking new releases: hijacked versions are usually caught and pulled within days.
+    cooldown:
+      default-days: 5
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      minor-and-patch:
+        # A group without patterns outranks every other group's wildcard.
+        patterns: ["*"]
+        update-types: [minor, patch]
+    # These later versions need a commercial license.
+    ignore:
+      - dependency-name: AutoMapper
+        versions: [">= 15.0.0"]
+      - dependency-name: MediatR
+        versions: [">= 13.0.0"]
+
+  # NSwag, used by the client package build (Cite.Api.Client/package.json).
+  - package-ecosystem: npm
+    directory: /Cite.Api.Client
+    schedule:
+      interval: weekly
+    # Wait before taking new releases: hijacked versions are usually caught and pulled within days.
+    cooldown:
+      default-days: 5
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
