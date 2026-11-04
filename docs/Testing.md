@@ -19,17 +19,26 @@ dotnet test Cite.Api.Tests
 Docker must be running. The suite starts and disposes its own PostgreSQL container (`postgres:16-alpine`) through Testcontainers, so there is nothing to install. The container starts when the first test asks for a database, so tests that take none (the requirement handler and mapping tests) still run without Docker.
 
 ```bash
-dotnet test Cite.Api.Tests --filter "FullyQualifiedName~.EvaluationControllerTests"
-dotnet test Cite.Api.Tests -- xUnit.DiagnosticMessages=true   # prints the provider banner
+dotnet test Cite.Api.Tests --filter-class "*.EvaluationControllerTests"
+dotnet run --project Cite.Api.Tests -- --xunit-diagnostics on   # prints the provider banner
 ```
+
+The suite runs on Microsoft.Testing.Platform (`"test": { "runner": "Microsoft.Testing.Platform" }` in `global.json`), which xunit.v3 4 requires on the .NET 10 SDK, so test options are xUnit's own (`--filter-class`, `--filter-method`, `--xunit-diagnostics`; see `dotnet test Cite.Api.Tests --help`) rather than VSTest's `--filter` and `-- xUnit.…` settings. The banner is printed with `dotnet run` because `dotnet test` does not forward the test app's diagnostic messages.
 
 # Coverage
 
 ```bash
-dotnet test Cite.Api.Tests --collect:"XPlat Code Coverage"
+dotnet test Cite.Api.Tests --results-directory TestResults/coverage \
+  --coverlet --coverlet-output-format cobertura \
+  --coverlet-include "[Cite.Api]*" --coverlet-include "[Cite.Api.Data]*" \
+  --coverlet-exclude "[*.Migrations.PostgreSQL]*" --coverlet-exclude "[*.Tests]*" \
+  --coverlet-exclude-by-file "**/.nuget/packages/**/*.cs" --coverlet-exclude-by-file "**/Migrations/**/*.cs" \
+  --coverlet-exclude-by-attribute GeneratedCodeAttribute --coverlet-exclude-by-attribute CompilerGeneratedAttribute \
+  --coverlet-exclude-by-attribute ExcludeFromCodeCoverageAttribute --coverlet-exclude-by-attribute Obsolete \
+  --coverlet-skip-auto-props
 ```
 
-`coverlet.runsettings` (shared by the standard) is applied by `RunSettingsFilePath` in the test project, with its collector disabled by default, so a plain run collects nothing and a coverage run always excludes `Cite.Api.Migrations.PostgreSQL`, the `Crucible.Common.EntityEvents` content files and generated code. cobertura lists every class twice: read `lines-covered`/`lines-valid` on the root element rather than summing classes. Coverage is a local diagnostic; CI does not collect it.
+Coverage comes from `coverlet.MTP`, the Microsoft.Testing.Platform form of coverlet, and is opt-in through `--coverlet`. The include filters keep the figure to `Cite.Api` and `Cite.Api.Data` (without them coverlet also instruments third-party assemblies that ship sources), and the rest exclude `Cite.Api.Migrations.PostgreSQL`, the test assembly, the `Crucible.Common.EntityEvents` content files and generated code. On the same code this reports the same figure as the VSTest run did (6,336 of 7,334 lines). cobertura lists every class twice: read `lines-covered`/`lines-valid` on the root element rather than summing classes. Coverage is a local diagnostic; CI does not collect it.
 
 # Build settings
 
@@ -37,7 +46,7 @@ dotnet test Cite.Api.Tests --collect:"XPlat Code Coverage"
 - The root `.editorconfig` raises xUnit1004, so `[Fact(Skip = ...)]` fails the build.
 - The repository has no central package management; the test packages carry the versions the standard pins (`agent-docs/api-testing/test-packages.props`) in `Cite.Api.Tests.csproj`, and `sync.sh` checks them.
 - The application projects build with compiler warnings today (CS1573 and CS0169 in `Cite.Api`, CS8981 in `Cite.Api.Migrations.PostgreSQL`); `verify.sh` lists them as a note and counts only the test project's own warnings, of which there are none.
-- The suite runs in VSTest mode of `dotnet test`, not Microsoft.Testing.Platform; the standard's README says why. Never set `diagnosticMessages` in `xunit.runner.json`: the run hangs after the last test.
+- The suite runs on Microsoft.Testing.Platform: `global.json` selects it for `dotnet test`, and `UseMicrosoftTestingPlatformRunner` in the project file builds the test app for it. Coverage comes from `coverlet.MTP`; `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` are not referenced (both VSTest only).
 
 # How the harness works
 
@@ -79,4 +88,4 @@ Cite.Api.Tests/
 
 # Continuous integration
 
-`.github/workflows/build-and-test.yml` is the standard's workflow with `Cite.Api.Tests` filled in (`sync.sh` keeps it identical). It restores, builds, runs `dotnet test Cite.Api.Tests` with the provider banner on, greps `[Cite.Api.Tests] database provider: PostgreSQL` from the log, and uploads the TRX as `test-results`. There is no `services: postgres:` block; Testcontainers starts the database.
+`.github/workflows/build-and-test.yml` calls the shared `dotnet-test.yaml` workflow in cmu-sei/Crucible-Github-Actions, which reads the runner from `global.json`. It restores, builds, runs `Cite.Api.Tests` with the provider banner on, greps `[Cite.Api.Tests] database provider: PostgreSQL` from the log, and uploads the TRX as `test-results`. There is no `services: postgres:` block; Testcontainers starts the database.
