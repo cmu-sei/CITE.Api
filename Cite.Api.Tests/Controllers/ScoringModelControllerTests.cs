@@ -202,9 +202,53 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal(actor.Id, stored.CreatedBy);
     }
 
-    /// <summary>A new scoring model is a template: an evaluation and categories in the body are not stored.</summary>
     [Fact]
-    public async Task Create_ignores_an_evaluation_and_categories_in_the_body()
+    public async Task Create_stores_the_categories_and_options_sent_with_it()
+    {
+        var id = Guid.NewGuid();
+
+        var created = await ReadAsync<ScoringModel>(await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Nested Model",
+            status = "Active",
+            calculationEquation = "{sum}",
+            scoringCategories = new object[]
+            {
+                new
+                {
+                    displayOrder = 1, description = "Impact", calculationEquation = "{max}", isModifierRequired = true, scoringWeight = 2.5,
+                    moveNumberFirstDisplay = 1, moveNumberLastDisplay = 3, scoringOptionSelection = "Single",
+                    scoringOptions = new[]
+                    {
+                        new { displayOrder = 1, description = "Low", isModifier = false, value = 1.0 },
+                        new { displayOrder = 2, description = "Doubled", isModifier = true, value = 2.0 },
+                    },
+                },
+                new { displayOrder = 2, description = "Questions", scoringOptionSelection = "None" },
+            },
+        }, Ct));
+
+        Assert.Equal(2, created.ScoringCategories.Count);
+        await using var context = NewContext();
+        var categories = await context.ScoringCategories.Include(x => x.ScoringOptions)
+            .Where(x => x.ScoringModelId == id).OrderBy(x => x.DisplayOrder).ToListAsync(Ct);
+        Assert.Equal(["Impact", "Questions"], categories.Select(x => x.Description));
+        var impact = categories[0];
+        Assert.Equal(("{max}", true, 2.5, 1, 3, ScoringOptionSelection.Single, Root.Id),
+            (impact.CalculationEquation, impact.IsModifierRequired, impact.ScoringWeight, impact.MoveNumberFirstDisplay,
+             impact.MoveNumberLastDisplay, impact.ScoringOptionSelection, impact.CreatedBy));
+        Assert.Equal([("Low", false, 1.0), ("Doubled", true, 2.0)],
+            impact.ScoringOptions.OrderBy(x => x.DisplayOrder).Select(x => (x.Description, x.IsModifier, x.Value)));
+        Assert.Empty(categories[1].ScoringOptions);
+    }
+
+    /// <summary>
+    /// A new scoring model is a template, and the categories and options sent with it are new rows of it: an
+    /// evaluation, and IDs or parents on the categories and options, are not read, so no other model is touched.
+    /// </summary>
+    [Fact]
+    public async Task Create_ignores_an_evaluation_and_the_ids_and_parents_of_its_categories_and_options()
     {
         var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
         var id = Guid.NewGuid();
@@ -215,13 +259,47 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
             description = "Created Model",
             status = "Active",
             evaluationId = graph.Evaluation.Id,
-            scoringCategories = new[] { new { id = graph.Category.Id, description = "Hijacked", scoringModelId = id } },
+            scoringCategories = new[]
+            {
+                new
+                {
+                    id = graph.Category.Id, description = "Hijacked", scoringModelId = graph.ScoringModel.Id, scoringOptionSelection = "Single",
+                    scoringOptions = new[] { new { id = graph.Option.Id, description = "Hijacked Option", scoringCategoryId = graph.Category.Id } },
+                },
+            },
         }, Ct));
 
         await using var context = NewContext();
         Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == id, Ct)).EvaluationId);
         var category = await context.ScoringCategories.SingleAsync(x => x.Id == graph.Category.Id, Ct);
         Assert.Equal((graph.ScoringModel.Id, graph.Category.Description), (category.ScoringModelId, category.Description));
+        var option = await context.ScoringOptions.SingleAsync(x => x.Id == graph.Option.Id, Ct);
+        Assert.Equal((graph.Category.Id, graph.Option.Description), (option.ScoringCategoryId, option.Description));
+        var created = await context.ScoringCategories.Include(x => x.ScoringOptions).SingleAsync(x => x.ScoringModelId == id, Ct);
+        Assert.NotEqual(graph.Category.Id, created.Id);
+        Assert.Equal("Hijacked", created.Description);
+        var createdOption = Assert.Single(created.ScoringOptions);
+        Assert.NotEqual(graph.Option.Id, createdOption.Id);
+    }
+
+    [Theory]
+    [InlineData(999, 1, 3)]
+    [InlineData(1, 3, 1)]
+    public async Task Create_rejects_a_category_with_an_undefined_selection_or_a_backwards_move_range(int selection, int first, int last)
+    {
+        var id = Guid.NewGuid();
+
+        var response = await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Refused Model",
+            status = "Active",
+            scoringCategories = new[] { new { description = "Category", scoringOptionSelection = selection, moveNumberFirstDisplay = first, moveNumberLastDisplay = last } },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == id, Ct));
     }
 
     [Fact]

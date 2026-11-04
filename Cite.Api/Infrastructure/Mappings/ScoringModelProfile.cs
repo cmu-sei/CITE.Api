@@ -18,8 +18,10 @@ namespace Cite.Api.Infrastructure.Mappings
             CreateMap<ScoringModel, ScoringModelEntity>()
                 .ForMember(e => e.SeverityLevels, opt => opt.Condition(src => src.SeverityLevels != null));
 
+            // a create's new categories are built by ScoringModelService, never mapped onto entities
             CreateMap<ScoringModelFields, ScoringModelEntity>()
                 .ForMember(e => e.SeverityLevels, opt => opt.Condition(src => src.SeverityLevels != null))
+                .ForMember(e => e.ScoringCategories, opt => opt.Ignore())
                 .IncludeAllDerived();
 
             // copies get their own severity levels

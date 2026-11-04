@@ -11,8 +11,8 @@ namespace Cite.Api.ViewModels
 {
     /// <summary>
     /// The fields a scoring model's create and edit share. The evaluation that owns a scoring model copy and
-    /// the categories are not among them: the server attaches a copy to its evaluation, and categories are
-    /// written through their own endpoints.
+    /// the categories are not among them: the server attaches a copy to its evaluation, and existing categories
+    /// are written through their own endpoints.
     /// </summary>
     public abstract class ScoringModelFields : IValidatableObject
     {
@@ -47,6 +47,11 @@ namespace Cite.Api.ViewModels
     public class CreateScoringModelRequest : ScoringModelFields
     {
         public Guid Id { get; set; }
+        /// <summary>
+        /// New categories of the new model, each with its new options. They name no IDs and no parents, so a
+        /// create can only add rows to the model it creates.
+        /// </summary>
+        public List<CreateScoringCategoryRequest> ScoringCategories { get; set; } = [];
     }
 
     public class UpdateScoringModelRequest : ScoringModelFields
