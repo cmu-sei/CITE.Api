@@ -95,7 +95,7 @@ namespace Cite.Api.Controllers
         /// Creates a new ScoringModel
         /// </summary>
         /// <remarks>
-        /// Creates a new ScoringModel with the attributes specified
+        /// Creates a new ScoringModel with the attributes specified, and the categories and options sent with it as new rows of it
         /// <para />
         /// Accessible only to a ContentDeveloper or an Administrator
         /// </remarks>

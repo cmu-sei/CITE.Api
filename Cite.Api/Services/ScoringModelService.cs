@@ -128,10 +128,43 @@ namespace Cite.Api.Services
 
         public async Task<ViewModels.ScoringModel> CreateAsync(ViewModels.CreateScoringModelRequest scoringModel, CancellationToken ct)
         {
-            // a new scoring model is a template: no evaluation, and categories are added through their own endpoint
+            // a new scoring model is a template: no evaluation
+            var userId = _user.GetId();
             var scoringModelEntity = _mapper.Map<ScoringModelEntity>(scoringModel);
             scoringModelEntity.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
-            scoringModelEntity.CreatedBy = _user.GetId();
+            scoringModelEntity.CreatedBy = userId;
+            // its categories and options are new rows of it: the server gives them their IDs and parents
+            foreach (var category in scoringModel.ScoringCategories ?? [])
+            {
+                var categoryEntity = new ScoringCategoryEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ScoringModelId = scoringModelEntity.Id,
+                    CreatedBy = userId,
+                    DisplayOrder = category.DisplayOrder,
+                    Description = category.Description,
+                    CalculationEquation = category.CalculationEquation,
+                    IsModifierRequired = category.IsModifierRequired,
+                    ScoringWeight = category.ScoringWeight,
+                    MoveNumberFirstDisplay = category.MoveNumberFirstDisplay,
+                    MoveNumberLastDisplay = category.MoveNumberLastDisplay,
+                    ScoringOptionSelection = category.ScoringOptionSelection,
+                };
+                foreach (var option in category.ScoringOptions ?? [])
+                {
+                    categoryEntity.ScoringOptions.Add(new ScoringOptionEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        ScoringCategoryId = categoryEntity.Id,
+                        CreatedBy = userId,
+                        DisplayOrder = option.DisplayOrder,
+                        Description = option.Description,
+                        IsModifier = option.IsModifier,
+                        Value = option.Value,
+                    });
+                }
+                scoringModelEntity.ScoringCategories.Add(categoryEntity);
+            }
 
             _context.ScoringModels.Add(scoringModelEntity);
             await _context.SaveChangesAsync(ct);
