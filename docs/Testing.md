@@ -33,7 +33,7 @@ dotnet test Cite.Api.Tests --collect:"XPlat Code Coverage"
 
 # Build settings
 
-- `Cite.Api.Tests/Directory.Build.props` (shared) turns warnings into errors for the test project, which makes the xUnit analyzers (xUnit1051 for a missing cancellation token, xUnit2000, xUnit2012, ...) fail the build. NuGet audit and restore codes (NU1901-NU1904, NU1510, NU1701 for TinCan) stay warnings. The repository has no root `Directory.Build.props`, so the application projects are unaffected.
+- `Cite.Api.Tests/Directory.Build.props` (shared) turns warnings into errors for the test project, which makes the xUnit analyzers (xUnit1051 for a missing cancellation token, xUnit2000, xUnit2012, ...) fail the build. NuGet audit and restore codes (NU1901-NU1904, NU1510) stay warnings. The repository has no root `Directory.Build.props`, so the application projects are unaffected.
 - The root `.editorconfig` raises xUnit1004, so `[Fact(Skip = ...)]` fails the build.
 - The repository has no central package management; the test packages carry the versions the standard pins (`agent-docs/api-testing/test-packages.props`) in `Cite.Api.Tests.csproj`, and `sync.sh` checks them.
 - The application projects build with compiler warnings today (CS1573 and CS0169 in `Cite.Api`, CS8981 in `Cite.Api.Migrations.PostgreSQL`); `verify.sh` lists them as a note and counts only the test project's own warnings, of which there are none.
