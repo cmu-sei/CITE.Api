@@ -462,6 +462,19 @@ public class SubmissionOptionControllerTests(DatabaseFixture fixture, CiteAppFac
         Assert.Equal(official.Submission.Id, scored.Id);
     }
 
+    /// <summary>A default install can score the official submission: the seeded Official Scorer role selects its options.</summary>
+    [Fact]
+    public async Task SetOptionTrue_selects_an_option_of_the_official_submission_for_a_member_holding_the_seeded_official_scorer_role()
+    {
+        var (graph, official) = await SeedOfficial();
+        var actor = await Actor().OnTeam(graph.Team.Id, roleId: TestData.TeamRoles.OfficialScorer).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/submissionOptions/{official.Option.Id}/select", null, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.SubmissionOptions.SingleAsync(x => x.Id == official.Option.Id, Ct)).IsSelected);
+    }
+
     /// <summary>EditTeamScore, which scores the team's own submission, does not score the official one.</summary>
     [Fact]
     public async Task SetOptionTrue_is_forbidden_on_the_official_submission_for_a_member_holding_only_EditTeamScore()
