@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -14,19 +13,17 @@ using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Extensions;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class UserHandler
     {
-        protected readonly IMapper _mapper;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public UserHandler(
-            IMapper mapper,
             IHubContext<MainHub> mainHub)
         {
-            _mapper = mapper;
             _mainHub = mainHub;
         }
 
@@ -47,7 +44,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             CancellationToken cancellationToken)
         {
             var groupIds = this.GetGroups(userEntity);
-            var user = _mapper.Map<ViewModels.User>(userEntity);
+            var user = userEntity.ToUser();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -62,8 +59,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserCreatedSignalRHandler : UserHandler, INotificationHandler<EntityCreated<UserEntity>>
     {
         public UserCreatedSignalRHandler(
-            IMapper mapper,
-            IHubContext<MainHub> mainHub) : base(mapper, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(mainHub) { }
 
         public async Task Handle(EntityCreated<UserEntity> notification, CancellationToken cancellationToken)
         {
@@ -74,8 +70,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserUpdatedSignalRHandler : UserHandler, INotificationHandler<EntityUpdated<UserEntity>>
     {
         public UserUpdatedSignalRHandler(
-            IMapper mapper,
-            IHubContext<MainHub> mainHub) : base(mapper, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(mainHub) { }
 
         public async Task Handle(EntityUpdated<UserEntity> notification, CancellationToken cancellationToken)
         {
@@ -90,8 +85,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class UserDeletedSignalRHandler : UserHandler, INotificationHandler<EntityDeleted<UserEntity>>
     {
         public UserDeletedSignalRHandler(
-            IMapper mapper,
-            IHubContext<MainHub> mainHub) : base(mapper, mainHub)
+            IHubContext<MainHub> mainHub) : base(mainHub)
         {
         }
 

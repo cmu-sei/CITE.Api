@@ -23,7 +23,7 @@ public class MembershipHandlersTests
     {
         var membership = TestData.GroupMembership(Guid.NewGuid(), Guid.NewGuid());
 
-        await new GroupMembershipCreatedSignalRHandler(_hub, TestMapper.Mapper)
+        await new GroupMembershipCreatedSignalRHandler(_hub)
             .Handle(new EntityCreated<GroupMembershipEntity>(membership), TestContext.Current.CancellationToken);
 
         var broadcast = Assert.Single(_hub.ToGroups(MainHub.GROUP_GROUP));
@@ -48,7 +48,7 @@ public class MembershipHandlersTests
     {
         var membership = TestData.ScoringModelMembership(Guid.NewGuid(), Guid.NewGuid(), TestData.ScoringModelRoles.Editor);
 
-        await new ScoringModelMembershipCreatedSignalRHandler(_hub, TestMapper.Mapper)
+        await new ScoringModelMembershipCreatedSignalRHandler(_hub)
             .Handle(new EntityCreated<ScoringModelMembershipEntity>(membership), TestContext.Current.CancellationToken);
 
         var broadcast = Assert.Single(_hub.ToGroups(MainHub.SCORING_MODEL_GROUP));

@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -17,6 +16,7 @@ using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -34,20 +34,17 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
 
         public SubmissionCategoryService(
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             ISubmissionService submissionService)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _submissionService = submissionService;
         }
 
@@ -55,14 +52,14 @@ namespace Cite.Api.Services
         {
             var submissionCategories = _context.SubmissionCategories.Where(sc => sc.SubmissionId == submissionId);
 
-            return _mapper.Map<IEnumerable<SubmissionCategory>>(await submissionCategories.ToListAsync());
+            return (await submissionCategories.ToListAsync()).Select(x => x.ToSubmissionCategory()).ToList();
         }
 
         public async Task<SubmissionCategory> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.SubmissionCategories.SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
-            return _mapper.Map<SubmissionCategory>(item);
+            return item.ToSubmissionCategory();
         }
 
         public async Task<SubmissionCategory> CreateAsync(SubmissionCategory submissionCategory, CancellationToken ct)
@@ -70,7 +67,7 @@ namespace Cite.Api.Services
             await _context.EnsureScoringCategoryOfSubmissionAsync(submissionCategory.ScoringCategoryId, submissionCategory.SubmissionId, ct);
             submissionCategory.Id = submissionCategory.Id != Guid.Empty ? submissionCategory.Id : Guid.NewGuid();
             submissionCategory.CreatedBy = _user.GetId();
-            var submissionCategoryEntity = _mapper.Map<SubmissionCategoryEntity>(submissionCategory);
+            var submissionCategoryEntity = submissionCategory.ToEntity();
 
             _context.SubmissionCategories.Add(submissionCategoryEntity);
             await _context.SaveChangesAsync(ct);

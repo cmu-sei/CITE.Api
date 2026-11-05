@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,6 +16,7 @@ using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -36,16 +36,14 @@ namespace Cite.Api.Services
         private readonly ClaimsPrincipal _user;
         private readonly IAuthorizationService _authorizationService;
         private readonly IUserClaimsService _userClaimsService;
-        private readonly IMapper _mapper;
         private readonly ILogger<IUserService> _logger;
 
-        public UserService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, IUserClaimsService userClaimsService, ILogger<IUserService> logger, IMapper mapper)
+        public UserService(CiteContext context, IPrincipal user, IAuthorizationService authorizationService, IUserClaimsService userClaimsService, ILogger<IUserService> logger)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
             _authorizationService = authorizationService;
             _userClaimsService = userClaimsService;
-            _mapper = mapper;
             _logger = logger;
         }
 
@@ -53,7 +51,7 @@ namespace Cite.Api.Services
         {
             var items = await _context.Users
                 .ToArrayAsync(ct);
-            return _mapper.Map<IEnumerable<User>>(items);
+            return items.Select(x => x.ToUser()).ToList();
         }
 
         public async Task<IEnumerable<UserIdentity>> GetByEvaluationAsync(Guid evaluationId, bool hasSystemPermission, CancellationToken ct)
@@ -70,20 +68,20 @@ namespace Cite.Api.Services
             if (!hasSystemPermission && !items.Any(m => m.Id == userId))
                 throw new ForbiddenException();
 
-            return _mapper.Map<IEnumerable<UserIdentity>>(items);
+            return items;
         }
 
         public async Task<User> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.Users
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
-            return _mapper.Map<User>(item);
+            return item.ToUser();
         }
 
         public async Task<User> CreateAsync(User user, CancellationToken ct)
         {
             user.CreatedBy = _user.GetId();
-            var userEntity = _mapper.Map<UserEntity>(user);
+            var userEntity = user.ToEntity();
 
             _context.Users.Add(userEntity);
             await _context.SaveChangesAsync(ct);
@@ -104,7 +102,7 @@ namespace Cite.Api.Services
             if (userToUpdate == null)
                 throw new EntityNotFoundException<User>();
 
-            _mapper.Map(user, userToUpdate);
+            user.ApplyTo(userToUpdate);
 
             _context.Users.Update(userToUpdate);
             await _context.SaveChangesAsync(ct);
@@ -137,4 +135,4 @@ public class UserIdentity
 {
     public Guid Id { get; set; }
     public string Name { get; set; }
-}
+}

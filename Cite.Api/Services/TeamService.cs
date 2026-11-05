@@ -8,8 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,6 +17,7 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -40,27 +39,24 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
         private readonly IAuthorizationService _authorizationService;
-        private readonly IMapper _mapper;
         private readonly ILogger<ITeamService> _logger;
 
         public TeamService(
             CiteContext context,
             IPrincipal team,
             IAuthorizationService authorizationService,
-            ILogger<ITeamService> logger,
-            IMapper mapper)
+            ILogger<ITeamService> logger)
         {
             _context = context;
             _user = team as ClaimsPrincipal;
             _authorizationService = authorizationService;
-            _mapper = mapper;
             _logger = logger;
         }
 
         public async Task<IEnumerable<Team>> GetAsync(CancellationToken ct)
         {
             var items = await _context.Teams
-                .ProjectTo<Team>(_mapper.ConfigurationProvider)
+                .ProjectToTeam()
                 .ToArrayAsync(ct);
             return items;
         }
@@ -68,7 +64,7 @@ namespace Cite.Api.Services
         public async Task<Team> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.Teams
-                .ProjectTo<Team>(_mapper.ConfigurationProvider, dest => dest.Memberships)
+                .ProjectToTeamWithMemberships()
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
             return item;
         }
@@ -83,7 +79,7 @@ namespace Cite.Api.Services
                 .Select(w => w.Team)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Team>>(items);
+            return items.Select(x => x.ToTeam()).ToList();
         }
 
         public async Task<IEnumerable<Team>> GetByUserAsync(Guid userId, CancellationToken ct)
@@ -93,7 +89,7 @@ namespace Cite.Api.Services
                 .Select(x => x.Team)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Team>>(items);
+            return items.Select(x => x.ToTeam()).ToList();
         }
 
         public async Task<IEnumerable<Team>> GetByTypeAsync(Guid teamTypeId, CancellationToken ct)
@@ -102,7 +98,7 @@ namespace Cite.Api.Services
                 .Where(w => w.TeamTypeId == teamTypeId)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Team>>(items);
+            return items.Select(x => x.ToTeam()).ToList();
         }
 
         public async Task<IEnumerable<Team>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
@@ -113,7 +109,7 @@ namespace Cite.Api.Services
                 .ThenInclude(tu => tu.User)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Team>>(items);
+            return items.Select(x => x.ToTeam()).ToList();
         }
 
         public async Task<Team> CreateAsync(CreateTeamRequest team, CancellationToken ct)

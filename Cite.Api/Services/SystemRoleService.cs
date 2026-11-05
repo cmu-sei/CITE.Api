@@ -8,12 +8,12 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using STT = System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Exceptions;
 using SAVM = Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -30,13 +30,11 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
-        public SystemRoleService(CiteContext context, IPrincipal user, IMapper mapper)
+        public SystemRoleService(CiteContext context, IPrincipal user)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async STT.Task<IEnumerable<ViewModels.SystemRole>> GetAsync(CancellationToken ct)
@@ -44,7 +42,7 @@ namespace Cite.Api.Services
             var items = await _context.SystemRoles
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.SystemRole>>(items);
+            return items.Select(x => x.ToSystemRole()).ToList();
         }
 
         public async STT.Task<ViewModels.SystemRole> GetAsync(Guid id, CancellationToken ct)
@@ -52,12 +50,12 @@ namespace Cite.Api.Services
             var item = await _context.SystemRoles
                 .SingleOrDefaultAsync(o => o.Id == id, ct);
 
-            return _mapper.Map<SAVM.SystemRole>(item);
+            return item.ToSystemRole();
         }
 
         public async STT.Task<ViewModels.SystemRole> CreateAsync(ViewModels.SystemRole systemRole, CancellationToken ct)
         {
-            var systemRoleEntity = _mapper.Map<SystemRoleEntity>(systemRole);
+            var systemRoleEntity = systemRole.ToEntity();
 
             _context.SystemRoles.Add(systemRoleEntity);
             await _context.SaveChangesAsync(ct);
@@ -72,12 +70,12 @@ namespace Cite.Api.Services
             if (systemRoleToUpdate == null)
                 throw new EntityNotFoundException<SAVM.SystemRole>();
 
-            _mapper.Map(systemRole, systemRoleToUpdate);
+            systemRole.ApplyTo(systemRoleToUpdate);
 
             _context.SystemRoles.Update(systemRoleToUpdate);
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map(systemRoleToUpdate, systemRole);
+            return systemRoleToUpdate.ToSystemRole();
         }
 
         public async STT.Task<bool> DeleteAsync(Guid id, CancellationToken ct)

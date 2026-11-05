@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -36,34 +36,31 @@ namespace Cite.Api.Services
         private readonly ISubmissionService _submissionService;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public SubmissionCommentService(
             CiteContext context,
             ISubmissionService submissionService,
             IAuthorizationService authorizationService,
-            IPrincipal user,
-            IMapper mapper)
+            IPrincipal user)
         {
             _context = context;
             _submissionService = submissionService;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async Task<IEnumerable<SubmissionComment>> GetForSubmissionOptionAsync(Guid submissionOptionId, CancellationToken ct)
         {
             var submissionComments = _context.SubmissionComments.Where(sc => sc.SubmissionOptionId == submissionOptionId);
 
-            return _mapper.Map<IEnumerable<SubmissionComment>>(await submissionComments.ToListAsync());
+            return (await submissionComments.ToListAsync()).Select(x => x.ToSubmissionComment()).ToList();
         }
 
         public async Task<SubmissionComment> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.SubmissionComments.SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
-            return _mapper.Map<SubmissionComment>(item);
+            return item.ToSubmissionComment();
         }
 
         // Writes go through the same implementation as the nested /submissions/{id}/comments routes,

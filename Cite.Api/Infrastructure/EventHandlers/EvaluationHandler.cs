@@ -6,7 +6,6 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -15,24 +14,22 @@ using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Extensions;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class BaseEvaluationHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly IEvaluationService _evaluationService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public BaseEvaluationHandler(
             CiteContext db,
-            IMapper mapper,
             IEvaluationService evaluationService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _evaluationService = evaluationService;
             _mainHub = mainHub;
         }
@@ -54,7 +51,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             CancellationToken cancellationToken)
         {
             var groupIds = GetGroups(evaluationEntity);
-            var evaluation = _mapper.Map<ViewModels.Evaluation>(evaluationEntity);
+            var evaluation = evaluationEntity.ToEvaluation();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -70,9 +67,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public EvaluationCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IEvaluationService evaluationService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, evaluationService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, evaluationService, mainHub) { }
 
         public async Task Handle(EntityCreated<EvaluationEntity> notification, CancellationToken cancellationToken)
         {
@@ -84,9 +80,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public EvaluationUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IEvaluationService evaluationService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, evaluationService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, evaluationService, mainHub) { }
 
         public async Task Handle(EntityUpdated<EvaluationEntity> notification, CancellationToken cancellationToken)
         {
@@ -106,7 +101,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
                     .ToListAsync(cancellationToken);
                 var group = _mainHub.Clients.Group(notification.Entity.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX);
                 await Task.WhenAll(moves.Select(m => m.MoveNumber <= notification.Entity.CurrentMoveNumber
-                    ? group.SendAsync(MainHubMethods.MoveUpdated, _mapper.Map<ViewModels.Move>(m), null, cancellationToken)
+                    ? group.SendAsync(MainHubMethods.MoveUpdated, m.ToMove(), null, cancellationToken)
                     : group.SendAsync(MainHubMethods.MoveDeleted, m.Id, cancellationToken)));
             }
         }
@@ -116,9 +111,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public EvaluationDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IEvaluationService evaluationService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, evaluationService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, evaluationService, mainHub)
         {
         }
 

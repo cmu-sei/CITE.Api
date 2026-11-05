@@ -7,7 +7,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using STT = System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Exceptions;
@@ -15,6 +14,7 @@ using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
 using System.Linq;
 using Cite.Api.Data.Models;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -31,13 +31,11 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
-        public EvaluationMembershipService(CiteContext context, IPrincipal user, IMapper mapper)
+        public EvaluationMembershipService(CiteContext context, IPrincipal user)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async STT.Task<ViewModels.EvaluationMembership> GetAsync(Guid id, CancellationToken ct)
@@ -48,7 +46,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<EvaluationMembership>();
 
-            return _mapper.Map<SAVM.EvaluationMembership>(item);
+            return item.ToEvaluationMembership();
         }
 
         public async STT.Task<IEnumerable<ViewModels.EvaluationMembership>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
@@ -57,12 +55,12 @@ namespace Cite.Api.Services
                 .Where(m => m.EvaluationId == evaluationId)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.EvaluationMembership>>(items);
+            return items.Select(x => x.ToEvaluationMembership()).ToList();
         }
 
         public async STT.Task<ViewModels.EvaluationMembership> CreateAsync(ViewModels.EvaluationMembership evaluationMembership, CancellationToken ct)
         {
-            var evaluationMembershipEntity = _mapper.Map<EvaluationMembershipEntity>(evaluationMembership);
+            var evaluationMembershipEntity = evaluationMembership.ToEntity();
 
             _context.EvaluationMemberships.Add(evaluationMembershipEntity);
             await _context.SaveChangesAsync(ct);
@@ -80,7 +78,7 @@ namespace Cite.Api.Services
             evaluationMembershipToUpdate.RoleId = evaluationMembership.RoleId;
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<SAVM.EvaluationMembership>(evaluationMembershipToUpdate);
+            return evaluationMembershipToUpdate.ToEvaluationMembership();
         }
         public async STT.Task DeleteAsync(Guid id, CancellationToken ct)
         {

@@ -1,6 +1,7 @@
 // Copyright 2026 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using Cite.Api.Infrastructure.Mappings;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Options;
@@ -79,7 +80,7 @@ public class SubmissionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
         CaptureStatement();
 
         await using var context = NewContext();
-        var option = TestMapper.Mapper.Map<Cite.Api.ViewModels.SubmissionOption>(submission.Option);
+        var option = submission.Option.ToSubmissionOption();
         await Service(context, user).LogXApiAsync(new Uri("https://w3id.org/xapi/dod-isd/verbs/edited"), null, option, Ct);
 
         Assert.False(_activity.ContainsKey("result"));
@@ -115,7 +116,7 @@ public class SubmissionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
         CaptureStatement();
 
         await using var context = NewContext();
-        var viewModel = TestMapper.Mapper.Map<Cite.Api.ViewModels.Submission>(submission.Submission);
+        var viewModel = submission.Submission.ToSubmission();
         await Service(context, user).LogXApiAsync(new Uri("https://w3id.org/xapi/dod-isd/verbs/submitted"), viewModel, null, Ct);
 
         Assert.Equal($"{scope} Submission — Move 0: {graph.Move.Description}", _activity["name"]);
@@ -170,7 +171,7 @@ public class SubmissionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
         var user = TestData.User();
         await Seed(user, TestData.TeamMembership(graph.Team.Id, user.Id));
         var submission = await TestScenario.SeedSubmissionAsync(Db, Ct, graph, graph.Team.Id, user.Id, moveNumber);
-        return (TestMapper.Mapper.Map<Cite.Api.ViewModels.Submission>(submission.Submission), user);
+        return (submission.Submission.ToSubmission(), user);
     }
 
     private async Task<(EvaluationGraph Graph, SubmissionGraph Submission, UserEntity User)> SeedUserSubmission()
@@ -193,6 +194,6 @@ public class SubmissionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
 
     private SubmissionService Service(Cite.Api.Data.CiteContext context, UserEntity user) =>
         new(context, Substitute.For<ICiteAuthorizationService>(),
-            new ClaimsPrincipalBuilder().WithUserId(user.Id).Build(), TestMapper.Mapper, new DatabaseOptions(),
+            new ClaimsPrincipalBuilder().WithUserId(user.Id).Build(), new DatabaseOptions(),
             Substitute.For<IMoveService>(), _xApi, NullLogger<SubmissionService>.Instance);
 }
