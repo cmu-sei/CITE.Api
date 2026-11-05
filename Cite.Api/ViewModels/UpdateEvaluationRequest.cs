@@ -19,5 +19,6 @@ namespace Cite.Api.ViewModels
         public string SituationDescription { get; set; }
         public Guid? GalleryExhibitId { get; set; }
         public bool ShowAdvanceButton { get; set; }
+        public bool HideNamesFromObservers { get; set; }
     }
 }

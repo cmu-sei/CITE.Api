@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,12 +24,14 @@ namespace Cite.Api.Controllers
         private readonly ISubmissionOptionService _submissionOptionService;
         private readonly ISubmissionService _submissionService;
         private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IObserverNamesService _observerNamesService;
 
-        public SubmissionOptionController(ISubmissionOptionService submissionOptionService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
+        public SubmissionOptionController(ISubmissionOptionService submissionOptionService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService, IObserverNamesService observerNamesService)
         {
             _submissionOptionService = submissionOptionService;
             _submissionService = submissionService;
             _authorizationService = authorizationService;
+            _observerNamesService = observerNamesService;
         }
 
         /// <summary>
@@ -49,7 +52,14 @@ namespace Cite.Api.Controllers
                 !await _submissionService.HasSpecificPermission<SubmissionCategory>(submissionCategoryId, SpecificPermission.View, ct))
                 throw new ForbiddenException();
 
+            var names = await _observerNamesService.GetSubmissionNamesAsync<SubmissionCategory>(submissionCategoryId, ct);
+            if (names == SubmissionNames.Withheld)
+                throw new ForbiddenException(ObserverNamesService.WithheldMessage);
+
             var list = await _submissionOptionService.GetForSubmissionCategoryAsync(submissionCategoryId, ct);
+            if (names == SubmissionNames.Hidden)
+                list = list.Select(x => ObserverNamesService.WithoutNames(x)).ToList();
+
             return Ok(list);
         }
 
@@ -71,12 +81,16 @@ namespace Cite.Api.Controllers
                 !await _submissionService.HasSpecificPermission<SubmissionOption>(id, SpecificPermission.View, ct))
                 throw new ForbiddenException();
 
+            var names = await _observerNamesService.GetSubmissionNamesAsync<SubmissionOption>(id, ct);
+            if (names == SubmissionNames.Withheld)
+                throw new ForbiddenException(ObserverNamesService.WithheldMessage);
+
             var submissionOption = await _submissionOptionService.GetAsync(id, ct);
 
             if (submissionOption == null)
                 throw new EntityNotFoundException<SubmissionOption>();
 
-            return Ok(submissionOption);
+            return Ok(names == SubmissionNames.Hidden ? ObserverNamesService.WithoutNames(submissionOption) : submissionOption);
         }
 
         /// <summary>

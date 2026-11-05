@@ -195,6 +195,10 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("gallery_exhibit_id");
 
+                    b.Property<bool>("HideNamesFromObservers")
+                        .HasColumnType("boolean")
+                        .HasColumnName("hide_names_from_observers");
+
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("modified_by");
