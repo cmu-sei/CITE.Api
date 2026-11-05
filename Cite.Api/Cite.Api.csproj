@@ -17,7 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- DO NOT UPDATE. Version 15+ requires a license, so the NuGet audit's AutoMapper hit stays until it is replaced. -->
-    <PackageReference Include="AutoMapper" Version="13.0.1" />
+    <PackageReference Include="AutoMapper" Version="14.0.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
