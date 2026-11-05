@@ -90,7 +90,7 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
 
         Assert.Equal(
             [harness.UserId.ToString(), graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString(),
-                graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX],
+                graph.Team.Id.ToString() + MainHub.NAMES_SHOWN_POSTFIX, graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX],
             Joined(harness));
     }
 
@@ -209,6 +209,7 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         Assert.Equal(
             [harness.UserId.ToString(), graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX,
                 graph.Team.Id.ToString(), graph.Evaluation.Id.ToString(), graph.ScoringModel.Id.ToString(),
+                graph.Team.Id.ToString() + MainHub.NAMES_HIDDEN_POSTFIX,
                 graph.Evaluation.Id.ToString() + MainHub.PAST_OFFICIAL_SCORE_POSTFIX, graph.Evaluation.Id.ToString() + MainHub.OFFICIAL_SCORE_POSTFIX],
             Joined(harness));
     }
@@ -307,6 +308,42 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.ALL_MOVES_POSTFIX, left);
         Assert.Contains(graph.Evaluation.Id.ToString() + MainHub.CURRENT_MOVES_POSTFIX, left);
         Assert.Contains(graph.Team.Id.ToString(), left);
+        Assert.Contains(graph.Team.Id.ToString() + MainHub.NAMES_SHOWN_POSTFIX, left);
+        Assert.Contains(graph.Team.Id.ToString() + MainHub.NAMES_HIDDEN_POSTFIX, left);
+    }
+
+    /// <summary>
+    /// Whoever joins a team's groups joins exactly one of its named and unnamed submission groups, by
+    /// ObserverNamesService's outsider rule; the evaluation's setting is read when a submission is broadcast.
+    /// </summary>
+    [Theory]
+    [InlineData("member", MainHub.NAMES_SHOWN_POSTFIX)]
+    [InlineData("observer", MainHub.NAMES_HIDDEN_POSTFIX)]
+    [InlineData("observer on the team", MainHub.NAMES_SHOWN_POSTFIX)]
+    [InlineData("owner", MainHub.NAMES_SHOWN_POSTFIX)]
+    [InlineData("ViewEvaluations and ObserveEvaluations", MainHub.NAMES_SHOWN_POSTFIX)]
+    [InlineData("ObserveEvaluations", MainHub.NAMES_HIDDEN_POSTFIX)]
+    public async Task SwitchTeam_joins_the_teams_named_or_unnamed_submission_group(string caller, string postfix)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        var principal = caller switch
+        {
+            "member" => new ClaimsPrincipalBuilder().WithTeam(graph.Team.Id, TeamPermission.ViewTeam),
+            "observer" or "observer on the team" => new ClaimsPrincipalBuilder().WithEvaluation(graph.Evaluation.Id, EvaluationPermission.ObserveEvaluation),
+            "owner" => new ClaimsPrincipalBuilder().WithEvaluation(graph.Evaluation.Id, Enum.GetValues<EvaluationPermission>()),
+            "ViewEvaluations and ObserveEvaluations" => new ClaimsPrincipalBuilder().WithSystemPermissions(SystemPermission.ViewEvaluations, SystemPermission.ObserveEvaluations),
+            _ => new ClaimsPrincipalBuilder().WithSystemPermissions(SystemPermission.ObserveEvaluations),
+        };
+        var harness = new HubHarness(principal.UserId, principal.Build());
+        if (caller is "member" or "observer on the team")
+        {
+            await Seed(TestData.User(harness.UserId), TestData.TeamMembership(graph.Team.Id, harness.UserId));
+        }
+
+        await Hub(harness).SwitchTeam([graph.Team.Id, graph.Team.Id]);
+
+        var joined = Joined(harness).Where(x => x.EndsWith(MainHub.NAMES_SHOWN_POSTFIX) || x.EndsWith(MainHub.NAMES_HIDDEN_POSTFIX));
+        Assert.Equal([graph.Team.Id.ToString() + postfix], joined);
     }
 
     [Fact]
