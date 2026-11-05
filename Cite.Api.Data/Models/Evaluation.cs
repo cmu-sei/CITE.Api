@@ -25,6 +25,7 @@ namespace Cite.Api.Data.Models
         public virtual ScoringModelEntity ScoringModel { get; set; }
         public Guid? GalleryExhibitId { get; set; }
         public bool ShowAdvanceButton { get; set; }
+        public bool HideNamesFromObservers { get; set; }
         public virtual ICollection<TeamEntity> Teams { get; set; } = new HashSet<TeamEntity>();
         public virtual ICollection<MoveEntity> Moves { get; set; } = new HashSet<MoveEntity>();
         public ICollection<SubmissionEntity> Submissions { get; set; } = new List<SubmissionEntity>();
