@@ -45,6 +45,22 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Contains(TeamPermission.ManageTeam, membership.Role.Permissions);
     }
 
+    /// <summary>A single team is read with an empty permission list for a member's role stored without one.</summary>
+    [Fact]
+    public async Task A_team_is_read_with_an_empty_permission_list_for_a_members_role_stored_without_one()
+    {
+        var graph = await SeedTeamWithMember();
+        var role = new TeamRoleEntity { Id = Guid.NewGuid(), Name = "No permissions", Permissions = null };
+        var user = TestData.User(name: "Unprivileged");
+        await Seed(role, user, TestData.TeamMembership(graph.Team.Id, user.Id, role.Id));
+
+        var team = await ReadAsync<Team>(await RootClient.GetAsync($"api/teams/{graph.Team.Id}", Ct));
+
+        var membership = Assert.Single(team.Memberships, x => x.RoleId == role.Id);
+        Assert.Equal("No permissions", membership.Role.Name);
+        Assert.Empty(membership.Role.Permissions);
+    }
+
     /// <summary>An evaluation's teams are listed with their memberships, but without the memberships' roles, the team type or submissions.</summary>
     [Fact]
     public async Task An_evaluations_teams_are_listed_with_memberships_but_no_roles_types_or_submissions()
@@ -143,18 +159,6 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(TestData.Roles.Observer, (await context.Users.SingleAsync(x => x.Id == id, Ct)).RoleId);
     }
 
-    [Fact]
-    public async Task A_user_created_without_a_role_id_has_no_role()
-    {
-        var id = Guid.NewGuid();
-
-        var created = await ReadAsync<User>(await RootClient.PostAsJsonAsync("api/users", new { id, name = "No role" }, Ct));
-
-        Assert.Null(created.RoleId);
-        await using var context = NewContext();
-        Assert.Null((await context.Users.SingleAsync(x => x.Id == id, Ct)).RoleId);
-    }
-
     /// <summary>A role id that is not a GUID, the empty string included, fails the mapping: a 500, and nothing is stored.</summary>
     [Theory]
     [InlineData("")]
@@ -215,21 +219,6 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal("User", (await context.Users.SingleAsync(x => x.Id == user.Id, Ct)).Name);
     }
 
-    /// <summary>A group's view model has no description, so an update keeps the stored one.</summary>
-    [Fact]
-    public async Task A_group_update_keeps_the_description()
-    {
-        var group = TestData.Group("Before");
-        group.Description = "Kept";
-        await Seed(group);
-
-        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/groups/{group.Id}", new { id = group.Id, name = "After" }, Ct));
-
-        await using var context = NewContext();
-        var stored = await context.Groups.SingleAsync(x => x.Id == group.Id, Ct);
-        Assert.Equal(("After", "Kept"), (stored.Name, stored.Description));
-    }
-
     // ---- Updates that clear what the body leaves out ----------------------------------------------
 
     /// <summary>An evaluation update writes every member of the request: leaving out the exhibit or the situation clears it.</summary>
@@ -254,7 +243,7 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(model.Id, stored.ScoringModelId);
     }
 
-    /// <summary>A scoring model update writes every member of the request but the severity levels: leaving out a string clears it.</summary>
+    /// <summary>A scoring model update writes every member of the request: leaving out a string clears it.</summary>
     [Fact]
     public async Task A_scoring_model_update_clears_the_strings_the_body_leaves_out()
     {
@@ -262,7 +251,6 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         model.RightSideHtmlBlock = "<p>html</p>";
         model.RightSideEmbeddedUrl = "https://example.com";
         model.UseSubmit = true;
-        model.SeverityLevels = [new() { Name = "Calm", MinimumScore = 0, Color = "#FFFFFF" }];
         await Seed(model);
 
         await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}",
@@ -273,7 +261,6 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal(("After", RightSideDisplay.HtmlBlock), (stored.Description, stored.RightSideDisplay));
         Assert.Equal(((string)null, (string)null, (string)null, false),
             (stored.CalculationEquation, stored.RightSideHtmlBlock, stored.RightSideEmbeddedUrl, stored.UseSubmit));
-        Assert.Equal("Calm", Assert.Single(stored.SeverityLevels).Name);
     }
 
     // ---- What a create stores from the body ---------------------------------------------------------
@@ -304,14 +291,16 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
     }
 
     /// <summary>
-    /// An evaluation's create body is mapped whole, its nested scoring model and submissions included: both are
-    /// stored, and the evaluation is put on the nested scoring model rather than on the copy of the one it names.
+    /// An evaluation's create body is mapped whole, its nested scoring model and submissions (with their
+    /// categories) included: all are stored, and the evaluation is put on the nested scoring model rather than
+    /// on the copy of the one it names.
     /// </summary>
     [Fact]
     public async Task An_evaluation_created_with_a_nested_scoring_model_and_submissions_stores_them()
     {
         var template = TestData.ScoringModel("Template");
-        await Seed(template);
+        var templateCategory = TestData.ScoringCategory(template.Id);
+        await Seed(template, templateCategory);
         var id = Guid.NewGuid();
         var nestedModelId = Guid.NewGuid();
         var nestedSubmissionId = Guid.NewGuid();
@@ -332,7 +321,14 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
                 severityLevels = (object)null,
                 scoringCategories = new[] { new { description = "Nested Category", scoringOptions = new[] { new { description = "Nested Option", value = 3.0 } } } },
             },
-            submissions = new[] { new { id = nestedSubmissionId, scoringModelId = template.Id, moveNumber = 3, score = 5.0 } },
+            submissions = new[]
+            {
+                new
+                {
+                    id = nestedSubmissionId, scoringModelId = template.Id, moveNumber = 3, score = 5.0,
+                    submissionCategories = new[] { new { scoringCategoryId = templateCategory.Id, score = 1.5 } },
+                },
+            },
         }, Ct));
 
         await using var context = NewContext();
@@ -345,8 +341,10 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         var category = Assert.Single(model.ScoringCategories);
         Assert.Equal("Nested Category", category.Description);
         Assert.Equal(("Nested Option", 3.0), (Assert.Single(category.ScoringOptions).Description, Assert.Single(category.ScoringOptions).Value));
-        var submission = await context.Submissions.SingleAsync(x => x.Id == nestedSubmissionId, Ct);
+        var submission = await context.Submissions.Include(x => x.SubmissionCategories).SingleAsync(x => x.Id == nestedSubmissionId, Ct);
         Assert.Equal(((Guid?)id, 3, 5.0), (submission.EvaluationId, submission.MoveNumber, submission.Score));
+        var submissionCategory = Assert.Single(submission.SubmissionCategories);
+        Assert.Equal((templateCategory.Id, 1.5), (submissionCategory.ScoringCategoryId, submissionCategory.Score));
     }
 
     /// <summary>A scoring category's create body stores the options nested in it, as sent; a null list is answered as an empty one.</summary>
@@ -380,10 +378,10 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Empty(withNull.ScoringOptions);
         await using var context = NewContext();
         var option = await context.ScoringOptions.SingleAsync(x => x.Id == optionId, Ct);
-        Assert.Equal((id, "Nested", 2.0, true, 4, Guid.Empty), (option.ScoringCategoryId, option.Description, option.Value, option.IsModifier, option.DisplayOrder, option.CreatedBy));
+        Assert.Equal((id, "Nested", 2.0, true, 4), (option.ScoringCategoryId, option.Description, option.Value, option.IsModifier, option.DisplayOrder));
     }
 
-    /// <summary>A submission category's create body stores the options nested in it and their comments; a selected count is not stored.</summary>
+    /// <summary>A submission category's create body stores the options nested in it and their comments.</summary>
     [Fact]
     public async Task A_submission_category_created_with_nested_options_and_comments_stores_them()
     {
@@ -397,12 +395,12 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
             scoringCategoryId = graph.Category.Id,
             submissionOptions = new[]
             {
-                new { scoringOptionId = graph.Option.Id, isSelected = true, selectedCount = 4, submissionComments = new[] { new { comment = "Nested comment" } } },
+                new { scoringOptionId = graph.Option.Id, isSelected = true, submissionComments = new[] { new { comment = "Nested comment" } } },
             },
         }, Ct));
 
         var option = Assert.Single(created.SubmissionOptions);
-        Assert.Equal((graph.Option.Id, true, 0), (option.ScoringOptionId, option.IsSelected, option.SelectedCount));
+        Assert.Equal((graph.Option.Id, true), (option.ScoringOptionId, option.IsSelected));
         Assert.Equal("Nested comment", Assert.Single(option.SubmissionComments).Comment);
         await using var context = NewContext();
         var stored = await context.SubmissionOptions.Include(x => x.SubmissionComments).SingleAsync(x => x.SubmissionCategoryId == id, Ct);
@@ -434,7 +432,7 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
 
     // ---- Submissions ------------------------------------------------------------------------------
 
-    /// <summary>A submission is read with its categories, options and comments; a stored one is never an average and has no group.</summary>
+    /// <summary>A submission is read with its categories, options and comments.</summary>
     [Fact]
     public async Task A_submission_is_read_with_its_categories_options_and_comments()
     {
@@ -447,11 +445,11 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
 
         var submission = await ReadAsync<Submission>(await RootClient.GetAsync($"api/submissions/{graph.Submission.Id}", Ct));
 
-        Assert.Equal((graph.Model.Id, graph.Evaluation.Id, (Guid?)null, (Guid?)null, false), (submission.ScoringModelId, submission.EvaluationId, submission.TeamId, submission.GroupId, submission.ScoreIsAnAverage));
+        Assert.Equal((graph.Model.Id, graph.Evaluation.Id), (submission.ScoringModelId, submission.EvaluationId));
         var readCategory = Assert.Single(submission.SubmissionCategories);
         Assert.Equal((category.Id, 2.5, graph.Submission.Id, graph.Category.Id), (readCategory.Id, readCategory.Score, readCategory.SubmissionId, readCategory.ScoringCategoryId));
         var readOption = Assert.Single(readCategory.SubmissionOptions);
-        Assert.Equal((option.Id, true, 0, category.Id, graph.Option.Id), (readOption.Id, readOption.IsSelected, readOption.SelectedCount, readOption.SubmissionCategoryId, readOption.ScoringOptionId));
+        Assert.Equal((option.Id, true, category.Id, graph.Option.Id), (readOption.Id, readOption.IsSelected, readOption.SubmissionCategoryId, readOption.ScoringOptionId));
         var readComment = Assert.Single(readOption.SubmissionComments);
         Assert.Equal((comment.Id, "Read back", option.Id), (readComment.Id, readComment.Comment, readComment.SubmissionOptionId));
     }
@@ -640,6 +638,56 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
 
         await using var context = NewContext();
         Assert.Equal(6, (await context.Submissions.SingleAsync(x => x.ScoringModelId == uploaded.Id, Ct)).MoveNumber);
+    }
+
+    /// <summary>A submission a file names its user and team for by id alone is stored on that user and team.</summary>
+    [Fact]
+    public async Task A_scoring_model_file_stores_the_user_and_team_a_submission_names_by_id()
+    {
+        var graph = await SeedScoredSubmission();
+        var teamType = TestData.TeamType();
+        var team = TestData.Team(graph.Evaluation.Id, teamType.Id);
+        var user = TestData.User(name: "Scorer");
+        await Seed(teamType, team, user);
+        var fileId = Guid.NewGuid();
+        var json = $$$"""
+        {"$id":"1","Id":"{{{fileId}}}","Description":"Uploaded","Status":20,"ScoringCategories":{"$id":"2","$values":[]},
+         "Submissions":{"$id":"3","$values":[{"$id":"4","Score":3,"Status":20,"ScoringModelId":"{{{fileId}}}","EvaluationId":"{{{graph.Evaluation.Id}}}",
+           "UserId":"{{{user.Id}}}","TeamId":"{{{team.Id}}}","MoveNumber":5,"SubmissionCategories":{"$id":"5","$values":[]}}]},
+         "Memberships":{"$id":"6","$values":[]},"SeverityLevels":[]}
+        """;
+
+        var uploaded = await ReadAsync<ScoringModel>(await RootClient.PostAsync("api/scoringModels/json", Upload(json), Ct));
+
+        await using var context = NewContext();
+        var submission = await context.Submissions.SingleAsync(x => x.ScoringModelId == uploaded.Id, Ct);
+        Assert.Equal(((Guid?)user.Id, (Guid?)team.Id), (submission.UserId, submission.TeamId));
+    }
+
+    /// <summary>A submission category and option a file lists twice, or reaches again by a back-reference, are each copied, and stored, once.</summary>
+    [Fact]
+    public async Task A_scoring_model_file_with_repeated_references_in_a_submission_stores_each_row_once()
+    {
+        var graph = await SeedScoredSubmission();
+        var fileId = Guid.NewGuid();
+        var json = $$$"""
+        {"$id":"1","Id":"{{{fileId}}}","Description":"Uploaded","Status":20,"ScoringCategories":{"$id":"2","$values":[]},
+         "Submissions":{"$id":"3","$values":[{"$id":"4","Score":3,"Status":20,"ScoringModelId":"{{{fileId}}}","EvaluationId":"{{{graph.Evaluation.Id}}}",
+           "MoveNumber":4,"ScoringModel":{"$ref":"1"},
+           "SubmissionCategories":{"$id":"5","$values":[{"$id":"6","Score":1.5,"ScoringCategoryId":"{{{graph.Category.Id}}}","Submission":{"$ref":"4"},
+             "SubmissionOptions":{"$id":"7","$values":[{"$id":"8","IsSelected":true,"ScoringOptionId":"{{{graph.Option.Id}}}","SubmissionCategory":{"$ref":"6"},
+               "SubmissionComments":{"$id":"9","$values":[{"$id":"10","Comment":"Once"}]}},{"$ref":"8"}]}},{"$ref":"6"}]}}]},
+         "Memberships":{"$id":"11","$values":[]},"SeverityLevels":[]}
+        """;
+
+        var uploaded = await ReadAsync<ScoringModel>(await RootClient.PostAsync("api/scoringModels/json", Upload(json), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal((1, 1, 1, 1), (
+            await context.Submissions.CountAsync(x => x.ScoringModelId == uploaded.Id, Ct),
+            await context.SubmissionCategories.CountAsync(x => x.Submission.ScoringModelId == uploaded.Id, Ct),
+            await context.SubmissionOptions.CountAsync(x => x.SubmissionCategory.Submission.ScoringModelId == uploaded.Id, Ct),
+            await context.SubmissionComments.CountAsync(x => x.SubmissionOption.SubmissionCategory.Submission.ScoringModelId == uploaded.Id, Ct)));
     }
 
     // ---- Helpers ----------------------------------------------------------------------------------

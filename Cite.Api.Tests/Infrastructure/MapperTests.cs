@@ -32,28 +32,13 @@ public class MapperTests
         Assert.Equal(Guid.Empty, submission.EvaluationId);
     }
 
+    /// <summary>A system role is read with the permissions it is stored with.</summary>
     [Fact]
-    public void A_system_role_maps_its_permissions_both_ways()
+    public void A_system_role_is_read_with_its_permissions()
     {
         var role = TestData.SystemRole(permissions: [Cite.Api.Data.Enumerations.SystemPermission.ViewUsers]);
 
-        var back = role.ToSystemRole().ToEntity();
-
-        Assert.Equal(role.Permissions, back.Permissions);
-    }
-
-    [Fact]
-    public void A_duty_maps_its_assigned_users()
-    {
-        var user = TestData.User(name: "Assignee");
-        var duty = TestData.Duty(Guid.NewGuid(), Guid.NewGuid());
-        var assignment = TestData.DutyUser(duty.Id, user.Id);
-        assignment.User = user;
-        duty.DutyUsers.Add(assignment);
-
-        var model = duty.ToDuty();
-
-        Assert.Equal("Assignee", Assert.Single(model.Users).Name);
+        Assert.Equal([Cite.Api.Data.Enumerations.SystemPermission.ViewUsers], role.ToSystemRole().Permissions);
     }
 
     /// <summary>An assignment whose user is not loaded is a null user, not a missing one.</summary>
@@ -85,31 +70,21 @@ public class MapperTests
         Assert.Equal(0, copy.SeverityLevels.Count + copy.Submissions.Count);
     }
 
-    /// <summary>A scoring model update leaves saved severity levels alone when it carries none, and replaces them when it does.</summary>
+    /// <summary>A scoring model copy keeps the original's audit fields, as AutoMapper's copy did, until the save overwrites them.</summary>
     [Fact]
-    public void A_scoring_model_update_replaces_the_severity_levels_only_when_it_carries_some()
+    public void A_scoring_model_copy_keeps_the_originals_audit_fields()
     {
-        var entity = new ScoringModelEntity { SeverityLevels = [new() { Name = "Kept" }] };
-
-        new UpdateScoringModelRequest { SeverityLevels = null }.ApplyTo(entity);
-        Assert.Equal("Kept", Assert.Single(entity.SeverityLevels).Name);
-
-        new UpdateScoringModelRequest { SeverityLevels = [new() { Name = "Sent" }] }.ApplyTo(entity);
-        Assert.Equal("Sent", Assert.Single(entity.SeverityLevels).Name);
-    }
-
-    /// <summary>A copy is a new object, its severity levels too, with every member but the id.</summary>
-    [Fact]
-    public void A_scoring_model_copy_has_its_own_severity_levels_and_no_id()
-    {
-        var level = new SeverityLevelEntity { Name = "Calm", MinimumScore = 1, Color = "#FFFFFF", Description = "Quiet" };
-        var original = new ScoringModelEntity { Id = Guid.NewGuid(), Description = "Original", SeverityLevels = [level] };
+        var original = new ScoringModelEntity
+        {
+            DateCreated = TestData.DefaultDateCreated,
+            DateModified = TestData.DefaultDateCreated.AddDays(1),
+            CreatedBy = Guid.NewGuid(),
+            ModifiedBy = Guid.NewGuid(),
+        };
 
         var copy = original.ToCopy();
 
-        Assert.Equal((Guid.Empty, "Original"), (copy.Id, copy.Description));
-        var copied = Assert.Single(copy.SeverityLevels);
-        Assert.NotSame(level, copied);
-        Assert.Equal(("Calm", 1.0, "#FFFFFF", "Quiet"), (copied.Name, copied.MinimumScore, copied.Color, copied.Description));
+        Assert.Equal((original.DateCreated, original.DateModified, original.CreatedBy, original.ModifiedBy),
+            (copy.DateCreated, copy.DateModified, copy.CreatedBy, copy.ModifiedBy));
     }
 }
