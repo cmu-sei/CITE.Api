@@ -592,6 +592,56 @@ public class MappedResponseTests(DatabaseFixture fixture, CiteAppFactory factory
         Assert.Equal("From the file", Assert.Single(option.SubmissionComments).Comment);
     }
 
+    /// <summary>
+    /// What a file nests in a submission is copied with it: a user the file nests is stored as it is, and a
+    /// team, as a copy of its own that the copied submission is put on.
+    /// </summary>
+    [Fact]
+    public async Task A_scoring_model_file_stores_the_user_and_a_copy_of_the_team_nested_in_a_submission()
+    {
+        var graph = await SeedScoredSubmission();
+        var teamType = TestData.TeamType();
+        await Seed(teamType);
+        var fileId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var json = $$$"""
+        {"$id":"1","Id":"{{{fileId}}}","Description":"Uploaded","Status":20,"ScoringCategories":{"$id":"2","$values":[]},
+         "Submissions":{"$id":"3","$values":[{"$id":"4","Score":3,"Status":20,"ScoringModelId":"{{{fileId}}}","EvaluationId":"{{{graph.Evaluation.Id}}}",
+           "UserId":"{{{userId}}}","User":{"$id":"5","Id":"{{{userId}}}","Name":"From the file"},
+           "TeamId":"{{{teamId}}}","Team":{"$id":"6","Id":"{{{teamId}}}","Name":"Filed team","TeamTypeId":"{{{teamType.Id}}}","EvaluationId":"{{{graph.Evaluation.Id}}}"},
+           "MoveNumber":5,"SubmissionCategories":{"$id":"7","$values":[]}}]},
+         "Memberships":{"$id":"8","$values":[]},"SeverityLevels":[]}
+        """;
+
+        var uploaded = await ReadAsync<ScoringModel>(await RootClient.PostAsync("api/scoringModels/json", Upload(json), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("From the file", (await context.Users.SingleAsync(x => x.Id == userId, Ct)).Name);
+        Assert.False(await context.Teams.AnyAsync(x => x.Id == teamId, Ct));
+        var submission = await context.Submissions.Include(x => x.Team).SingleAsync(x => x.ScoringModelId == uploaded.Id, Ct);
+        Assert.Equal(((Guid?)userId, "Filed team", (Guid?)graph.Evaluation.Id), (submission.UserId, submission.Team.Name, submission.Team.EvaluationId));
+    }
+
+    /// <summary>A submission a file lists twice (by reference) is copied, and stored, once.</summary>
+    [Fact]
+    public async Task A_scoring_model_file_listing_a_submission_twice_stores_it_once()
+    {
+        var graph = await SeedScoredSubmission();
+        var fileId = Guid.NewGuid();
+        var json = $$$"""
+        {"$id":"1","Id":"{{{fileId}}}","Description":"Uploaded","Status":20,"ScoringCategories":{"$id":"2","$values":[]},
+         "Submissions":{"$id":"3","$values":[{"$id":"4","Score":3,"Status":20,"ScoringModelId":"{{{fileId}}}","EvaluationId":"{{{graph.Evaluation.Id}}}",
+           "MoveNumber":6,"ScoringModel":{"$ref":"1"},"SubmissionCategories":{"$id":"5","$values":[]}},{"$ref":"4"}]},
+         "Memberships":{"$id":"6","$values":[]},"SeverityLevels":[]}
+        """;
+
+        var uploaded = await ReadAsync<ScoringModel>(await RootClient.PostAsync("api/scoringModels/json", Upload(json), Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(6, (await context.Submissions.SingleAsync(x => x.ScoringModelId == uploaded.Id, Ct)).MoveNumber);
+    }
+
     // ---- Helpers ----------------------------------------------------------------------------------
 
     private sealed record TeamGraph(ScoringModelEntity ScoringModel, EvaluationEntity Evaluation, TeamTypeEntity TeamType, TeamEntity Team, UserEntity User, TeamMembershipEntity Membership);
