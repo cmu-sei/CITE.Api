@@ -35,7 +35,7 @@ namespace Cite.Api.ViewModels
         // empty means the default severity scale; left out of an update, the saved levels are kept
         public List<SeverityLevel> SeverityLevels { get; set; }
 
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        public virtual IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (SeverityLevels == null)
                 yield break;
@@ -52,6 +52,20 @@ namespace Cite.Api.ViewModels
         /// create can only add rows to the model it creates.
         /// </summary>
         public List<CreateScoringCategoryRequest> ScoringCategories { get; set; } = [];
+
+        public override IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            foreach (var result in base.Validate(validationContext))
+                yield return result;
+            // a category's moves are read only when the model shows its categories by move number
+            if (!DisplayScoringModelByMoveNumber)
+                yield break;
+            foreach (var category in ScoringCategories ?? [])
+            {
+                if (category.MoveNumberFirstDisplay > category.MoveNumberLastDisplay)
+                    yield return new ValidationResult($"The category \"{category.Description}\" ends at move {category.MoveNumberLastDisplay}, before it starts at move {category.MoveNumberFirstDisplay}.", [nameof(ScoringCategories)]);
+            }
+        }
     }
 
     public class UpdateScoringModelRequest : ScoringModelFields
