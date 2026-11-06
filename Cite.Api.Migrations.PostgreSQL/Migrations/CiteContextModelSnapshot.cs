@@ -1231,6 +1231,13 @@ namespace Cite.Api.Migrations.PostgreSQL.Migrations
                             Description = "Has read only access to the Team",
                             Name = "Member",
                             Permissions = new[] { 0, 4 }
+                        },
+                        new
+                        {
+                            Id = new Guid("1a88f86f-8e34-4bc2-b5b3-7777f70059f1"),
+                            Description = "Can view the Team and score and submit the Official score for the Evaluation",
+                            Name = "Official Scorer",
+                            Permissions = new[] { 0, 4, 5, 6 }
                         });
                 });
 

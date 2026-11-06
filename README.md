@@ -38,6 +38,8 @@ Resource permissions apply to a single evaluation, scoring model or team and are
     * Scoring model: ViewScoringModel, EditScoringModel, ManageScoringModel
     * Team: ViewTeam, EditTeamScore, SubmitTeamScore, ManageTeam, ViewPastOfficialScore, ViewCurrentOfficialScore, EditOfficialScore
 
+The default Team Roles are Owner, Submitter, Contributor and Member, which run a team's own scoresheet and read past moves' official scores, and Official Scorer, which reads and scores the official score of the current move. Official score permissions on any of a user's teams in an evaluation apply to that evaluation's official score, so a facilitator is usually given the Official Scorer role on a team of their own (for example a white cell team).
+
 Roles can also be taken from the identity provider's token (`ClaimsTransformation` settings in `appsettings.json`).
 
 # Testing
