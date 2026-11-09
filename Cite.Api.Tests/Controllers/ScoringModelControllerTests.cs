@@ -292,9 +292,10 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.NotEqual(graph.Option.Id, createdOption.Id);
     }
 
+    /// <summary>A backwards move range is refused only when the model shows its categories by move number.</summary>
     [Theory]
     [InlineData(999, 1, 3)]
-    [InlineData(1, 3, 1)]
+    [InlineData(0, 3, 1)]
     public async Task Create_rejects_a_category_with_an_undefined_selection_or_a_backwards_move_range(int selection, int first, int last)
     {
         var id = Guid.NewGuid();
@@ -304,12 +305,33 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
             id,
             description = "Refused Model",
             status = "Active",
+            displayScoringModelByMoveNumber = true,
             scoringCategories = new[] { new { description = "Category", scoringOptionSelection = selection, moveNumberFirstDisplay = first, moveNumberLastDisplay = last } },
         }, Ct);
 
         await AssertStatus(HttpStatusCode.BadRequest, response);
         await using var context = NewContext();
         Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    /// <summary>A model that shows every category in every move does not read their moves, so their order is not refused.</summary>
+    [Fact]
+    public async Task Create_stores_a_backwards_move_range_when_the_model_does_not_show_categories_by_move()
+    {
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Every Move Model",
+            status = "Active",
+            displayScoringModelByMoveNumber = false,
+            scoringCategories = new[] { new { description = "Category", scoringOptionSelection = "Single", moveNumberFirstDisplay = 3, moveNumberLastDisplay = 1 } },
+        }, Ct));
+
+        await using var context = NewContext();
+        var category = await context.ScoringCategories.SingleAsync(x => x.ScoringModelId == id, Ct);
+        Assert.Equal((3, 1), (category.MoveNumberFirstDisplay, category.MoveNumberLastDisplay));
     }
 
     [Fact]
