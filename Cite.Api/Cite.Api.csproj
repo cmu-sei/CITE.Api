@@ -32,14 +32,14 @@
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Sqlite" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.0.1" />
-    <PackageReference Include="Z.EntityFramework.Plus.EFCore" Version="10.105.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.1" />
+    <PackageReference Include="Z.EntityFramework.Plus.EFCore" Version="10.105.9" />
     <PackageReference Include="IdentityServer4.AccessTokenValidation" Version="3.0.1" />
     <PackageReference Include="TinCanStandard" Version="1.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
     <PackageReference Include="Crucible.Common.ServiceDefaults" Version="0.0.3"/>
   </ItemGroup>
   <!-- Security pins. Referenced only to raise a package that otherwise arrives through another
@@ -47,12 +47,12 @@
        reference. Each can go once the dependency that brings it in carries a fixed version of its own. -->
   <ItemGroup>
     <!-- Through Microsoft.VisualStudio.Web.CodeGeneration.Design, which carries 6.12.1. -->
-    <PackageReference Include="NuGet.Packaging" Version="6.12.5" />
-    <PackageReference Include="NuGet.Protocol" Version="6.12.5" />
+    <PackageReference Include="NuGet.Packaging" Version="6.14.3" />
+    <PackageReference Include="NuGet.Protocol" Version="6.14.3" />
     <!-- Through Microsoft.Data.SqlClient, which carries 9.0.11 even under EF Core 10.0.13. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     <!-- Through Swashbuckle.AspNetCore 10.0.1, which carries 2.3.0. -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cite.Api.Data\Cite.Api.Data.csproj" />
