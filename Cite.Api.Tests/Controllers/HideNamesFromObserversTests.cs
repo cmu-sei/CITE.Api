@@ -10,6 +10,7 @@ using Cite.Api.Data.Models;
 using Cite.Api.Hubs;
 using Cite.Api.Tests.Support;
 using Cite.Api.ViewModels;
+using Action = Cite.Api.ViewModels.Action;
 
 namespace Cite.Api.Tests.Controllers;
 
@@ -344,6 +345,193 @@ public class HideNamesFromObserversTests(DatabaseFixture fixture, CiteAppFactory
         await using var context = NewContext();
         Assert.True((await context.Evaluations.SingleAsync(x => x.Id == imported.Id, Ct)).HideNamesFromObservers);
     }
+
+    /// <summary>Creating an evaluation with the setting sent as null, as a client that has no value for it might.</summary>
+    [Fact]
+    public async Task Create_treats_a_null_HideNamesFromObservers_as_false()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        var created = await ReadAsync<Evaluation>(await RootClient.PostAsJsonAsync("api/evaluations", new
+        {
+            id,
+            description = "New Evaluation",
+            status = "Active",
+            scoringModelId = template.Id,
+            situationTime = TestData.DefaultDateCreated,
+            hideNamesFromObservers = (bool?)null
+        }, Ct));
+
+        Assert.False(created.HideNamesFromObservers);
+        Assert.False(await ReadBack(db => db.Evaluations.Where(x => x.Id == id).Select(x => x.HideNamesFromObservers).SingleAsync(Ct)));
+    }
+
+    /// <summary>
+    /// An update that leaves the setting out, or sends null, keeps it, so a client that does not know about
+    /// it (Blueprint activating its evaluation, or an older UI) does not turn it off.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Update_without_HideNamesFromObservers_keeps_it(bool sendNull)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        graph.Evaluation.HideNamesFromObservers = true;
+        await Db.SaveChangesAsync(Ct);
+        object request = sendNull
+            ? new { description = "Renamed", status = "Active", situationTime = graph.Evaluation.SituationTime, hideNamesFromObservers = (bool?)null }
+            : new { description = "Renamed", status = "Active", situationTime = graph.Evaluation.SituationTime };
+
+        var updated = await ReadAsync<Evaluation>(await RootClient.PutAsJsonAsync($"api/evaluations/{graph.Evaluation.Id}", request, Ct));
+
+        Assert.Equal(("Renamed", (bool?)true), (updated.Description, updated.HideNamesFromObservers));
+        Assert.True(await ReadBack(db => db.Evaluations.Where(x => x.Id == graph.Evaluation.Id).Select(x => x.HideNamesFromObservers).SingleAsync(Ct)));
+    }
+
+    /// <summary>
+    /// An action's ChangedBy and ModifiedBy are the team members who last checked and edited it, so an outsider
+    /// of the team gets neither; the Owner and the team's members still do.
+    /// </summary>
+    [Theory]
+    [InlineData("evaluations/{evaluation}/teams/{team}/actions")]
+    [InlineData("evaluations/{evaluation}/moves/0/teams/{team}/actions")]
+    [InlineData("actions/{action}")]
+    public async Task Action_reads_leave_out_who_checked_and_edited_it_for_an_outsider(string route)
+    {
+        var scene = await SeedActionScene(hideNames: true);
+        var observer = await Actor().OnEvaluation(scene.Graph.Evaluation.Id, Observer).SeedAsync();
+        var owner = await Actor().OnEvaluation(scene.Graph.Evaluation.Id, Owner).SeedAsync();
+        var member = await Actor().OnTeam(scene.Graph.Team.Id, permissions: [TeamPermission.ViewTeam]).SeedAsync();
+
+        var masked = await ActionsBody(observer, route, scene);
+        Assert.Contains(scene.Action.Description, masked);
+        Assert.DoesNotContain(scene.Teammate.Id.ToString(), masked);
+        Assert.Contains(scene.Teammate.Id.ToString(), await ActionsBody(owner, route, scene));
+        Assert.Contains(scene.Teammate.Id.ToString(), await ActionsBody(member, route, scene));
+    }
+
+    [Fact]
+    public async Task Action_reads_are_unchanged_for_an_observer_when_the_setting_is_off()
+    {
+        var scene = await SeedActionScene(hideNames: false);
+        var observer = await Actor().OnEvaluation(scene.Graph.Evaluation.Id, Observer).SeedAsync();
+
+        var action = await ReadAsync<Action>(await Client(observer).GetAsync($"api/actions/{scene.Action.Id}", Ct));
+
+        Assert.Equal((scene.Teammate.Id, scene.Teammate.Id), (action.ChangedBy, action.ModifiedBy));
+    }
+
+    /// <summary>
+    /// The evaluation-wide reads span every team, so an evaluation Viewer who is on one team gets that team's
+    /// actions with their names and the other team's without.
+    /// </summary>
+    [Theory]
+    [InlineData("evaluations/{evaluation}/actions")]
+    [InlineData("evaluations/{evaluation}/moves/0/actions")]
+    public async Task Evaluation_wide_action_reads_mask_only_the_teams_the_caller_is_not_on(string route)
+    {
+        var scene = await SeedActionScene(hideNames: true);
+        var viewer = await Actor().OnEvaluation(scene.Graph.Evaluation.Id, permissions: [EvaluationPermission.ViewEvaluation])
+            .OnNewTeam(scene.Graph.Evaluation.Id, TeamPermission.ViewTeam).SeedAsync();
+        var own = TestData.Action(scene.Graph.Evaluation.Id, Assert.Single(viewer.NewTeamIds), description: "Own team");
+        await Seed(own);
+        own.IsChecked = true;
+        own.ChangedBy = viewer.Id;
+        own.ModifiedBy = viewer.Id;
+        await Db.SaveChangesAsync(Ct);
+
+        var actions = await ReadAsync<List<Action>>(await Client(viewer).GetAsync(ActionsUrl(route, scene), Ct));
+
+        var other = Assert.Single(actions, x => x.Id == scene.Action.Id);
+        Assert.Equal(((Guid?)null, (Guid?)null), (other.ChangedBy, other.ModifiedBy));
+        var mine = Assert.Single(actions, x => x.Id == own.Id);
+        Assert.Equal((viewer.Id, viewer.Id), (mine.ChangedBy, mine.ModifiedBy));
+    }
+
+    /// <summary>
+    /// An evaluation Editor can check any action without being on the team, and the response leaves out the
+    /// team member who last edited it.
+    /// </summary>
+    [Fact]
+    public async Task Check_returns_the_action_without_its_names_to_an_outsider()
+    {
+        var scene = await SeedActionScene(hideNames: true);
+        var editor = await Actor().OnEvaluation(scene.Graph.Evaluation.Id, permissions: [EvaluationPermission.EditEvaluation, EvaluationPermission.ViewEvaluation]).SeedAsync();
+
+        var action = await ReadAsync<Action>(await Client(editor).PutAsync($"api/actions/{scene.Action.Id}/uncheck", null, Ct));
+
+        Assert.Equal((false, (Guid?)null, (Guid?)null), (action.IsChecked, action.ChangedBy, action.ModifiedBy));
+    }
+
+    /// <summary>
+    /// An action's broadcast goes to the team's named group with its names and to its unnamed group without
+    /// them, and not to the team's own group, which every watcher of the team is in.
+    /// </summary>
+    [Fact]
+    public async Task Check_broadcasts_the_action_with_and_without_names_when_the_evaluation_hides_names()
+    {
+        var scene = await SeedActionScene(hideNames: true);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/actions/{scene.Action.Id}/uncheck", null, Ct));
+
+        var hub = Factory.Hub<MainHub>();
+        Assert.DoesNotContain(hub.ToGroup(scene.Graph.Team.Id), x => x.Method == MainHubMethods.ActionUpdated);
+        var named = Assert.IsType<Action>(Assert.Single(hub.ToGroup(scene.Graph.Team.Id + MainHub.NAMES_SHOWN_POSTFIX), x => x.Method == MainHubMethods.ActionUpdated).Arguments[0]);
+        var unnamed = Assert.IsType<Action>(Assert.Single(hub.ToGroup(scene.Graph.Team.Id + MainHub.NAMES_HIDDEN_POSTFIX), x => x.Method == MainHubMethods.ActionUpdated).Arguments[0]);
+        Assert.Equal((Root.Id, scene.Teammate.Id), (named.ChangedBy, named.ModifiedBy));
+        Assert.Equal(((Guid?)null, (Guid?)null), (unnamed.ChangedBy, unnamed.ModifiedBy));
+        // the admin data group, which every test's broadcasts reach, gets the names
+        var admin = Assert.Single(hub.ToGroup(MainHub.ADMIN_DATA_GROUP), x => x.Method == MainHubMethods.ActionUpdated && x.Arguments[0] is Action a && a.Id == scene.Action.Id);
+        Assert.Equal(Root.Id, ((Action)admin.Arguments[0]).ChangedBy);
+    }
+
+    [Fact]
+    public async Task Check_broadcasts_the_action_to_the_team_when_the_evaluation_shows_names()
+    {
+        var scene = await SeedActionScene(hideNames: false);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsync($"api/actions/{scene.Action.Id}/uncheck", null, Ct));
+
+        var hub = Factory.Hub<MainHub>();
+        Assert.Single(hub.ToGroup(scene.Graph.Team.Id), x => x.Method == MainHubMethods.ActionUpdated);
+        Assert.Empty(hub.ToGroup(scene.Graph.Team.Id + MainHub.NAMES_HIDDEN_POSTFIX));
+    }
+
+    private sealed record ActionScene(EvaluationGraph Graph, UserEntity Teammate, ActionEntity Action);
+
+    /// <summary>A team action that its member, the teammate, checked and last edited.</summary>
+    private async Task<ActionScene> SeedActionScene(bool hideNames)
+    {
+        var graph = await TestScenario.SeedEvaluationAsync(Db, Ct);
+        graph.Evaluation.HideNamesFromObservers = hideNames;
+        await Db.SaveChangesAsync(Ct);
+        var teammate = TestData.User(name: "Teammate");
+        var action = TestData.Action(graph.Evaluation.Id, graph.Team.Id);
+        await Seed(teammate, TestData.TeamMembership(graph.Team.Id, teammate.Id), action);
+        // an added row's ModifiedBy is cleared by CiteContext, so the check and the edit are an update
+        action.IsChecked = true;
+        action.ChangedBy = teammate.Id;
+        action.ModifiedBy = teammate.Id;
+        await Db.SaveChangesAsync(Ct);
+
+        return new ActionScene(graph, teammate, action);
+    }
+
+    private async Task<string> ActionsBody(TestActor actor, string route, ActionScene scene)
+    {
+        var response = await Client(actor).GetAsync(ActionsUrl(route, scene), Ct);
+        await AssertStatus(HttpStatusCode.OK, response);
+
+        return await response.Content.ReadAsStringAsync(Ct);
+    }
+
+    private static string ActionsUrl(string route, ActionScene scene) =>
+        "api/" + route
+            .Replace("{evaluation}", scene.Graph.Evaluation.Id.ToString())
+            .Replace("{team}", scene.Graph.Team.Id.ToString())
+            .Replace("{action}", scene.Action.Id.ToString());
 
     private sealed record Scene(
         EvaluationGraph Graph,

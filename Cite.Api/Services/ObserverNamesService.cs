@@ -30,17 +30,19 @@ namespace Cite.Api.Services
     }
 
     /// <summary>
-    /// The one place that decides whether a caller gets a team's submissions without names, for an evaluation
-    /// whose <see cref="Evaluation.HideNamesFromObservers"/> is on, and that takes the names out.
+    /// The one place that decides whether a caller gets a team's submissions and actions without names, for an
+    /// evaluation whose <see cref="Evaluation.HideNamesFromObservers"/> is on, and that takes the names out.
     /// </summary>
     /// <remarks>
     /// The caller gets the masked view of a team when the setting is on and the caller is an outsider: not
     /// on the team, not able to manage the evaluation (its Owner role, or ManageEvaluation from any role), and
     /// not holding the system ViewEvaluations or ManageEvaluations permission. Those exceptions can already
     /// read every submission with its names (<c>evaluations/{id}/submissions</c>, <c>submissions</c>, and the
-    /// hub's admin data group), so masking them would hide nothing. A Facilitator or Observer of the evaluation
-    /// who is not on the team is masked. The official submission is the evaluation staff's, not a team
-    /// member's, so it is never masked.
+    /// hub's admin data group), so masking them would hide nothing. That includes the default system Observer
+    /// and Content Developer roles, which hold ViewEvaluations: only the evaluation's own Observer and
+    /// Facilitator roles, or a system role with ObserveEvaluations but not ViewEvaluations, are masked on a
+    /// team they are not on. The official submission is the evaluation staff's, not a team member's, so it is
+    /// never masked.
     /// </remarks>
     public interface IObserverNamesService
     {
@@ -65,6 +67,16 @@ namespace Cite.Api.Services
         /// endpoint answers it as it always has.
         /// </summary>
         Task<SubmissionNames> GetSubmissionNamesAsync<T>(Guid id, CancellationToken ct);
+
+        /// <summary>
+        /// The actions as the current caller may see them: on an evaluation that hides names, an action of a team
+        /// the caller is an outsider of loses <see cref="ViewModels.Action.ChangedBy"/> and
+        /// <see cref="Base.ModifiedBy"/>, the team members who last checked and edited it.
+        /// </summary>
+        Task<List<ViewModels.Action>> WithoutNamesAsync(IEnumerable<ViewModels.Action> actions, CancellationToken ct);
+
+        /// <summary>The action as the current caller may see it; see the list overload.</summary>
+        Task<ViewModels.Action> WithoutNamesAsync(ViewModels.Action action, CancellationToken ct);
     }
 
     public class ObserverNamesService(
@@ -83,12 +95,52 @@ namespace Cite.Api.Services
 
         public async Task<bool> IsOutsiderAsync(Guid userId, Guid evaluationId, Guid teamId, CancellationToken ct)
         {
-            if (await authorizationService.AuthorizeAsync<Evaluation>(evaluationId,
-                    [SystemPermission.ViewEvaluations, SystemPermission.ManageEvaluations],
-                    [EvaluationPermission.ManageEvaluation], ct))
+            if (await SeesEveryTeamsNamesAsync(evaluationId, ct))
                 return false;
 
             return !await context.TeamMemberships.AnyAsync(m => m.TeamId == teamId && m.UserId == userId, ct);
+        }
+
+        /// <summary>Whether the current caller can manage the evaluation or view every evaluation, so is never masked.</summary>
+        private Task<bool> SeesEveryTeamsNamesAsync(Guid evaluationId, CancellationToken ct) =>
+            authorizationService.AuthorizeAsync<Evaluation>(evaluationId,
+                [SystemPermission.ViewEvaluations, SystemPermission.ManageEvaluations],
+                [EvaluationPermission.ManageEvaluation], ct);
+
+        public async Task<List<ViewModels.Action>> WithoutNamesAsync(IEnumerable<ViewModels.Action> actions, CancellationToken ct)
+        {
+            var list = actions.ToList();
+            var userId = _user.GetId();
+            foreach (var evaluationId in list.Select(a => a.EvaluationId).Distinct().ToList())
+            {
+                if (!await EvaluationHidesNamesAsync(evaluationId, ct) || await SeesEveryTeamsNamesAsync(evaluationId, ct))
+                    continue;
+
+                // the list endpoints span every team of the evaluation, so look the caller's teams up once
+                var myTeamIds = await context.TeamMemberships
+                    .Where(m => m.UserId == userId && m.Team.EvaluationId == evaluationId)
+                    .Select(m => m.TeamId)
+                    .ToListAsync(ct);
+                foreach (var action in list.Where(a => a.EvaluationId == evaluationId && !myTeamIds.Contains(a.TeamId)))
+                    WithoutNames(action);
+            }
+
+            return list;
+        }
+
+        public async Task<ViewModels.Action> WithoutNamesAsync(ViewModels.Action action, CancellationToken ct) =>
+            action != null && await HidesNamesAsync(action.EvaluationId, action.TeamId, ct) ? WithoutNames(action) : action;
+
+        /// <summary>The action without the team members who last checked and edited it.</summary>
+        public static ViewModels.Action WithoutNames(ViewModels.Action action)
+        {
+            if (action == null)
+                return null;
+
+            action.ChangedBy = null;
+            action.ModifiedBy = null;
+
+            return action;
         }
 
         public Task<bool> EvaluationHidesNamesAsync(Guid evaluationId, CancellationToken ct) =>

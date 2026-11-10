@@ -42,7 +42,7 @@ namespace Cite.Api.Hubs
         public const string ALL_MOVES_POSTFIX = "AllMoves";
         // moves up to the current one, for the team's viewers who cannot read every move; disjoint from ALL_MOVES_POSTFIX
         public const string CURRENT_MOVES_POSTFIX = "CurrentMoves";
-        // a team's submissions with their names, for its members and anyone ObserverNamesService does not mask;
+        // a team's submissions and actions with their names, for its members and anyone ObserverNamesService does not mask;
         // the outsiders of the team join the names-hidden group instead, so the two are disjoint
         public const string NAMES_SHOWN_POSTFIX = "NamesShown";
         public const string NAMES_HIDDEN_POSTFIX = "NamesHidden";
