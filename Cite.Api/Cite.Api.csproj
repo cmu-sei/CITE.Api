@@ -52,7 +52,7 @@
     <!-- Through Microsoft.Data.SqlClient, which carries 9.0.11 even under EF Core 10.0.13. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <!-- Through Swashbuckle.AspNetCore 10.0.1, which carries 2.3.0. -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.OpenApi" Version="3.10.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cite.Api.Data\Cite.Api.Data.csproj" />
