@@ -3,31 +3,28 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data.Models;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class ScoringModelMembershipCreatedSignalRHandler : INotificationHandler<EntityCreated<ScoringModelMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public ScoringModelMembershipCreatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityCreated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var scoringModelMembership = _mapper.Map<ViewModels.ScoringModelMembership>(notification.Entity);
+            var scoringModelMembership = notification.Entity.ToScoringModelMembership();
             await _mainHub.Clients
                 .Groups(MainHub.SCORING_MODEL_GROUP)
                 .SendAsync(MainHubMethods.ScoringModelMembershipCreated, scoringModelMembership);
@@ -55,19 +52,16 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class ScoringModelMembershipUpdatedSignalRHandler : INotificationHandler<EntityUpdated<ScoringModelMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public ScoringModelMembershipUpdatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityUpdated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var scoringModelMembership = _mapper.Map<ViewModels.ScoringModelMembership>(notification.Entity);
+            var scoringModelMembership = notification.Entity.ToScoringModelMembership();
             await _mainHub.Clients
                 .Groups(MainHub.SCORING_MODEL_GROUP)
                 .SendAsync(MainHubMethods.ScoringModelMembershipUpdated, scoringModelMembership);

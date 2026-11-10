@@ -46,6 +46,16 @@ public class EvaluationRoleControllerTests(DatabaseFixture fixture, CiteAppFacto
         Assert.True(role.AllPermissions);
     }
 
+    /// <summary>A seeded role is read with exactly the permissions it is stored with.</summary>
+    [Fact]
+    public async Task Get_returns_the_editor_role_with_its_permissions()
+    {
+        var role = await ReadAsync<EvaluationRole>(await RootClient.GetAsync($"api/evaluation-roles/{TestData.EvaluationRoles.Editor}", Ct));
+
+        Assert.Equal(("Editor", false), (role.Name, role.AllPermissions));
+        Assert.Equal([EvaluationPermission.ViewEvaluation, EvaluationPermission.EditEvaluation], role.Permissions);
+    }
+
     [Fact]
     public async Task Get_is_forbidden_for_a_caller_holding_only_ManageRoles()
     {

@@ -7,7 +7,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using STT = System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Exceptions;
@@ -15,6 +14,7 @@ using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
 using System.Linq;
 using Cite.Api.Data.Models;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -31,13 +31,11 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
-        public TeamMembershipService(CiteContext context, IPrincipal user, IMapper mapper)
+        public TeamMembershipService(CiteContext context, IPrincipal user)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async STT.Task<TeamMembership> GetAsync(Guid id, CancellationToken ct)
@@ -48,7 +46,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<TeamMembership>();
 
-            return _mapper.Map<SAVM.TeamMembership>(item);
+            return item.ToTeamMembership();
         }
 
         public async STT.Task<IEnumerable<TeamMembership>> GetByTeamAsync(Guid teamId, CancellationToken ct)
@@ -57,12 +55,12 @@ namespace Cite.Api.Services
                 .Where(m => m.TeamId == teamId)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.TeamMembership>>(items);
+            return items.Select(x => x.ToTeamMembership()).ToList();
         }
 
         public async STT.Task<TeamMembership> CreateAsync(TeamMembership teamMembership, CancellationToken ct)
         {
-            var teamMembershipEntity = _mapper.Map<TeamMembershipEntity>(teamMembership);
+            var teamMembershipEntity = teamMembership.ToEntity();
 
             _context.TeamMemberships.Add(teamMembershipEntity);
             await _context.SaveChangesAsync(ct);
@@ -81,7 +79,7 @@ namespace Cite.Api.Services
             teamMembershipToUpdate.RoleId = teamMembership.RoleId == Guid.Empty ? TeamRoleDefaults.TeamMemberRoleId : teamMembership.RoleId;
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<SAVM.TeamMembership>(teamMembershipToUpdate);
+            return teamMembershipToUpdate.ToTeamMembership();
         }
         public async STT.Task DeleteAsync(Guid id, CancellationToken ct)
         {

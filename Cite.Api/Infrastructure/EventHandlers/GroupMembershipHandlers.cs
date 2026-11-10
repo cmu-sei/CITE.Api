@@ -3,31 +3,28 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data.Models;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class GroupMembershipCreatedSignalRHandler : INotificationHandler<EntityCreated<GroupMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public GroupMembershipCreatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityCreated<GroupMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var groupMembership = _mapper.Map<ViewModels.GroupMembership>(notification.Entity);
+            var groupMembership = notification.Entity.ToGroupMembership();
             await _mainHub.Clients
                 .Groups(MainHub.GROUP_GROUP)
                 .SendAsync(MainHubMethods.GroupMembershipCreated, groupMembership);
@@ -55,19 +52,16 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class GroupMembershipUpdatedSignalRHandler : INotificationHandler<EntityUpdated<GroupMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public GroupMembershipUpdatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityUpdated<GroupMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var groupMembership = _mapper.Map<ViewModels.GroupMembership>(notification.Entity);
+            var groupMembership = notification.Entity.ToGroupMembership();
             await _mainHub.Clients
                 .Groups(MainHub.GROUP_GROUP)
                 .SendAsync(MainHubMethods.GroupMembershipUpdated, groupMembership);

@@ -82,5 +82,5 @@ public class ActionServiceTests(DatabaseFixture fixture) : DatabaseTestBase(fixt
 
     private ActionService Service(Cite.Api.Data.CiteContext context, UserEntity user) =>
         new(context, AuthorizationHarness.CreateFrameworkAuthorizationService(),
-            new ClaimsPrincipalBuilder().WithUserId(user.Id).Build(), TestMapper.Mapper, _xApi, new DatabaseOptions());
+            new ClaimsPrincipalBuilder().WithUserId(user.Id).Build(), _xApi, new DatabaseOptions());
 }

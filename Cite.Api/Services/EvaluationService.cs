@@ -12,7 +12,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Cite.Api.Data;
@@ -23,6 +22,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -45,7 +45,6 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly ISubmissionService _submissionService;
         private readonly ILogger<EvaluationService> _logger;
         private readonly IMoveService _moveService;
@@ -57,7 +56,6 @@ namespace Cite.Api.Services
         public EvaluationService(
             CiteContext context,
             IPrincipal user,
-            IMapper mapper,
             ISubmissionService submissionService,
             IMoveService moveService,
             IScoringModelService scoringModelService,
@@ -68,7 +66,6 @@ namespace Cite.Api.Services
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _submissionService = submissionService;
             _moveService = moveService;
             _scoringModelService = scoringModelService;
@@ -125,7 +122,7 @@ namespace Cite.Api.Services
                 evaluations = _context.Evaluations.Include(e => e.Moves);
             }
 
-            return _mapper.Map<IEnumerable<Evaluation>>(await evaluations.ToListAsync());
+            return (await evaluations.ToListAsync()).Select(x => x.ToEvaluation()).ToList();
         }
 
         public async Task<IEnumerable<ViewModels.Evaluation>> GetMineAsync(CancellationToken ct)
@@ -146,7 +143,7 @@ namespace Cite.Api.Services
                 .Where(e => evaluationIdList.Contains(e.Id) && e.Status != ItemStatus.Cancelled && e.Status != ItemStatus.Archived)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Evaluation>>(evaluationList);
+            return evaluationList.Select(x => x.ToEvaluation()).ToList();
         }
 
         public async Task<ViewModels.Evaluation> GetAsync(Guid id, CancellationToken ct)
@@ -156,7 +153,7 @@ namespace Cite.Api.Services
                 .Include(e => e.Moves)
                 .SingleOrDefaultAsync(sm => sm.Id == id, ct);
 
-            return _mapper.Map<Evaluation>(item);
+            return item.ToEvaluation();
         }
 
         public async Task<ViewModels.Evaluation> CreateAsync(ViewModels.Evaluation evaluation, CancellationToken ct)
@@ -171,7 +168,7 @@ namespace Cite.Api.Services
             // create a scoring model copy
             var newScoringModel = await _scoringModelService.CopyAsync(evaluation.ScoringModelId, ct, " => on " + evaluation.Description);
             evaluation.ScoringModelId = newScoringModel.Id;
-            var evaluationEntity = _mapper.Map<EvaluationEntity>(evaluation);
+            var evaluationEntity = evaluation.ToEntity();
             evaluationEntity.SituationTime = evaluationEntity.SituationTime.ToUniversalTime();
             _context.Evaluations.Add(evaluationEntity);
             await _context.SaveChangesAsync(ct);
@@ -217,7 +214,7 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<EvaluationEntity>("Evaluation not found with ID=" + evaluationId.ToString());
 
             var newEvaluationEntity = await privateEvaluationCopyAsync(evaluationEntity, ct);
-            var evaluation = _mapper.Map<Evaluation>(newEvaluationEntity);
+            var evaluation = newEvaluationEntity.ToEvaluation();
 
             return evaluation;
         }
@@ -238,20 +235,20 @@ namespace Cite.Api.Services
 
             // --- Build ScoringModel subgraph ---
             var oldSm = oldEval.ScoringModel;
-            var newSm = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(oldSm);
+            var newSm = oldSm.ToCopy();
             newSm.Id = newScoringModelId;
             newSm.CreatedBy = currentUserId;
             newSm.Description = oldSm.Description + " - " + username;
             newSm.EvaluationId = null; // set after evaluation insert
             newSm.ScoringCategories = (oldSm.ScoringCategories ?? Enumerable.Empty<ScoringCategoryEntity>()).Select(oldCat =>
             {
-                var newCat = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(oldCat);
+                var newCat = oldCat.ToCopy();
                 newCat.Id = Guid.NewGuid();
                 newCat.ScoringModelId = newScoringModelId;
                 newCat.CreatedBy = currentUserId;
                 newCat.ScoringOptions = (oldCat.ScoringOptions ?? Enumerable.Empty<ScoringOptionEntity>()).Select(oldOpt =>
                 {
-                    var newOpt = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(oldOpt);
+                    var newOpt = oldOpt.ToCopy();
                     newOpt.Id = Guid.NewGuid();
                     newOpt.ScoringCategoryId = newCat.Id;
                     newOpt.CreatedBy = currentUserId;
@@ -261,14 +258,14 @@ namespace Cite.Api.Services
             }).ToList();
 
             // --- Build Evaluation subgraph ---
-            var newEval = _mapper.Map<EvaluationEntity, EvaluationEntity>(oldEval);
+            var newEval = oldEval.ToCopy();
             newEval.Id = newEvalId;
             newEval.CreatedBy = currentUserId;
             newEval.ScoringModelId = newScoringModelId;
             newEval.Description = oldEval.Description + " - " + username;
             newEval.Teams = (oldEval.Teams ?? Enumerable.Empty<TeamEntity>()).Select(oldTeam =>
             {
-                var newTeam = _mapper.Map<TeamEntity, TeamEntity>(oldTeam);
+                var newTeam = oldTeam.ToCopy();
                 newTeam.Id = Guid.NewGuid();
                 newTeam.EvaluationId = newEvalId;
                 newTeam.CreatedBy = currentUserId;
@@ -276,7 +273,7 @@ namespace Cite.Api.Services
             }).ToList();
             newEval.Moves = (oldEval.Moves ?? Enumerable.Empty<MoveEntity>()).Select(oldMove =>
             {
-                var newMove = _mapper.Map<MoveEntity, MoveEntity>(oldMove);
+                var newMove = oldMove.ToCopy();
                 newMove.Id = Guid.NewGuid();
                 newMove.EvaluationId = newEvalId;
                 newMove.CreatedBy = currentUserId;
@@ -413,14 +410,14 @@ namespace Cite.Api.Services
                 exists = await _context.TeamTypes.AnyAsync(m => m.Id == team.TeamTypeId, ct);
                 if (!exists)
                 {
-                    await _teamTypeService.InternalCreateAsync(_mapper.Map<TeamType>(team.TeamType), ct);
+                    await _teamTypeService.InternalCreateAsync(team.TeamType.ToTeamType(), ct);
                 }
                 team.TeamType = null;
             }
             // make a copy and add it to the database
             evaluationEntity = await privateEvaluationCopyAsync(evaluationEntity, ct);
 
-            return _mapper.Map<Evaluation>(evaluationEntity);
+            return evaluationEntity.ToEvaluation();
         }
 
         /// <summary>An evaluation copies its scoring model, so the caller must be able to view an existing one.</summary>
@@ -483,7 +480,7 @@ namespace Cite.Api.Services
                 }
             }
             // okay to update this evaluation
-            _mapper.Map(evaluation, evaluationToUpdate);
+            evaluation.ApplyTo(evaluationToUpdate);
             evaluationToUpdate.SituationTime = evaluation.SituationTime.ToUniversalTime();
             evaluationToUpdate.ModifiedBy = _user.GetId();
             _logger.LogDebug("Saving the Evaluation change");

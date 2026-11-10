@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -36,18 +36,15 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public ScoringOptionService(
             CiteContext context,
             IAuthorizationService authorizationService,
-            IPrincipal user,
-            IMapper mapper)
+            IPrincipal user)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async Task<IEnumerable<ViewModels.ScoringOption>> GetAsync(ScoringOptionGet queryParameters, CancellationToken ct)
@@ -63,28 +60,28 @@ namespace Cite.Api.Services
                 scoringOptions = _context.ScoringOptions;
             }
 
-            return _mapper.Map<IEnumerable<ScoringOption>>(await scoringOptions.ToListAsync());
+            return (await scoringOptions.ToListAsync()).Select(x => x.ToScoringOption()).ToList();
         }
 
         public async Task<IEnumerable<ViewModels.ScoringOption>> GetForScoringCategoryAsync(Guid scoringCategoryId, CancellationToken ct)
         {
             var scoringOptionList = await _context.ScoringOptions.Where(sc => sc.ScoringCategoryId == scoringCategoryId).ToListAsync();
 
-            return _mapper.Map<IEnumerable<ScoringOption>>(scoringOptionList);
+            return scoringOptionList.Select(x => x.ToScoringOption()).ToList();
         }
 
         public async Task<ViewModels.ScoringOption> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.ScoringOptions.SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
-            return _mapper.Map<ScoringOption>(item);
+            return item.ToScoringOption();
         }
 
         public async Task<ViewModels.ScoringOption> CreateAsync(ViewModels.ScoringOption scoringOption, CancellationToken ct)
         {
             scoringOption.Id = scoringOption.Id != Guid.Empty ? scoringOption.Id : Guid.NewGuid();
             scoringOption.CreatedBy = _user.GetId();
-            var scoringOptionEntity = _mapper.Map<ScoringOptionEntity>(scoringOption);
+            var scoringOptionEntity = scoringOption.ToEntity();
 
             _context.ScoringOptions.Add(scoringOptionEntity);
             await _context.SaveChangesAsync(ct);

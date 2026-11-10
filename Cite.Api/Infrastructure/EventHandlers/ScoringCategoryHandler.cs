@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -12,24 +11,22 @@ using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class ScoringCategoryHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly IScoringCategoryService _ScoringCategoryService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public ScoringCategoryHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringCategoryService ScoringCategoryService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _ScoringCategoryService = ScoringCategoryService;
             _mainHub = mainHub;
         }
@@ -51,7 +48,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
         {
             var groupIds = GetGroups(scoringCategoryEntity);
             var scoringModelEntity = await _db.ScoringModels.FindAsync(scoringCategoryEntity.ScoringModelId);
-            var scoringModel = _mapper.Map<ViewModels.ScoringModel>(scoringModelEntity);
+            var scoringModel = scoringModelEntity.ToScoringModel();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -67,9 +64,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringCategoryCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringCategoryService scoringCategoryService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringCategoryService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, scoringCategoryService, mainHub) { }
 
         public async Task Handle(EntityCreated<ScoringCategoryEntity> notification, CancellationToken cancellationToken)
         {
@@ -81,9 +77,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringCategoryUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringCategoryService scoringCategoryService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringCategoryService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, scoringCategoryService, mainHub) { }
 
         public async Task Handle(EntityUpdated<ScoringCategoryEntity> notification, CancellationToken cancellationToken)
         {
@@ -95,9 +90,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringCategoryDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringCategoryService scoringCategoryService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringCategoryService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, scoringCategoryService, mainHub)
         {
         }
 

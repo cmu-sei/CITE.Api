@@ -17,7 +17,6 @@ using Crucible.Common.EntityEvents.Extensions;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Identity;
 using Cite.Api.Infrastructure.JsonConverters;
-using Cite.Api.Infrastructure.Mapping;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Services;
 using System;
@@ -30,7 +29,6 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.JsonWebTokens;
-using AutoMapper.Internal;
 using Crucible.Common.ServiceDefaults;
 
 namespace Cite.Api;
@@ -209,12 +207,6 @@ public class Startup
 
         ApplyPolicies(services);
 
-        services.AddAutoMapper(cfg =>
-        {
-            cfg.Internal().ForAllPropertyMaps(
-                pm => pm.SourceType != null && Nullable.GetUnderlyingType(pm.SourceType) == pm.DestinationType,
-                (pm, c) => c.MapFrom<object, object, object, object>(new IgnoreNullSourceValues(), pm.SourceMember.Name));
-        }, typeof(Startup));
         services
             .Configure<ResourceOwnerAuthorizationOptions>(Configuration.GetSection("ResourceOwnerAuthorization"))
             .AddScoped(config => config.GetService<IOptionsMonitor<ResourceOwnerAuthorizationOptions>>().CurrentValue);

@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -35,18 +35,15 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public MoveService(
             CiteContext context,
             IAuthorizationService authorizationService,
-            IPrincipal user,
-            IMapper mapper)
+            IPrincipal user)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async Task<IEnumerable<ViewModels.Move>> GetByEvaluationAsync(Guid evaluationId, bool hasPermission, CancellationToken ct)
@@ -61,7 +58,7 @@ namespace Cite.Api.Services
             }
             var moveEntities = await moves.ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<Move>>(moveEntities).ToList();
+            return moveEntities.Select(x => x.ToMove()).ToList();
         }
 
         public async Task<ViewModels.Move> GetAsync(Guid id, bool hasPermission, CancellationToken ct)
@@ -77,7 +74,7 @@ namespace Cite.Api.Services
                 if (!await IsOnATeamAsync(item.EvaluationId, ct) || item.Move.MoveNumber > item.CurrentMoveNumber)
                     throw new ForbiddenException();
             }
-            return _mapper.Map<Move>(item.Move);
+            return item.Move.ToMove();
         }
 
         private Task<bool> IsOnATeamAsync(Guid evaluationId, CancellationToken ct)
@@ -90,7 +87,7 @@ namespace Cite.Api.Services
         {
             move.Id = move.Id != Guid.Empty ? move.Id : Guid.NewGuid();
             move.CreatedBy = _user.GetId();
-            var moveEntity = _mapper.Map<MoveEntity>(move);
+            var moveEntity = move.ToEntity();
             moveEntity.SituationTime = moveEntity.SituationTime.ToUniversalTime();
             _context.Moves.Add(moveEntity);
             await SaveMoveAsync(ct);

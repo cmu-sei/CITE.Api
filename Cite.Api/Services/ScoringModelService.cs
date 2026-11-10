@@ -12,7 +12,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -27,6 +26,7 @@ using Microsoft.CodeAnalysis.Elfie.Model.Map;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -49,7 +49,6 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ICiteAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly ILogger<IScoringModelService> _logger;
         private readonly IHubContext<MainHub> _mainHub;
 
@@ -57,14 +56,12 @@ namespace Cite.Api.Services
             CiteContext context,
             ICiteAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             ILogger<IScoringModelService> logger,
             IHubContext<MainHub> mainHub)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _logger = logger;
             _mainHub = mainHub;
         }
@@ -89,7 +86,7 @@ namespace Cite.Api.Services
                 (!hasDescription || sm.Description.Contains(description))
             ).ToListAsync();
 
-            return _mapper.Map<IEnumerable<ScoringModel>>(scoringModelList);
+            return scoringModelList.Select(x => x.ToScoringModel()).ToList();
         }
 
         public async Task<ViewModels.ScoringModel> GetAsync(Guid id, bool hasPermission, bool viewAsAdmin, CancellationToken ct)
@@ -111,7 +108,7 @@ namespace Cite.Api.Services
                 if (!hasPermission)
                     throw new ForbiddenException();
             }
-            var scoringModel = _mapper.Map<ScoringModel>(item);
+            var scoringModel = item.ToScoringModel();
             // only show scoring model calculations to those who can view as Admins;
             // redacted after mapping so IsScored still reflects the real equation
             if (!viewAsAdmin)
@@ -130,7 +127,7 @@ namespace Cite.Api.Services
         {
             // a new scoring model is a template: no evaluation
             var userId = _user.GetId();
-            var scoringModelEntity = _mapper.Map<ScoringModelEntity>(scoringModel);
+            var scoringModelEntity = scoringModel.ToEntity();
             scoringModelEntity.Id = scoringModel.Id != Guid.Empty ? scoringModel.Id : Guid.NewGuid();
             scoringModelEntity.CreatedBy = userId;
             // its categories and options are new rows of it: the server gives them their IDs and parents
@@ -184,7 +181,7 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<ScoringModelEntity>("ScoringModel not found with ID=" + scoringModelId.ToString());
 
             var newScoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionSuffix);
-            var scoringModel = _mapper.Map<ScoringModel>(newScoringModelEntity);
+            var scoringModel = newScoringModelEntity.ToScoringModel();
 
             return scoringModel;
         }
@@ -200,7 +197,7 @@ namespace Cite.Api.Services
             _logger.LogInformation($"Starting scoring model copy: {scoringModelEntity.Description} ({scoringModelEntity.Id}) -> {newScoringModelId}. Categories: {originalCategories.Count}, Options: {originalCategories.Sum(c => c.ScoringOptions?.Count ?? 0)}");
 
             // Build the entire scoring model graph in memory before saving
-            var newScoringModel = _mapper.Map<ScoringModelEntity, ScoringModelEntity>(scoringModelEntity);
+            var newScoringModel = scoringModelEntity.ToCopy();
             newScoringModel.Id = newScoringModelId;
             newScoringModel.CreatedBy = currentUserId;
             newScoringModel.Description = scoringModelEntity.Description + descriptionSuffix;
@@ -210,7 +207,7 @@ namespace Cite.Api.Services
 
             foreach (var originalCategory in originalCategories)
             {
-                var newCategory = _mapper.Map<ScoringCategoryEntity, ScoringCategoryEntity>(originalCategory);
+                var newCategory = originalCategory.ToCopy();
                 newCategory.Id = Guid.NewGuid();
                 newCategory.ScoringModelId = newScoringModelId;
                 newCategory.CreatedBy = currentUserId;
@@ -220,7 +217,7 @@ namespace Cite.Api.Services
                 {
                     foreach (var originalOption in originalCategory.ScoringOptions)
                     {
-                        var newOption = _mapper.Map<ScoringOptionEntity, ScoringOptionEntity>(originalOption);
+                        var newOption = originalOption.ToCopy();
                         newOption.Id = Guid.NewGuid();
                         newOption.ScoringCategoryId = newCategory.Id;
                         newOption.CreatedBy = currentUserId;
@@ -298,7 +295,7 @@ namespace Cite.Api.Services
             if (existingScoringModel != null &&
                 await _authorizationService.AuthorizeAsync<ScoringModel>(existingScoringModel.Id, [SystemPermission.ViewScoringModels], [ScoringModelPermission.ViewScoringModel], ct))
             {
-                return _mapper.Map<ScoringModel>(existingScoringModel);
+                return existingScoringModel.ToScoringModel();
             }
             // the file is read straight into the database model, so the API model's checks haven't run
             SeverityLevelRules.ThrowIfInvalid(scoringModelEntity.SeverityLevels);
@@ -306,7 +303,7 @@ namespace Cite.Api.Services
             var descriptionInUse = await _context.ScoringModels.AnyAsync(m => m.Description == scoringModelEntity.Description, ct);
             scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionInUse ? null : "");
 
-            return _mapper.Map<ScoringModel>(scoringModelEntity);
+            return scoringModelEntity.ToScoringModel();
         }
 
         public async Task<ViewModels.ScoringModel> UpdateAsync(Guid id, ViewModels.UpdateScoringModelRequest scoringModel, CancellationToken ct)
@@ -315,7 +312,7 @@ namespace Cite.Api.Services
             if (scoringModelToUpdate == null)
                 throw new EntityNotFoundException<ScoringModel>();
 
-            _mapper.Map(scoringModel, scoringModelToUpdate);
+            scoringModel.ApplyTo(scoringModelToUpdate);
             scoringModelToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 

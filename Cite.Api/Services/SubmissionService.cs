@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,6 +20,7 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -59,7 +59,6 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly ICiteAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly DatabaseOptions _options;
         private readonly ILogger<SubmissionService> _logger;
         private readonly IMoveService _moveService;
@@ -69,7 +68,6 @@ namespace Cite.Api.Services
             CiteContext context,
             ICiteAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             DatabaseOptions options,
             IMoveService moveService,
             IXApiService xApiService,
@@ -78,7 +76,6 @@ namespace Cite.Api.Services
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _options = options;
             _moveService = moveService;
             _xApiService = xApiService;
@@ -126,7 +123,7 @@ namespace Cite.Api.Services
                 (!hasScoringModelId || sm.ScoringModelId == scoringModelId) &&
                 (!hasTeamId || sm.TeamId == teamId));
 
-            return _mapper.Map<IEnumerable<Submission>>(await submissions.ToListAsync());
+            return (await submissions.ToListAsync()).Select(x => x.ToSubmission()).ToList();
         }
 
         public async Task<IEnumerable<ViewModels.Submission>> GetByEvaluationAsync(Guid evaluationId, CancellationToken ct)
@@ -140,7 +137,7 @@ namespace Cite.Api.Services
                 .Where(sm => sm.EvaluationId == evaluationId && sm.MoveNumber <= currentMoveNumber);
             var submissionEntityList = await submissionEntities
                 .ToListAsync();
-            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
+            var submissions = submissionEntityList.Select(x => x.ToSubmission()).ToList();
 
             return submissions;
         }
@@ -175,7 +172,7 @@ namespace Cite.Api.Services
                     (viewPastOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber < currentMoveNumber) ||
                     (viewCurrentOfficial && sm.UserId == null && sm.TeamId == null && sm.MoveNumber == currentMoveNumber)))
                 .ToListAsync(ct);
-            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntityList).ToList();
+            var submissions = submissionEntityList.Select(x => x.ToSubmission()).ToList();
             if (canViewTeam)
             {
                 var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
@@ -208,7 +205,7 @@ namespace Cite.Api.Services
                 .ThenInclude(sc => sc.SubmissionOptions)
                 .ThenInclude(so => so.SubmissionComments)
                 .ToListAsync(ct);
-            var submissions = _mapper.Map<IEnumerable<Submission>>(submissionEntities).ToList();
+            var submissions = submissionEntities.Select(x => x.ToSubmission()).ToList();
             // the type average also needs the team type's ShowTeamTypeAverage, which GetTeamAndTypeAveragesAsync checks
             var averageSubmissions = await GetTeamAndTypeAveragesAsync(evaluationId, team, currentMoveNumber, scoringModel.UseTeamAverageScore, scoringModel.UseTypeAverageScore, ct);
             if (averageSubmissions.Any())
@@ -349,7 +346,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<Submission>("Submission not found " + id.ToString());
 
-            return _mapper.Map<Submission>(item);
+            return item.ToSubmission();
         }
 
         public async Task<ViewModels.Submission> CreateAsync(ViewModels.Submission submission, CancellationToken ct)
@@ -451,7 +448,7 @@ namespace Cite.Api.Services
             {
                 verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/reset");
             }
-            await LogXApiAsync(verb, null, _mapper.Map<SubmissionOption>(submissionOptionToUpdate), ct);
+            await LogXApiAsync(verb, null, submissionOptionToUpdate.ToSubmissionOption(), ct);
 
             return await GetAsync(submissionEntity.Id, ct);
         }
@@ -462,7 +459,7 @@ namespace Cite.Api.Services
             if (submission.EvaluationId == Guid.Empty)
                 throw new ArgumentException("An Evaluation ID must be supplied to create a new submission");
             // actually create a new submission
-            var submissionEntity = _mapper.Map<SubmissionEntity>(submission);
+            var submissionEntity = submission.ToEntity();
             submissionEntity.Id = Guid.NewGuid();
             submissionEntity.CreatedBy = _user.GetId();
             submissionEntity.Status = Data.Enumerations.ItemStatus.Active;
@@ -508,7 +505,7 @@ namespace Cite.Api.Services
 
             // create and send xapi statement
             var verb = new Uri("https://w3id.org/xapi/dod-isd/verbs/evaluated"); // could be interacted
-            await LogXApiAsync(verb, _mapper.Map<Submission>(submissionEntity), null, ct);
+            await LogXApiAsync(verb, submissionEntity.ToSubmission(), null, ct);
 
             return submissionEntity;
         }
@@ -873,7 +870,7 @@ namespace Cite.Api.Services
 
             try
             {
-                var averageSubmission = _mapper.Map<Submission>(submissionEntities.First());
+                var averageSubmission = submissionEntities.First().ToSubmission();
                 averageSubmission.ScoreIsAnAverage = true;
                 // get all of the non-zero scores
                 var scores = submissionEntities.Where(s => s.Score != 0.0).Select(s => s.Score);
@@ -1002,7 +999,7 @@ namespace Cite.Api.Services
             return await LogXApiAsync(
                 verb,
                 null,
-                _mapper.Map<SubmissionOption>(submissionOption),
+                submissionOption.ToSubmissionOption(),
                 ct,
                 response);
         }
@@ -1025,11 +1022,11 @@ namespace Cite.Api.Services
                 if ((submission == null) && (submissionCategory != null))
                 {
                     // TODO make this async
-                    submission = _mapper.Map<Submission>(_context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First());
+                    submission = _context.Submissions.Where(s => s.Id == submissionCategory.SubmissionId).First().ToSubmission();
                 }
-                var move = _mapper.Map<Move>(await _context.Moves
+                var move = (await _context.Moves
                     .Where(m => m.EvaluationId == submission.EvaluationId && m.MoveNumber == submission.MoveNumber)
-                    .FirstOrDefaultAsync(ct));
+                    .FirstOrDefaultAsync(ct)).ToMove();
 
                 var teamId = (await _context.TeamMemberships
                     .SingleOrDefaultAsync(tu => tu.UserId == _user.GetId() && tu.Team.EvaluationId == submission.EvaluationId)).TeamId;

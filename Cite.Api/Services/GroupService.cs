@@ -8,12 +8,12 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using STT = System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Exceptions;
 using SAVM = Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -34,34 +34,31 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public GroupService(CiteContext context,
-                                IPrincipal user,
-                                IMapper mapper)
+                                IPrincipal user)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async STT.Task<IEnumerable<ViewModels.Group>> GetAsync(CancellationToken ct)
         {
             var items = await _context.Groups.ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.Group>>(items);
+            return items.Select(x => x.ToGroup()).ToList();
         }
 
         public async STT.Task<ViewModels.Group> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.Groups.SingleOrDefaultAsync(o => o.Id == id, ct);
 
-            return _mapper.Map<SAVM.Group>(item);
+            return item.ToGroup();
         }
 
         public async STT.Task<ViewModels.Group> CreateAsync(ViewModels.Group group, CancellationToken ct)
         {
-            var groupEntity = _mapper.Map<GroupEntity>(group);
+            var groupEntity = group.ToEntity();
             _context.Groups.Add(groupEntity);
             await _context.SaveChangesAsync(ct);
             group = await GetAsync(groupEntity.Id, ct);
@@ -75,9 +72,9 @@ namespace Cite.Api.Services
             if (groupToUpdate == null)
                 throw new EntityNotFoundException<SAVM.Group>();
 
-            _mapper.Map(group, groupToUpdate);
+            group.ApplyTo(groupToUpdate);
             await _context.SaveChangesAsync(ct);
-            var updatedGroup = _mapper.Map<SAVM.Group>(groupToUpdate);
+            var updatedGroup = groupToUpdate.ToGroup();
 
             return updatedGroup;
         }
@@ -96,19 +93,19 @@ namespace Cite.Api.Services
         {
             var items = await _context.GroupMemberships.Where(m => m.GroupId == groupId).ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.GroupMembership>>(items);
+            return items.Select(x => x.ToGroupMembership()).ToList();
         }
 
         public async STT.Task<ViewModels.GroupMembership> GetMembershipAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.GroupMemberships.SingleOrDefaultAsync(o => o.Id == id, ct);
 
-            return _mapper.Map<SAVM.GroupMembership>(item);
+            return item.ToGroupMembership();
         }
 
         public async STT.Task<ViewModels.GroupMembership> CreateMembershipAsync(ViewModels.GroupMembership groupMembership, CancellationToken ct)
         {
-            var groupMembershipEntity = _mapper.Map<GroupMembershipEntity>(groupMembership);
+            var groupMembershipEntity = groupMembership.ToEntity();
             _context.GroupMemberships.Add(groupMembershipEntity);
             await _context.SaveChangesAsync(ct);
             groupMembership = await GetMembershipAsync(groupMembershipEntity.Id, ct);
