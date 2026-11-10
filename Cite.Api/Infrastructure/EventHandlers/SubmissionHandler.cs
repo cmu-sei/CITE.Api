@@ -89,9 +89,19 @@ namespace Cite.Api.Infrastructure.EventHandlers
 
             var submission = fullEntity.ToSubmission();
             var tasks = new List<Task>();
+            // on an evaluation that hides names, the team's group is split: its members (and anyone else
+            // ObserverNamesService does not mask) get the names, everyone else watching the team gets none
+            var teamGroupId = submissionEntity.TeamId?.ToString();
+            var hidesNames = teamGroupId != null &&
+                await ObserverNamesService.EvaluationHidesNamesAsync(_db, submissionEntity.EvaluationId, cancellationToken);
 
             foreach (var signalrGroupId in signalrGroupIds)
             {
+                if (hidesNames && signalrGroupId == teamGroupId)
+                {
+                    tasks.Add(SendWithAndWithoutNames(teamGroupId, method, submission, modifiedProperties, cancellationToken));
+                    continue;
+                }
                 tasks.Add(_mainHub.Clients.Group(signalrGroupId).SendAsync(method, submission, modifiedProperties, cancellationToken));
             }
             // a user's submission also updates the team average the team sees
@@ -100,11 +110,32 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 var averageSubmission = await _submissionService.GetTeamAverageAsync(submissionEntity, cancellationToken);
                 if (averageSubmission != null)
                 {
-                    tasks.Add(_mainHub.Clients.Group(submissionEntity.TeamId.ToString()).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
+                    if (hidesNames)
+                    {
+                        tasks.Add(SendWithAndWithoutNames(teamGroupId, method, averageSubmission, modifiedProperties, cancellationToken));
+                    }
+                    else
+                    {
+                        tasks.Add(_mainHub.Clients.Group(teamGroupId).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
+                    }
                 }
             }
 
             await Task.WhenAll(tasks);
+        }
+
+        /// <summary>The submission with its names to the team's named group, and a copy without them to its unnamed group.</summary>
+        private Task SendWithAndWithoutNames(
+            string teamGroupId,
+            string method,
+            ViewModels.Submission submission,
+            string[] modifiedProperties,
+            CancellationToken cancellationToken)
+        {
+            var masked = ObserverNamesService.CopyWithoutNames(submission);
+            return Task.WhenAll(
+                _mainHub.Clients.Group(teamGroupId + MainHub.NAMES_SHOWN_POSTFIX).SendAsync(method, submission, modifiedProperties, cancellationToken),
+                _mainHub.Clients.Group(teamGroupId + MainHub.NAMES_HIDDEN_POSTFIX).SendAsync(method, masked, modifiedProperties, cancellationToken));
         }
     }
 

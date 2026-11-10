@@ -42,6 +42,10 @@ namespace Cite.Api.Hubs
         public const string ALL_MOVES_POSTFIX = "AllMoves";
         // moves up to the current one, for the team's viewers who cannot read every move; disjoint from ALL_MOVES_POSTFIX
         public const string CURRENT_MOVES_POSTFIX = "CurrentMoves";
+        // a team's submissions and actions with their names, for its members and anyone ObserverNamesService does not mask;
+        // the outsiders of the team join the names-hidden group instead, so the two are disjoint
+        public const string NAMES_SHOWN_POSTFIX = "NamesShown";
+        public const string NAMES_HIDDEN_POSTFIX = "NamesHidden";
 
         public MainHub(
             ITeamService teamService,
@@ -155,6 +159,8 @@ namespace Cite.Api.Hubs
             if (!checkAccess)
             {
                 idList.AddRange(teamGroups);
+                idList.Add(teamId.ToString() + NAMES_SHOWN_POSTFIX);
+                idList.Add(teamId.ToString() + NAMES_HIDDEN_POSTFIX);
                 idList.AddRange(officialGroups);
                 idList.Add(allMovesGroup);
                 idList.Add(currentMovesGroup);
@@ -174,6 +180,10 @@ namespace Cite.Api.Hubs
             if (isObserver || (isMember && await _authorizationService.AuthorizeAsync<Team>(teamId, [], [TeamPermission.ViewTeam], _ct)))
             {
                 idList.AddRange(teamGroups);
+                // the setting is read when a submission is broadcast, so turning it on or off needs no rejoin
+                var observerNames = new ObserverNamesService(context, _authorizationService, Context.User);
+                var outsider = await observerNames.IsOutsiderAsync(userId, evaluationId, teamId, _ct);
+                idList.Add(teamId.ToString() + (outsider ? NAMES_HIDDEN_POSTFIX : NAMES_SHOWN_POSTFIX));
                 // a viewer who reads every move gets moves through the all-moves group alone
                 if (!readsEveryMove)
                 {

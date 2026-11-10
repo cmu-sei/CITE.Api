@@ -25,11 +25,13 @@ namespace Cite.Api.Controllers
         private readonly ISubmissionService _submissionService;
         private readonly ICiteAuthorizationService _authorizationService;
         private readonly IIdentityResolver _identityResolver;
+        private readonly IObserverNamesService _observerNamesService;
 
-        public SubmissionController(ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
+        public SubmissionController(ISubmissionService submissionService, ICiteAuthorizationService authorizationService, IObserverNamesService observerNamesService)
         {
             _submissionService = submissionService;
             _authorizationService = authorizationService;
+            _observerNamesService = observerNamesService;
         }
 
         /// <summary>
@@ -113,6 +115,9 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var list = await _submissionService.GetByEvaluationTeamAsync(evaluationId, teamId, asObserver, ct);
+            if (await _observerNamesService.HidesNamesAsync(evaluationId, teamId, ct))
+                list = ObserverNamesService.WithoutNames(list);
+
             return Ok(list);
         }
 
@@ -134,11 +139,15 @@ namespace Cite.Api.Controllers
                 !await _submissionService.HasSpecificPermission<Submission>(id, SpecificPermission.View, ct))
                 throw new ForbiddenException();
 
+            var names = await _observerNamesService.GetSubmissionNamesAsync<Submission>(id, ct);
+            if (names == SubmissionNames.Withheld)
+                throw new ForbiddenException(ObserverNamesService.WithheldMessage);
+
             var submission = await _submissionService.GetAsync(id, ct);
             if (submission == null)
                 throw new EntityNotFoundException<Submission>();
 
-            return Ok(submission);
+            return Ok(names == SubmissionNames.Hidden ? ObserverNamesService.WithoutNames(submission) : submission);
         }
 
         /// <summary>
