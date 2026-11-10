@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,12 +23,14 @@ namespace Cite.Api.Controllers
         private readonly ISubmissionCommentService _submissionCommentService;
         private readonly ISubmissionService _submissionService;
         private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IObserverNamesService _observerNamesService;
 
-        public SubmissionCommentController(ISubmissionCommentService submissionCommentService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService)
+        public SubmissionCommentController(ISubmissionCommentService submissionCommentService, ISubmissionService submissionService, ICiteAuthorizationService authorizationService, IObserverNamesService observerNamesService)
         {
             _submissionCommentService = submissionCommentService;
             _submissionService = submissionService;
             _authorizationService = authorizationService;
+            _observerNamesService = observerNamesService;
         }
 
         /// <summary>
@@ -48,7 +51,14 @@ namespace Cite.Api.Controllers
                 !await _submissionService.HasSpecificPermission<SubmissionOption>(submissionOptionId, SpecificPermission.View, ct))
                 throw new ForbiddenException();
 
+            var names = await _observerNamesService.GetSubmissionNamesAsync<SubmissionOption>(submissionOptionId, ct);
+            if (names == SubmissionNames.Withheld)
+                throw new ForbiddenException(ObserverNamesService.WithheldMessage);
+
             var list = await _submissionCommentService.GetForSubmissionOptionAsync(submissionOptionId, ct);
+            if (names == SubmissionNames.Hidden)
+                list = list.Select(x => ObserverNamesService.WithoutNames(x)).ToList();
+
             return Ok(list);
         }
 
@@ -70,11 +80,15 @@ namespace Cite.Api.Controllers
                 !await _submissionService.HasSpecificPermission<SubmissionComment>(id, SpecificPermission.View, ct))
                 throw new ForbiddenException();
 
+            var names = await _observerNamesService.GetSubmissionNamesAsync<SubmissionComment>(id, ct);
+            if (names == SubmissionNames.Withheld)
+                throw new ForbiddenException(ObserverNamesService.WithheldMessage);
+
             var submissionComment = await _submissionCommentService.GetAsync(id, ct);
             if (submissionComment == null)
                 throw new EntityNotFoundException<SubmissionComment>();
 
-            return Ok(submissionComment);
+            return Ok(names == SubmissionNames.Hidden ? ObserverNamesService.WithoutNames(submissionComment) : submissionComment);
         }
 
         /// <summary>

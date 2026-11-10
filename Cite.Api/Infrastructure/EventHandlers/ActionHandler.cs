@@ -55,9 +55,20 @@ namespace Cite.Api.Infrastructure.EventHandlers
             var groupIds = this.GetGroups(actionEntity);
             var action = _mapper.Map<ViewModels.Action>(actionEntity);
             var tasks = new List<Task>();
+            // on an evaluation that hides names, the team's group is split as it is for submissions: its members
+            // (and anyone else ObserverNamesService does not mask) get who checked and edited the action
+            var teamGroupId = actionEntity.TeamId.ToString();
+            var hidesNames = await ObserverNamesService.EvaluationHidesNamesAsync(_db, actionEntity.EvaluationId, cancellationToken);
 
             foreach (var groupId in groupIds)
             {
+                if (hidesNames && groupId == teamGroupId)
+                {
+                    var masked = ObserverNamesService.WithoutNames(_mapper.Map<ViewModels.Action>(actionEntity));
+                    tasks.Add(_mainHub.Clients.Group(teamGroupId + MainHub.NAMES_SHOWN_POSTFIX).SendAsync(method, action, modifiedProperties, cancellationToken));
+                    tasks.Add(_mainHub.Clients.Group(teamGroupId + MainHub.NAMES_HIDDEN_POSTFIX).SendAsync(method, masked, modifiedProperties, cancellationToken));
+                    continue;
+                }
                 tasks.Add(_mainHub.Clients.Group(groupId).SendAsync(method, action, modifiedProperties, cancellationToken));
             }
 

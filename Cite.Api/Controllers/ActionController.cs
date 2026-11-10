@@ -21,11 +21,13 @@ namespace Cite.Api.Controllers
     {
         private readonly IActionService _actionService;
         private readonly ICiteAuthorizationService _authorizationService;
+        private readonly IObserverNamesService _observerNamesService;
 
-        public ActionController(IActionService actionService, ICiteAuthorizationService authorizationService)
+        public ActionController(IActionService actionService, ICiteAuthorizationService authorizationService, IObserverNamesService observerNamesService)
         {
             _actionService = actionService;
             _authorizationService = authorizationService;
+            _observerNamesService = observerNamesService;
         }
 
         /// <summary>
@@ -46,7 +48,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var list = await _actionService.GetByEvaluationAsync(evaluationId, ct);
-            return Ok(list);
+            return Ok(await _observerNamesService.WithoutNamesAsync(list, ct));
         }
 
         /// <summary>
@@ -69,7 +71,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var list = await _actionService.GetByEvaluationTeamAsync(evaluationId, teamId, ct);
-            return Ok(list);
+            return Ok(await _observerNamesService.WithoutNamesAsync(list, ct));
         }
 
         /// <summary>
@@ -90,7 +92,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var list = await _actionService.GetByEvaluationMoveAsync(evaluationId, moveNumber, ct);
-            return Ok(list);
+            return Ok(await _observerNamesService.WithoutNamesAsync(list, ct));
         }
 
         /// <summary>
@@ -112,7 +114,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var list = await _actionService.GetByEvaluationMoveTeamAsync(evaluationId, moveNumber, teamId, ct);
-            return Ok(list);
+            return Ok(await _observerNamesService.WithoutNamesAsync(list, ct));
         }
 
         /// <summary>
@@ -140,7 +142,7 @@ namespace Cite.Api.Controllers
             if (action == null)
                 throw new EntityNotFoundException<ViewModels.Action>();
 
-            return Ok(action);
+            return Ok(await _observerNamesService.WithoutNamesAsync(action, ct));
         }
 
         /// <summary>
@@ -188,7 +190,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var updatedAction = await _actionService.UpdateAsync(id, action, ct);
-            return Ok(updatedAction);
+            return Ok(await _observerNamesService.WithoutNamesAsync(updatedAction, ct));
         }
 
         /// <summary>
@@ -209,7 +211,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var updatedAction = await _actionService.SetIsCheckedAsync(id, true, ct);
-            return Ok(updatedAction);
+            return Ok(await _observerNamesService.WithoutNamesAsync(updatedAction, ct));
         }
 
         /// <summary>
@@ -230,7 +232,7 @@ namespace Cite.Api.Controllers
                 throw new ForbiddenException();
 
             var updatedAction = await _actionService.SetIsCheckedAsync(id, false, ct);
-            return Ok(updatedAction);
+            return Ok(await _observerNamesService.WithoutNamesAsync(updatedAction, ct));
         }
 
         /// <summary>

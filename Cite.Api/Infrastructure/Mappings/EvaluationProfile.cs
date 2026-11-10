@@ -12,11 +12,19 @@ namespace Cite.Api.Infrastructure.Mappings
         {
             CreateMap<EvaluationEntity, Evaluation>();
 
+            // a new evaluation shows names unless the caller asks to hide them
             CreateMap<Evaluation, EvaluationEntity>()
                 .ForMember(e => e.Teams, opt => opt.Ignore())
-                .ForMember(e => e.Moves, opt => opt.Ignore());
+                .ForMember(e => e.Moves, opt => opt.Ignore())
+                .ForMember(e => e.HideNamesFromObservers, opt => opt.MapFrom(src => src.HideNamesFromObservers ?? false));
 
-            CreateMap<UpdateEvaluationRequest, EvaluationEntity>();
+            // an update that leaves the setting out keeps it
+            CreateMap<UpdateEvaluationRequest, EvaluationEntity>()
+                .ForMember(e => e.HideNamesFromObservers, opt =>
+                {
+                    opt.PreCondition(src => src.HideNamesFromObservers.HasValue);
+                    opt.MapFrom(src => src.HideNamesFromObservers.Value);
+                });
 
             CreateMap<EvaluationEntity, EvaluationEntity>()
                 .ForMember(e => e.Id, opt => opt.Ignore())

@@ -192,6 +192,7 @@ public class Startup
         services.AddScoped<ISubmissionCategoryService, SubmissionCategoryService>();
         services.AddScoped<ISubmissionCommentService, SubmissionCommentService>();
         services.AddScoped<ISubmissionService, SubmissionService>();
+        services.AddScoped<IObserverNamesService, ObserverNamesService>();
         services.AddScoped<ISubmissionOptionService, SubmissionOptionService>();
         services.AddScoped<ISystemRoleService, SystemRoleService>();
         services.AddScoped<ITeamService, TeamService>();
