@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Crucible.Common.Authentication.Claims;
 using Crucible.Common.EntityEvents.Events;
+using Microsoft.Extensions.DependencyInjection;
 using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.EventHandlers;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -270,6 +271,52 @@ public class UserClaimsServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
         var claim = TeamPermissionClaim.FromString(Assert.Single(after.Claims, x => x.Type == AuthorizationConstants.TeamPermissionClaimType).Value);
         Assert.Equal(team.Id, claim.TeamId);
         Assert.Contains(TeamPermission.EditTeamScore, claim.Permissions);
+    }
+
+    /// <summary>
+    /// The production wiring end to end: a team membership saved through <c>CiteContext</c> publishes its entity
+    /// event through a real MediatR, <see cref="PermissionClaimsCacheHandler"/> evicts the user, and their next
+    /// request (same token, caching on) sees the new team.
+    /// </summary>
+    [Fact]
+    public async Task Saving_a_team_membership_through_the_context_evicts_the_cached_claims()
+    {
+        var user = TestData.User();
+        var scoringModel = TestData.ScoringModel();
+        var evaluation = TestData.Evaluation(scoringModel.Id);
+        var teamType = TestData.TeamType();
+        var team = TestData.Team(evaluation.Id, teamType.Id);
+        var teamRole = TestData.TeamRole(TeamPermission.ViewTeam);
+        await Seed(user, scoringModel, evaluation, teamType, team, teamRole);
+        var cache = new CountingCache();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IPermissionClaimsCache>(cache);
+        // only the cache handler: the SignalR and submission handlers need a host this test does not have
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssemblyContaining<PermissionClaimsCacheHandler>();
+            cfg.TypeEvaluator = type => type == typeof(PermissionClaimsCacheHandler);
+        });
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var first = NewContext())
+        {
+            var before = await new UserClaimsService(first, cache, IdPOptions()).AddUserClaims(Token(user.Id, "token-1"), true);
+            Assert.DoesNotContain(before.Claims, x => x.Type == AuthorizationConstants.TeamPermissionClaimType);
+        }
+
+        await using (var save = Session.CreateContext(provider))
+        {
+            save.TeamMemberships.Add(TestData.TeamMembership(team.Id, user.Id, teamRole.Id));
+            await save.SaveChangesAsync(Ct);
+        }
+
+        await using var context = NewContext();
+        var after = await new UserClaimsService(context, cache, IdPOptions()).AddUserClaims(Token(user.Id, "token-1"), true);
+
+        Assert.Equal(team.Id, TeamPermissionClaim.FromString(Assert.Single(after.Claims, x => x.Type == AuthorizationConstants.TeamPermissionClaimType).Value).TeamId);
+        Assert.Equal(2, cache.Loads);
     }
 
     /// <summary>
