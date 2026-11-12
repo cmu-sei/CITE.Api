@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -17,26 +16,24 @@ using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Services;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class BaseSubmissionHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly ISubmissionService _submissionService;
         protected readonly IHubContext<MainHub> _mainHub;
         private readonly DatabaseOptions _options;
 
         public BaseSubmissionHandler(
             CiteContext db,
-            IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
             DatabaseOptions options)
         {
             _db = db;
-            _mapper = mapper;
             _submissionService = submissionService;
             _mainHub = mainHub;
             _options = options;
@@ -90,11 +87,21 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 .ThenInclude(so => so.SubmissionComments)
                 .SingleAsync(sm => sm.Id == submissionEntity.Id);
 
-            var submission = _mapper.Map<ViewModels.Submission>(fullEntity);
+            var submission = fullEntity.ToSubmission();
             var tasks = new List<Task>();
+            // on an evaluation that hides names, the team's group is split: its members (and anyone else
+            // ObserverNamesService does not mask) get the names, everyone else watching the team gets none
+            var teamGroupId = submissionEntity.TeamId?.ToString();
+            var hidesNames = teamGroupId != null &&
+                await ObserverNamesService.EvaluationHidesNamesAsync(_db, submissionEntity.EvaluationId, cancellationToken);
 
             foreach (var signalrGroupId in signalrGroupIds)
             {
+                if (hidesNames && signalrGroupId == teamGroupId)
+                {
+                    tasks.Add(SendWithAndWithoutNames(teamGroupId, method, submission, modifiedProperties, cancellationToken));
+                    continue;
+                }
                 tasks.Add(_mainHub.Clients.Group(signalrGroupId).SendAsync(method, submission, modifiedProperties, cancellationToken));
             }
             // a user's submission also updates the team average the team sees
@@ -103,11 +110,32 @@ namespace Cite.Api.Infrastructure.EventHandlers
                 var averageSubmission = await _submissionService.GetTeamAverageAsync(submissionEntity, cancellationToken);
                 if (averageSubmission != null)
                 {
-                    tasks.Add(_mainHub.Clients.Group(submissionEntity.TeamId.ToString()).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
+                    if (hidesNames)
+                    {
+                        tasks.Add(SendWithAndWithoutNames(teamGroupId, method, averageSubmission, modifiedProperties, cancellationToken));
+                    }
+                    else
+                    {
+                        tasks.Add(_mainHub.Clients.Group(teamGroupId).SendAsync(method, averageSubmission, modifiedProperties, cancellationToken));
+                    }
                 }
             }
 
             await Task.WhenAll(tasks);
+        }
+
+        /// <summary>The submission with its names to the team's named group, and a copy without them to its unnamed group.</summary>
+        private Task SendWithAndWithoutNames(
+            string teamGroupId,
+            string method,
+            ViewModels.Submission submission,
+            string[] modifiedProperties,
+            CancellationToken cancellationToken)
+        {
+            var masked = ObserverNamesService.CopyWithoutNames(submission);
+            return Task.WhenAll(
+                _mainHub.Clients.Group(teamGroupId + MainHub.NAMES_SHOWN_POSTFIX).SendAsync(method, submission, modifiedProperties, cancellationToken),
+                _mainHub.Clients.Group(teamGroupId + MainHub.NAMES_HIDDEN_POSTFIX).SendAsync(method, masked, modifiedProperties, cancellationToken));
         }
     }
 
@@ -115,10 +143,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public SubmissionCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            DatabaseOptions options) : base(db, submissionService, mainHub, options)
             {
             }
 
@@ -132,10 +159,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public SubmissionUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            DatabaseOptions options) : base(db, submissionService, mainHub, options)
             {
             }
 
@@ -153,10 +179,9 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public SubmissionDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ISubmissionService submissionService,
             IHubContext<MainHub> mainHub,
-            DatabaseOptions options) : base(db, mapper, submissionService, mainHub, options)
+            DatabaseOptions options) : base(db, submissionService, mainHub, options)
         {
         }
 

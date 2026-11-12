@@ -6,7 +6,6 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -15,24 +14,22 @@ using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Extensions;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class MoveHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly IMoveService _moveService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public MoveHandler(
             CiteContext db,
-            IMapper mapper,
             IMoveService moveService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _moveService = moveService;
             _mainHub = mainHub;
         }
@@ -64,7 +61,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             var groupIds = isFuture
                 ? [moveEntity.EvaluationId.ToString() + MainHub.ALL_MOVES_POSTFIX, MainHub.ADMIN_DATA_GROUP]
                 : GetGroups(moveEntity);
-            var move = _mapper.Map<ViewModels.Move>(moveEntity);
+            var move = moveEntity.ToMove();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -87,9 +84,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public MoveCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IMoveService moveService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, moveService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, moveService, mainHub) { }
 
         public async Task Handle(EntityCreated<MoveEntity> notification, CancellationToken cancellationToken)
         {
@@ -101,9 +97,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public MoveUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IMoveService moveService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, moveService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, moveService, mainHub) { }
 
         public async Task Handle(EntityUpdated<MoveEntity> notification, CancellationToken cancellationToken)
         {
@@ -119,9 +114,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public MoveDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IMoveService moveService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, moveService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, moveService, mainHub)
         {
         }
 

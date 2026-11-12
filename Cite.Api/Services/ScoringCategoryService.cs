@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -36,18 +36,15 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public ScoringCategoryService(
             CiteContext context,
             IAuthorizationService authorizationService,
-            IPrincipal user,
-            IMapper mapper)
+            IPrincipal user)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async Task<IEnumerable<ViewModels.ScoringCategory>> GetAsync(ScoringCategoryGet queryParameters, CancellationToken ct)
@@ -63,7 +60,7 @@ namespace Cite.Api.Services
                 scoringCategories = _context.ScoringCategories;
             }
 
-            return _mapper.Map<IEnumerable<ScoringCategory>>(await scoringCategories.ToListAsync());
+            return (await scoringCategories.ToListAsync()).Select(x => x.ToScoringCategory()).ToList();
         }
 
         public async Task<IEnumerable<ViewModels.ScoringCategory>> GetForScoringModelAsync(Guid scoringModelId, bool includeCalculations, CancellationToken ct)
@@ -72,7 +69,7 @@ namespace Cite.Api.Services
                 sc.ScoringModelId == scoringModelId &&
                 (includeCalculations || (sc.ScoringModel.EvaluationId != null))
             ).ToListAsync();
-            var scoringCategories = _mapper.Map<List<ScoringCategory>>(scoringCategoryList);
+            var scoringCategories = scoringCategoryList.Select(x => x.ToScoringCategory()).ToList();
             // only show scoring model calculations to content developers and system admins;
             // redacted after mapping so IsScored still reflects the real equation
             if (!includeCalculations)
@@ -96,7 +93,7 @@ namespace Cite.Api.Services
                 throw new ForbiddenException();
 
             item.ScoringModel = null;
-            var scoringCategory = _mapper.Map<ScoringCategory>(item);
+            var scoringCategory = item.ToScoringCategory();
             // only show scoring model calculations to content developers and system admins;
             // redacted after mapping so IsScored still reflects the real equation
             if (!includeCalculations)
@@ -112,7 +109,7 @@ namespace Cite.Api.Services
         {
             scoringCategory.Id = scoringCategory.Id != Guid.Empty ? scoringCategory.Id : Guid.NewGuid();
             scoringCategory.CreatedBy = _user.GetId();
-            var scoringCategoryEntity = _mapper.Map<ScoringCategoryEntity>(scoringCategory);
+            var scoringCategoryEntity = scoringCategory.ToEntity();
             _context.ScoringCategories.Add(scoringCategoryEntity);
             await _context.SaveChangesAsync(ct);
             scoringCategory = await GetAsync(scoringCategoryEntity.Id, true, ct);

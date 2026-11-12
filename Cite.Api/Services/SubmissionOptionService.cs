@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.Infrastructure.QueryParameters;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -36,7 +36,6 @@ namespace Cite.Api.Services
         private readonly ISubmissionService _submissionService;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly DatabaseOptions _options;
 
         public SubmissionOptionService(
@@ -44,14 +43,12 @@ namespace Cite.Api.Services
             ISubmissionService submissionService,
             IAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             DatabaseOptions options)
         {
             _context = context;
             _submissionService = submissionService;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _options = options;
         }
 
@@ -59,7 +56,7 @@ namespace Cite.Api.Services
         {
             var submissionOptions = _context.SubmissionOptions.Where(sc => sc.SubmissionCategoryId == submissionCategoryId).Include(so => so.SubmissionComments);
 
-            return _mapper.Map<IEnumerable<SubmissionOption>>(await submissionOptions.ToListAsync());
+            return (await submissionOptions.ToListAsync()).Select(x => x.ToSubmissionOption()).ToList();
         }
 
         public async Task<SubmissionOption> GetAsync(Guid id, CancellationToken ct)
@@ -68,7 +65,7 @@ namespace Cite.Api.Services
                 .Include(so => so.SubmissionComments)
                 .SingleOrDefaultAsync(sc => sc.Id == id, ct);
 
-            return _mapper.Map<SubmissionOption>(item);
+            return item.ToSubmissionOption();
         }
 
         public async Task<SubmissionOption> CreateAsync(SubmissionOption submissionOption, CancellationToken ct)
@@ -76,7 +73,7 @@ namespace Cite.Api.Services
             await _context.EnsureScoringOptionOfSubmissionCategoryAsync(submissionOption.ScoringOptionId, submissionOption.SubmissionCategoryId, ct);
             submissionOption.Id = submissionOption.Id != Guid.Empty ? submissionOption.Id : Guid.NewGuid();
             submissionOption.CreatedBy = _user.GetId();
-            var submissionOptionEntity = _mapper.Map<SubmissionOptionEntity>(submissionOption);
+            var submissionOptionEntity = submissionOption.ToEntity();
 
             _context.SubmissionOptions.Add(submissionOptionEntity);
             await _context.SaveChangesAsync(ct);

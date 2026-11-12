@@ -1,13 +1,13 @@
 // Copyright 2022 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license, please see LICENSE.md in the project root for license information or contact permission@sei.cmu.edu for full terms.
 
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -15,6 +15,7 @@ using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -33,32 +34,29 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
         public TeamTypeService(
             CiteContext context,
             IAuthorizationService authorizationService,
-            IPrincipal user,
-            IMapper mapper)
+            IPrincipal user)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async Task<IEnumerable<TeamType>> GetAsync(CancellationToken ct)
         {
             var teamTypes = _context.TeamTypes;
 
-            return _mapper.Map<IEnumerable<TeamType>>(await teamTypes.ToListAsync());
+            return (await teamTypes.ToListAsync()).Select(x => x.ToTeamType()).ToList();
         }
 
         public async Task<TeamType> GetAsync(Guid id, CancellationToken ct)
         {
             var item = await _context.TeamTypes.SingleOrDefaultAsync(sm => sm.Id == id, ct);
 
-            return _mapper.Map<TeamType>(item);
+            return item.ToTeamType();
         }
 
         public async Task<TeamType> CreateAsync(TeamType teamType, CancellationToken ct)
@@ -70,7 +68,7 @@ namespace Cite.Api.Services
         {
             teamType.Id = teamType.Id != Guid.Empty ? teamType.Id : Guid.NewGuid();
             teamType.CreatedBy = _user.GetId();
-            var teamTypeEntity = _mapper.Map<TeamTypeEntity>(teamType);
+            var teamTypeEntity = teamType.ToEntity();
             _context.TeamTypes.Add(teamTypeEntity);
             await _context.SaveChangesAsync(ct);
             teamType = await GetAsync(teamTypeEntity.Id, ct);
@@ -85,7 +83,7 @@ namespace Cite.Api.Services
                 throw new EntityNotFoundException<TeamType>();
 
             teamType.ModifiedBy = _user.GetId();
-            _mapper.Map(teamType, teamTypeToUpdate);
+            teamType.ApplyTo(teamTypeToUpdate);
             _context.TeamTypes.Update(teamTypeToUpdate);
             await _context.SaveChangesAsync(ct);
             teamType = await GetAsync(teamTypeToUpdate.Id, ct);

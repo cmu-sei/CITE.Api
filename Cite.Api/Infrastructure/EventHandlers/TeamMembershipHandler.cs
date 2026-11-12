@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -20,18 +19,15 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class TeamMembershipHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly ITeamMembershipService _TeamMembershipService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public TeamMembershipHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamMembershipService TeamMembershipService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _TeamMembershipService = TeamMembershipService;
             _mainHub = mainHub;
         }
@@ -72,9 +68,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamMembershipCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamMembershipService teamMembershipService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamMembershipService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, teamMembershipService, mainHub) { }
 
         public async Task Handle(EntityCreated<TeamMembershipEntity> notification, CancellationToken cancellationToken)
         {
@@ -86,9 +81,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamMembershipUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamMembershipService teamMembershipService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamMembershipService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, teamMembershipService, mainHub) { }
 
         public async Task Handle(EntityUpdated<TeamMembershipEntity> notification, CancellationToken cancellationToken)
         {
@@ -104,9 +98,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamMembershipDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamMembershipService teamMembershipService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamMembershipService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, teamMembershipService, mainHub)
         {
         }
 

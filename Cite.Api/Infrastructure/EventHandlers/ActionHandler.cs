@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -14,24 +13,22 @@ using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Extensions;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class BaseActionHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly IActionService _actionService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public BaseActionHandler(
             CiteContext db,
-            IMapper mapper,
             IActionService actionService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _actionService = actionService;
             _mainHub = mainHub;
         }
@@ -53,11 +50,22 @@ namespace Cite.Api.Infrastructure.EventHandlers
             CancellationToken cancellationToken)
         {
             var groupIds = this.GetGroups(actionEntity);
-            var action = _mapper.Map<ViewModels.Action>(actionEntity);
+            var action = actionEntity.ToAction();
             var tasks = new List<Task>();
+            // on an evaluation that hides names, the team's group is split as it is for submissions: its members
+            // (and anyone else ObserverNamesService does not mask) get who checked and edited the action
+            var teamGroupId = actionEntity.TeamId.ToString();
+            var hidesNames = await ObserverNamesService.EvaluationHidesNamesAsync(_db, actionEntity.EvaluationId, cancellationToken);
 
             foreach (var groupId in groupIds)
             {
+                if (hidesNames && groupId == teamGroupId)
+                {
+                    var masked = ObserverNamesService.WithoutNames(actionEntity.ToAction());
+                    tasks.Add(_mainHub.Clients.Group(teamGroupId + MainHub.NAMES_SHOWN_POSTFIX).SendAsync(method, action, modifiedProperties, cancellationToken));
+                    tasks.Add(_mainHub.Clients.Group(teamGroupId + MainHub.NAMES_HIDDEN_POSTFIX).SendAsync(method, masked, modifiedProperties, cancellationToken));
+                    continue;
+                }
                 tasks.Add(_mainHub.Clients.Group(groupId).SendAsync(method, action, modifiedProperties, cancellationToken));
             }
 
@@ -69,9 +77,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ActionCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IActionService actionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, actionService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, actionService, mainHub) { }
 
         public async Task Handle(EntityCreated<ActionEntity> notification, CancellationToken cancellationToken)
         {
@@ -83,9 +90,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ActionUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IActionService actionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, actionService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, actionService, mainHub) { }
 
         public async Task Handle(EntityUpdated<ActionEntity> notification, CancellationToken cancellationToken)
         {
@@ -101,9 +107,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ActionDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IActionService actionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, actionService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, actionService, mainHub)
         {
         }
 

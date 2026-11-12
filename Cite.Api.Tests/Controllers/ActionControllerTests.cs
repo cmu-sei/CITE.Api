@@ -355,6 +355,19 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
         Assert.Equal("New Action", (await context.Actions.SingleAsync(x => x.Id == id, Ct)).Description);
     }
 
+    /// <summary>A create stores the checked flag it is sent, unlike an update.</summary>
+    [Fact]
+    public async Task Create_stores_an_action_sent_checked_as_checked()
+    {
+        var graph = await Seed();
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/actions", NewAction(id, graph) with { IsChecked = true }, Ct));
+
+        await using var context = NewContext();
+        Assert.True((await context.Actions.SingleAsync(x => x.Id == id, Ct)).IsChecked);
+    }
+
     [Fact]
     public async Task Create_answers_a_team_of_another_evaluation_with_conflict()
     {
@@ -473,8 +486,9 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
         var (graph, action) = await SeedWithAction();
         var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.EditTeamScore]).SeedAsync();
 
-        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsync($"api/actions/{action.Id}/check", null, Ct));
+        var read = await ReadAsync<Action>(await Client(actor).PutAsync($"api/actions/{action.Id}/check", null, Ct));
 
+        Assert.Equal((true, (Guid?)actor.Id), (read.IsChecked, read.ChangedBy));
         await using var context = NewContext();
         var stored = await context.Actions.SingleAsync(x => x.Id == action.Id, Ct);
         Assert.Equal((true, actor.Id), (stored.IsChecked, stored.ChangedBy.Value));
@@ -834,5 +848,5 @@ public class ActionControllerTests(DatabaseFixture fixture, CiteAppFactory facto
     private static ActionBody NewAction(Guid id, EvaluationGraph graph) =>
         new(id, graph.Evaluation.Id, graph.Team.Id, 0, 1, 1, "New Action");
 
-    private sealed record ActionBody(Guid Id, Guid EvaluationId, Guid TeamId, int MoveNumber, int InjectNumber, int ActionNumber, string Description);
+    private sealed record ActionBody(Guid Id, Guid EvaluationId, Guid TeamId, int MoveNumber, int InjectNumber, int ActionNumber, string Description, bool IsChecked = false);
 }

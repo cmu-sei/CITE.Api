@@ -3,31 +3,28 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data.Models;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class EvaluationMembershipCreatedSignalRHandler : INotificationHandler<EntityCreated<EvaluationMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public EvaluationMembershipCreatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityCreated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var evaluationMembership = _mapper.Map<ViewModels.EvaluationMembership>(notification.Entity);
+            var evaluationMembership = notification.Entity.ToEvaluationMembership();
             await _mainHub.Clients
                 .Groups(MainHub.EVALUATION_GROUP)
                 .SendAsync(MainHubMethods.EvaluationMembershipCreated, evaluationMembership);
@@ -55,19 +52,16 @@ namespace Cite.Api.Infrastructure.EventHandlers
     public class EvaluationMembershipUpdatedSignalRHandler : INotificationHandler<EntityUpdated<EvaluationMembershipEntity>>
     {
         private readonly IHubContext<MainHub> _mainHub;
-        private readonly IMapper _mapper;
 
         public EvaluationMembershipUpdatedSignalRHandler(
-            IHubContext<MainHub> mainHub,
-            IMapper mapper)
+            IHubContext<MainHub> mainHub)
         {
             _mainHub = mainHub;
-            _mapper = mapper;
         }
 
         public async Task Handle(EntityUpdated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken)
         {
-            var evaluationMembership = _mapper.Map<ViewModels.EvaluationMembership>(notification.Entity);
+            var evaluationMembership = notification.Entity.ToEvaluationMembership();
             await _mainHub.Clients
                 .Groups(MainHub.EVALUATION_GROUP)
                 .SendAsync(MainHubMethods.EvaluationMembershipUpdated, evaluationMembership);

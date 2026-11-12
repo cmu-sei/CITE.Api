@@ -202,6 +202,16 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal(actor.Id, stored.CreatedBy);
     }
 
+    /// <summary>A create stores every display and scoring flag it is sent, each set the opposite of its default.</summary>
+    [Fact]
+    public async Task Create_stores_every_flag_sent_with_the_scoring_model()
+    {
+        var created = await ReadAsync<ScoringModel>(await RootClient.PostAsJsonAsync("api/scoringModels", EveryFlagSet(Guid.Empty, "Flagged Model"), Ct));
+
+        await using var context = NewContext();
+        AssertEveryFlagSet(await context.ScoringModels.SingleAsync(x => x.Id == created.Id, Ct));
+    }
+
     [Fact]
     public async Task Create_stores_the_categories_and_options_sent_with_it()
     {
@@ -282,9 +292,10 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.NotEqual(graph.Option.Id, createdOption.Id);
     }
 
+    /// <summary>A backwards move range is refused only when the model shows its categories by move number.</summary>
     [Theory]
     [InlineData(999, 1, 3)]
-    [InlineData(1, 3, 1)]
+    [InlineData(0, 3, 1)]
     public async Task Create_rejects_a_category_with_an_undefined_selection_or_a_backwards_move_range(int selection, int first, int last)
     {
         var id = Guid.NewGuid();
@@ -294,12 +305,33 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
             id,
             description = "Refused Model",
             status = "Active",
+            displayScoringModelByMoveNumber = true,
             scoringCategories = new[] { new { description = "Category", scoringOptionSelection = selection, moveNumberFirstDisplay = first, moveNumberLastDisplay = last } },
         }, Ct);
 
         await AssertStatus(HttpStatusCode.BadRequest, response);
         await using var context = NewContext();
         Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    /// <summary>A model that shows every category in every move does not read their moves, so their order is not refused.</summary>
+    [Fact]
+    public async Task Create_stores_a_backwards_move_range_when_the_model_does_not_show_categories_by_move()
+    {
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Every Move Model",
+            status = "Active",
+            displayScoringModelByMoveNumber = false,
+            scoringCategories = new[] { new { description = "Category", scoringOptionSelection = "Single", moveNumberFirstDisplay = 3, moveNumberLastDisplay = 1 } },
+        }, Ct));
+
+        await using var context = NewContext();
+        var category = await context.ScoringCategories.SingleAsync(x => x.ScoringModelId == id, Ct);
+        Assert.Equal((3, 1), (category.MoveNumberFirstDisplay, category.MoveNumberLastDisplay));
     }
 
     [Fact]
@@ -399,6 +431,18 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal("Renamed", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).Description);
+    }
+
+    /// <summary>An update stores every display and scoring flag it is sent, each set the opposite of the stored one.</summary>
+    [Fact]
+    public async Task Update_stores_every_flag_sent_with_the_scoring_model()
+    {
+        var (model, _) = await SeedTemplate();
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}", EveryFlagSet(model.Id, "Template"), Ct));
+
+        await using var context = NewContext();
+        AssertEveryFlagSet(await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct));
     }
 
     /// <summary>The body attaches the template to another evaluation and rewrites that evaluation's category; neither is applied.</summary>
@@ -912,6 +956,29 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         => scoringModel["SeverityLevels"] is System.Text.Json.Nodes.JsonArray array
             ? array
             : scoringModel["SeverityLevels"]!["$values"]!.AsArray();
+
+    // a body with every flag true, the opposite of a new scoring model's and of SeedTemplate's
+    private static object EveryFlagSet(Guid id, string description) => new
+    {
+        id,
+        description,
+        status = "Active",
+        hideScoresOnScoreSheet = true,
+        displayCommentTextBoxes = true,
+        displayScoringModelByMoveNumber = true,
+        showPastSituationDescriptions = true,
+        useSubmit = true,
+        useUserScore = true,
+        useTeamScore = true,
+        useTeamAverageScore = true,
+        useTypeAverageScore = true,
+        useOfficialScore = true,
+    };
+
+    private static void AssertEveryFlagSet(ScoringModelEntity stored) =>
+        Assert.Equal((true, true, true, true, true, true, true, true, true, true),
+            (stored.HideScoresOnScoreSheet, stored.DisplayCommentTextBoxes, stored.DisplayScoringModelByMoveNumber, stored.ShowPastSituationDescriptions,
+             stored.UseSubmit, stored.UseUserScore, stored.UseTeamScore, stored.UseTeamAverageScore, stored.UseTypeAverageScore, stored.UseOfficialScore));
 
     private static List<SeverityLevelEntity> SeverityLevels() =>
     [

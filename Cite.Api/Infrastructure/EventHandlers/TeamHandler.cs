@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -14,24 +13,22 @@ using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
 using Cite.Api.Infrastructure.Extensions;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class TeamHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly ITeamService _TeamService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public TeamHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamService TeamService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _TeamService = TeamService;
             _mainHub = mainHub;
         }
@@ -56,7 +53,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             CancellationToken cancellationToken)
         {
             var groupIds = GetGroups(teamEntity);
-            var team = _mapper.Map<ViewModels.Team>(teamEntity);
+            var team = teamEntity.ToTeam();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -72,9 +69,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamService teamService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, teamService, mainHub) { }
 
         public async Task Handle(EntityCreated<TeamEntity> notification, CancellationToken cancellationToken)
         {
@@ -86,9 +82,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamService teamService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, teamService, mainHub) { }
 
         public async Task Handle(EntityUpdated<TeamEntity> notification, CancellationToken cancellationToken)
         {
@@ -104,9 +99,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public TeamDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             ITeamService teamService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, teamService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, teamService, mainHub)
         {
         }
 

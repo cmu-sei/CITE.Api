@@ -19,5 +19,10 @@ namespace Cite.Api.ViewModels
         public string SituationDescription { get; set; }
         public Guid? GalleryExhibitId { get; set; }
         public bool ShowAdvanceButton { get; set; }
+        /// <summary>
+        /// Sets the evaluation's HideNamesFromObservers. Left out or null, the setting stays as it is, so a client
+        /// that does not know about it does not turn it off.
+        /// </summary>
+        public bool? HideNamesFromObservers { get; set; }
     }
 }

@@ -26,10 +26,9 @@ namespace Cite.Api.ViewModels
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            // the move range is checked by CreateScoringModelRequest, which knows whether the model shows it
             if (!Enum.IsDefined(ScoringOptionSelection))
                 yield return new ValidationResult($"{ScoringOptionSelection} is not a scoring option selection.", [nameof(ScoringOptionSelection)]);
-            if (MoveNumberFirstDisplay > MoveNumberLastDisplay)
-                yield return new ValidationResult("The first move a category is shown in cannot be after the last.", [nameof(MoveNumberFirstDisplay)]);
         }
     }
 

@@ -7,7 +7,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using STT = System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
 using Cite.Api.Infrastructure.Exceptions;
@@ -15,6 +14,7 @@ using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
 using System.Linq;
 using Cite.Api.Data.Models;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -31,13 +31,11 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
 
-        public ScoringModelMembershipService(CiteContext context, IPrincipal user, IMapper mapper)
+        public ScoringModelMembershipService(CiteContext context, IPrincipal user)
         {
             _context = context;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
         }
 
         public async STT.Task<ViewModels.ScoringModelMembership> GetAsync(Guid id, CancellationToken ct)
@@ -48,7 +46,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<ScoringModelMembership>();
 
-            return _mapper.Map<SAVM.ScoringModelMembership>(item);
+            return item.ToScoringModelMembership();
         }
 
         public async STT.Task<IEnumerable<ViewModels.ScoringModelMembership>> GetByScoringModelAsync(Guid scoringModelId, CancellationToken ct)
@@ -57,12 +55,12 @@ namespace Cite.Api.Services
                 .Where(m => m.ScoringModelId == scoringModelId)
                 .ToListAsync(ct);
 
-            return _mapper.Map<IEnumerable<SAVM.ScoringModelMembership>>(items);
+            return items.Select(x => x.ToScoringModelMembership()).ToList();
         }
 
         public async STT.Task<ViewModels.ScoringModelMembership> CreateAsync(ViewModels.ScoringModelMembership scoringModelMembership, CancellationToken ct)
         {
-            var scoringModelMembershipEntity = _mapper.Map<ScoringModelMembershipEntity>(scoringModelMembership);
+            var scoringModelMembershipEntity = scoringModelMembership.ToEntity();
 
             _context.ScoringModelMemberships.Add(scoringModelMembershipEntity);
             await _context.SaveChangesAsync(ct);
@@ -80,7 +78,7 @@ namespace Cite.Api.Services
             scoringModelMembershipToUpdate.RoleId = scoringModelMembership.RoleId;
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<SAVM.ScoringModelMembership>(scoringModelMembershipToUpdate);
+            return scoringModelMembershipToUpdate.ToScoringModelMembership();
         }
         public async STT.Task DeleteAsync(Guid id, CancellationToken ct)
         {

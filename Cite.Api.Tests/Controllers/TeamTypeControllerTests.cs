@@ -92,6 +92,21 @@ public class TeamTypeControllerTests(DatabaseFixture fixture, CiteAppFactory fac
         Assert.Equal("After", (await context.TeamTypes.SingleAsync(x => x.Id == teamType.Id, Ct)).Name);
     }
 
+    /// <summary>An update stores both flags it is sent, each set the opposite of the stored one.</summary>
+    [Fact]
+    public async Task Update_stores_the_average_and_official_score_flags()
+    {
+        var teamType = TestData.TeamType("Before");
+        await Seed(teamType);
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/teamTypes/{teamType.Id}",
+            new { id = teamType.Id, name = "Before", showTeamTypeAverage = true, isOfficialScoreContributor = true }, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.TeamTypes.SingleAsync(x => x.Id == teamType.Id, Ct);
+        Assert.Equal((true, true), (stored.ShowTeamTypeAverage, stored.IsOfficialScoreContributor));
+    }
+
     [Fact]
     public async Task Update_is_forbidden_for_a_caller_holding_only_ViewTeamTypes()
     {

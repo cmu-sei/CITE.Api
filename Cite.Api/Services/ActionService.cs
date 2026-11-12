@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -18,6 +17,7 @@ using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
 using Cite.Api.ViewModels;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -40,7 +40,6 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
         private readonly DatabaseOptions _options;
         private readonly IXApiService _xApiService;
 
@@ -48,14 +47,12 @@ namespace Cite.Api.Services
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _options = options;
             _xApiService = xApiService;
         }
@@ -68,7 +65,7 @@ namespace Cite.Api.Services
                 .ThenBy(a => a.Team.ShortName)
                 .ThenBy(a => a.ActionNumber)
                 .ToListAsync(ct);
-            var actions = _mapper.Map<IEnumerable<ViewModels.Action>>(actionEntities).ToList();
+            var actions = actionEntities.Select(x => x.ToAction()).ToList();
 
             return actions;
         }
@@ -80,7 +77,7 @@ namespace Cite.Api.Services
                             a.TeamId == teamId)
                 .OrderBy(a => a.ActionNumber)
                 .ToListAsync(ct);
-            var actions = _mapper.Map<IEnumerable<ViewModels.Action>>(actionEntities).ToList();
+            var actions = actionEntities.Select(x => x.ToAction()).ToList();
 
             return actions;
         }
@@ -94,7 +91,7 @@ namespace Cite.Api.Services
                 .ThenBy(a => a.Team.Name)
                 .ThenBy(a => a.ActionNumber)
                 .ToListAsync(ct);
-            var actions = _mapper.Map<IEnumerable<ViewModels.Action>>(actionEntities).ToList();
+            var actions = actionEntities.Select(x => x.ToAction()).ToList();
 
             return actions;
         }
@@ -107,7 +104,7 @@ namespace Cite.Api.Services
                             a.TeamId == teamId)
                 .OrderBy(a => a.ActionNumber)
                 .ToListAsync(ct);
-            var actions = _mapper.Map<IEnumerable<ViewModels.Action>>(actionEntities).ToList();
+            var actions = actionEntities.Select(x => x.ToAction()).ToList();
 
             return actions;
         }
@@ -119,7 +116,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<ActionEntity>();
 
-            return _mapper.Map<ViewModels.Action>(item);
+            return item.ToAction();
         }
 
         public async Task<ViewModels.Action> CreateAsync(ViewModels.Action action, CancellationToken ct)
@@ -127,7 +124,7 @@ namespace Cite.Api.Services
             await _context.EnsureTeamInEvaluationAsync(action.TeamId, action.EvaluationId, ct);
             action.Id = action.Id != Guid.Empty ? action.Id : Guid.NewGuid();
             action.CreatedBy = _user.GetId();
-            var actionEntity = _mapper.Map<ActionEntity>(action);
+            var actionEntity = action.ToEntity();
             // the parents are named by id; a nested evaluation or team in the body is never stored
             actionEntity.Evaluation = null;
             actionEntity.Team = null;
@@ -136,7 +133,7 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
 
-            return _mapper.Map<ViewModels.Action>(actionEntity);
+            return actionEntity.ToAction();
         }
 
         public async Task<ViewModels.Action> UpdateAsync(Guid id, ViewModels.UpdateActionRequest action, CancellationToken ct)
@@ -152,7 +149,7 @@ namespace Cite.Api.Services
             actionToUpdate.ModifiedBy = _user.GetId();
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<ViewModels.Action>(actionToUpdate);
+            return actionToUpdate.ToAction();
         }
 
         public async Task<ViewModels.Action> SetIsCheckedAsync(Guid id, bool value, CancellationToken ct)
@@ -174,7 +171,7 @@ namespace Cite.Api.Services
 
             await LogXApiAsync(verb, actionToUpdate, ct);
 
-            return _mapper.Map<ViewModels.Action>(actionToUpdate);
+            return actionToUpdate.ToAction();
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)

@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Crucible.Common.EntityEvents.Events;
@@ -12,24 +11,22 @@ using Cite.Api.Data;
 using Cite.Api.Data.Models;
 using Cite.Api.Services;
 using Cite.Api.Hubs;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Infrastructure.EventHandlers
 {
     public class ScoringOptionHandler
     {
         protected readonly CiteContext _db;
-        protected readonly IMapper _mapper;
         protected readonly IScoringOptionService _ScoringOptionService;
         protected readonly IHubContext<MainHub> _mainHub;
 
         public ScoringOptionHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringOptionService ScoringOptionService,
             IHubContext<MainHub> mainHub)
         {
             _db = db;
-            _mapper = mapper;
             _ScoringOptionService = ScoringOptionService;
             _mainHub = mainHub;
         }
@@ -53,7 +50,7 @@ namespace Cite.Api.Infrastructure.EventHandlers
             var groupIds = await this.GetGroups(scoringOptionEntity, cancellationToken);
             var scoringCategoryEntity = await _db.ScoringCategories.FindAsync(scoringOptionEntity.ScoringCategoryId);
             var scoringModelEntity = await _db.ScoringModels.FindAsync(scoringCategoryEntity.ScoringModelId);
-            var scoringModel = _mapper.Map<ViewModels.ScoringModel>(scoringModelEntity);
+            var scoringModel = scoringModelEntity.ToScoringModel();
             var tasks = new List<Task>();
 
             foreach (var groupId in groupIds)
@@ -69,9 +66,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringOptionCreatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringOptionService scoringOptionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringOptionService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, scoringOptionService, mainHub) { }
 
         public async Task Handle(EntityCreated<ScoringOptionEntity> notification, CancellationToken cancellationToken)
         {
@@ -83,9 +79,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringOptionUpdatedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringOptionService scoringOptionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringOptionService, mainHub) { }
+            IHubContext<MainHub> mainHub) : base(db, scoringOptionService, mainHub) { }
 
         public async Task Handle(EntityUpdated<ScoringOptionEntity> notification, CancellationToken cancellationToken)
         {
@@ -97,9 +92,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         public ScoringOptionDeletedSignalRHandler(
             CiteContext db,
-            IMapper mapper,
             IScoringOptionService scoringOptionService,
-            IHubContext<MainHub> mainHub) : base(db, mapper, scoringOptionService, mainHub)
+            IHubContext<MainHub> mainHub) : base(db, scoringOptionService, mainHub)
         {
         }
 

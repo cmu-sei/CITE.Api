@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
@@ -16,6 +15,7 @@ using Cite.Api.Data.Models;
 using Cite.Api.Infrastructure.Exceptions;
 using Cite.Api.Infrastructure.Extensions;
 using Cite.Api.Infrastructure.Options;
+using Cite.Api.Infrastructure.Mappings;
 
 namespace Cite.Api.Services
 {
@@ -38,7 +38,6 @@ namespace Cite.Api.Services
         private readonly CiteContext _context;
         private readonly IAuthorizationService _authorizationService;
         private readonly ClaimsPrincipal _user;
-        private readonly IMapper _mapper;
          private readonly DatabaseOptions _options;
         private readonly IXApiService _xApiService;
 
@@ -46,14 +45,12 @@ namespace Cite.Api.Services
             CiteContext context,
             IAuthorizationService authorizationService,
             IPrincipal user,
-            IMapper mapper,
             IXApiService xApiService,
             DatabaseOptions options)
         {
             _context = context;
             _authorizationService = authorizationService;
             _user = user as ClaimsPrincipal;
-            _mapper = mapper;
             _options = options;
             _xApiService = xApiService;
         }
@@ -67,7 +64,7 @@ namespace Cite.Api.Services
                 .OrderBy(r => r.Team.Name)
                 .ThenBy(r => r.Name)
                 .ToListAsync(ct);
-            var duties = _mapper.Map<IEnumerable<ViewModels.Duty>>(dutyEntities).ToList();
+            var duties = dutyEntities.Select(x => x.ToDuty()).ToList();
 
             return duties;
         }
@@ -81,7 +78,7 @@ namespace Cite.Api.Services
                 .ThenInclude(ru => ru.User)
                 .OrderBy(r => r.Name)
                 .ToListAsync(ct);
-            var duties = _mapper.Map<IEnumerable<ViewModels.Duty>>(dutyEntities).ToList();
+            var duties = dutyEntities.Select(x => x.ToDuty()).ToList();
 
             return duties;
         }
@@ -93,7 +90,7 @@ namespace Cite.Api.Services
             if (item == null)
                 throw new EntityNotFoundException<DutyEntity>();
 
-            return _mapper.Map<ViewModels.Duty>(item);
+            return item.ToDuty();
         }
 
         public async Task<ViewModels.Duty> CreateAsync(ViewModels.Duty duty, CancellationToken ct)
@@ -101,14 +98,14 @@ namespace Cite.Api.Services
             await _context.EnsureTeamInEvaluationAsync(duty.TeamId, duty.EvaluationId, ct);
             duty.Id = duty.Id != Guid.Empty ? duty.Id : Guid.NewGuid();
             duty.CreatedBy = _user.GetId();
-            var dutyEntity = _mapper.Map<DutyEntity>(duty);
+            var dutyEntity = duty.ToEntity();
             // the parents are named by id; a nested evaluation or team in the body is never stored
             dutyEntity.Evaluation = null;
             dutyEntity.Team = null;
             _context.Duties.Add(dutyEntity);
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<ViewModels.Duty>(dutyEntity);
+            return dutyEntity.ToDuty();
         }
 
         public async Task<ViewModels.Duty> UpdateAsync(Guid id, ViewModels.UpdateDutyRequest duty, CancellationToken ct)
@@ -125,7 +122,7 @@ namespace Cite.Api.Services
             _context.Duties.Update(dutyToUpdate);
             await _context.SaveChangesAsync(ct);
 
-            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
+            return dutyToUpdate.ToDuty();
         }
 
         public async Task<ViewModels.Duty> AddUserAsync(Guid dutyId, Guid userId, CancellationToken ct)
@@ -154,7 +151,7 @@ namespace Cite.Api.Services
             // object could be the user being added
             await LogXApiAsync(verb, dutyToUpdate, userToAdd, ct);
 
-            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
+            return dutyToUpdate.ToDuty();
         }
 
         public async Task<ViewModels.Duty> RemoveUserAsync(Guid dutyId, Guid userId, CancellationToken ct)
@@ -180,7 +177,7 @@ namespace Cite.Api.Services
             // object could be the user being removed
             await LogXApiAsync(verb, dutyToUpdate, userToRemove, ct);
 
-            return _mapper.Map<ViewModels.Duty>(dutyToUpdate);
+            return dutyToUpdate.ToDuty();
         }
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
