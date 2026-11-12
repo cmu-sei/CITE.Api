@@ -40,6 +40,8 @@ Resource permissions apply to a single evaluation, scoring model or team and are
 
 Roles can also be taken from the identity provider's token (`ClaimsTransformation` settings in `appsettings.json`).
 
+A user's permissions are read from the database on their first request and cached (`ClaimsTransformation:EnableCaching`) for `ClaimsTransformation:CacheExpirationSeconds`, per user and per set of roles, groups and name in the token, so a renewed token or another browser tab reuses them. Concurrent requests that miss share one read. Changing a membership, role, group or user's system role drops the affected cached permissions at once on the instance that saved it; with several API instances, the others pick the change up when their entry expires.
+
 # Testing
 
 The tests are in the `Cite.Api.Tests` project. Docker must be running, because the suite starts its own PostgreSQL container through Testcontainers. From the repository root, run:
