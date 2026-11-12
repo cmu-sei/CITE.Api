@@ -151,6 +151,31 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal((past, current), (ids.Contains(pastOfficial.Submission.Id), ids.Contains(currentOfficial.Submission.Id)));
     }
 
+    /// <summary>The seeded roles themselves, not minted permissions: Official Scorer reads the past and current official submissions, Owner only the past one.</summary>
+    [Theory]
+    [MemberData(nameof(SeededRoleOfficialReads))]
+    public async Task GetMineByEvaluation_lists_the_official_submissions_the_seeded_role_reads(Guid roleId, bool past, bool current)
+    {
+        var graph = await Seed();
+        graph.ScoringModel.UseOfficialScore = true;
+        await Db.SaveChangesAsync(Ct);
+        var pastOfficial = await SeedSubmission(graph);
+        await SeedMoveAndAdvance(graph, 1);
+        var currentOfficial = await SeedSubmission(graph, moveNumber: 1);
+        var actor = await Actor().OnTeam(graph.Team.Id, roleId: roleId).SeedAsync();
+
+        var submissions = await ReadAsync<List<Submission>>(await Client(actor).GetAsync($"api/evaluations/{graph.Evaluation.Id}/my-submissions", Ct));
+
+        var ids = submissions.Select(x => x.Id).ToList();
+        Assert.Equal((past, current), (ids.Contains(pastOfficial.Submission.Id), ids.Contains(currentOfficial.Submission.Id)));
+    }
+
+    public static TheoryData<Guid, bool, bool> SeededRoleOfficialReads => new()
+    {
+        { TestData.TeamRoles.OfficialScorer, true, true },
+        { TestData.TeamRoles.Owner, true, false },
+    };
+
     [Fact]
     public async Task GetMineByEvaluation_answers_a_caller_on_none_of_its_teams_with_an_empty_list()
     {
@@ -934,6 +959,35 @@ public class SubmissionControllerTests(DatabaseFixture fixture, CiteAppFactory f
         await AssertStatus(HttpStatusCode.OK, response);
         await using var context = NewContext();
         Assert.Equal(ItemStatus.Complete, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
+    }
+
+    /// <summary>A default install can complete the official submission: the seeded Official Scorer role submits it.</summary>
+    [Fact]
+    public async Task Update_completes_the_official_submission_for_a_member_holding_the_seeded_official_scorer_role()
+    {
+        var graph = await Seed();
+        var official = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, roleId: TestData.TeamRoles.OfficialScorer).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/submissions/{official.Submission.Id}", Body(official, graph) with { Status = "Complete" }, Ct);
+
+        await AssertStatus(HttpStatusCode.OK, response);
+        await using var context = NewContext();
+        Assert.Equal(ItemStatus.Complete, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
+    }
+
+    /// <summary>The seeded Owner role runs its own team, not the evaluation's official score.</summary>
+    [Fact]
+    public async Task Update_is_forbidden_on_the_official_submission_for_a_member_holding_the_seeded_owner_role()
+    {
+        var graph = await Seed();
+        var official = await SeedSubmission(graph);
+        var actor = await Actor().OnTeam(graph.Team.Id, roleId: TestData.TeamRoles.Owner).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.Forbidden, await Client(actor).PutAsJsonAsync($"api/submissions/{official.Submission.Id}", Body(official, graph) with { Status = "Complete" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(ItemStatus.Active, (await context.Submissions.SingleAsync(x => x.Id == official.Submission.Id, Ct)).Status);
     }
 
     /// <summary>SubmitTeamScore, which submits the team's own submission, does not submit the official one.</summary>

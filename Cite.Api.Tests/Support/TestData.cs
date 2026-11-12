@@ -42,6 +42,7 @@ public static class TestData
     {
         public static readonly Guid Owner = TeamRoleDefaults.TeamOwnerRoleId;
         public static readonly Guid Member = TeamRoleDefaults.TeamMemberRoleId;
+        public static readonly Guid OfficialScorer = TeamRoleDefaults.TeamOfficialScorerRoleId;
     }
 
     /// <summary>A fixed creation timestamp. Tests that care about ordering pass their own.</summary>

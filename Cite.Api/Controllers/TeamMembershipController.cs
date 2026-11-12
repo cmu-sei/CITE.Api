@@ -21,6 +21,11 @@ public class TeamMembershipsController : BaseController
     private readonly ICiteAuthorizationService _authorizationService;
     private readonly ITeamMembershipService _teamMembershipService;
 
+    // The official score is the evaluation's ground truth, so ManageTeam alone cannot give a member a role that
+    // reads or scores the current move's official score, or change or remove a membership holding one.
+    private const string OfficialScoreRoleMessage =
+        "Only an evaluation manager can give, change or remove a team role with current official score permissions.";
+
     public TeamMembershipsController(ICiteAuthorizationService authorizationService, ITeamMembershipService teamMembershipService)
     {
         _authorizationService = authorizationService;
@@ -73,9 +78,13 @@ public class TeamMembershipsController : BaseController
     [SwaggerOperation(OperationId = "CreateTeamMembership")]
     public async Task<IActionResult> CreateMembership([FromRoute] Guid teamId, TeamMembership teamMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
-            !await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
-            throw new ForbiddenException();
+        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        {
+            if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+            if (await _teamMembershipService.RoleGrantsCurrentOfficialScoreAsync(teamMembership.RoleId, ct))
+                throw new ForbiddenException(OfficialScoreRoleMessage);
+        }
 
         var result = await _teamMembershipService.CreateAsync(teamMembership, ct);
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
@@ -95,9 +104,15 @@ public class TeamMembershipsController : BaseController
     [SwaggerOperation(OperationId = "updateTeamMembership")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] TeamMembership teamMembership, CancellationToken ct)
     {
-        if (!await _authorizationService.AuthorizeAsync<TeamMembership>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
-            !await _authorizationService.AuthorizeAsync<TeamMembership>(id, [], [TeamPermission.ManageTeam], ct))
-            throw new ForbiddenException();
+        if (!await _authorizationService.AuthorizeAsync<TeamMembership>(id, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        {
+            if (!await _authorizationService.AuthorizeAsync<TeamMembership>(id, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+            var current = await _teamMembershipService.GetAsync(id, ct);
+            if (await _teamMembershipService.RoleGrantsCurrentOfficialScoreAsync(current.RoleId, ct) ||
+                await _teamMembershipService.RoleGrantsCurrentOfficialScoreAsync(teamMembership.RoleId, ct))
+                throw new ForbiddenException(OfficialScoreRoleMessage);
+        }
 
         var updatedTeamMembership = await _teamMembershipService.UpdateAsync(id, teamMembership, ct);
         return Ok(updatedTeamMembership);
@@ -113,9 +128,13 @@ public class TeamMembershipsController : BaseController
     public async Task<IActionResult> DeleteMembership([FromRoute] Guid id, CancellationToken ct)
     {
         var teamMembership = await _teamMembershipService.GetAsync(id, ct);
-        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct) &&
-            !await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
-            throw new ForbiddenException();
+        if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [SystemPermission.ManageEvaluations], [EvaluationPermission.ManageEvaluation], ct))
+        {
+            if (!await _authorizationService.AuthorizeAsync<Team>(teamMembership.TeamId, [], [TeamPermission.ManageTeam], ct))
+                throw new ForbiddenException();
+            if (await _teamMembershipService.RoleGrantsCurrentOfficialScoreAsync(teamMembership.RoleId, ct))
+                throw new ForbiddenException(OfficialScoreRoleMessage);
+        }
 
         await _teamMembershipService.DeleteAsync(id, ct);
         return NoContent();
