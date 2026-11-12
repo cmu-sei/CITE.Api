@@ -4,7 +4,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Caching.Memory;
+using Crucible.Common.Authentication.Claims;
 using Microsoft.Extensions.DependencyInjection;
 using Cite.Api.Data;
 using Cite.Api.Data.Enumerations;
@@ -379,7 +379,7 @@ public class MainHubTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
         services.AddSingleton<IHttpContextAccessor>(new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = harness.User } });
         services.AddScoped<IIdentityResolver, IdentityResolver>();
         services.AddScoped<ICiteAuthorizationService, AuthorizationService>();
-        services.AddSingleton<IMemoryCache>(new MemoryCache(new MemoryCacheOptions()));
+        services.AddPermissionClaimsCache();
         services.AddSingleton(new ClaimsTransformationOptions());
         if (claimsFromDatabase)
         {

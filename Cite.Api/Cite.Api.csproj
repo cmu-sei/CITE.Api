@@ -40,6 +40,7 @@
     <PackageReference Include="IdentityServer4.AccessTokenValidation" Version="3.0.1" />
     <PackageReference Include="TinCanStandard" Version="1.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Crucible.Common.Authentication" Version="0.0.14" />
     <PackageReference Include="Crucible.Common.ServiceDefaults" Version="0.0.3"/>
   </ItemGroup>
   <!-- Security pins. Referenced only to raise a package that otherwise arrives through another

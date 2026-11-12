@@ -5,7 +5,7 @@
 // identity provider's roles and groups off, as TestConfiguration has them.
 
 using System.Security.Claims;
-using Microsoft.Extensions.Caching.Memory;
+using Crucible.Common.Authentication.Claims;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
 using Cite.Api.Infrastructure.Options;
@@ -220,8 +220,7 @@ public class TestActorTests(DatabaseFixture fixture) : DatabaseTestBase(fixture)
     private async Task<ClaimsPrincipal> ClaimsOf(TestActor actor)
     {
         await using var context = NewContext();
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        var service = new UserClaimsService(context, cache, new ClaimsTransformationOptions());
+        var service = new UserClaimsService(context, new PermissionClaimsCache(), new ClaimsTransformationOptions());
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", actor.Id.ToString())], "Test"));
 
         return await service.AddUserClaims(principal, update: false);

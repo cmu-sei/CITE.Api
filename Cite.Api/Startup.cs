@@ -30,6 +30,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Crucible.Common.ServiceDefaults;
+using Crucible.Common.Authentication.Claims;
 
 namespace Cite.Api;
 
@@ -107,6 +108,9 @@ public class Startup
 
         services.AddScoped<IClaimsTransformation, AuthorizationClaimsTransformer>();
         services.AddScoped<IUserClaimsService, UserClaimsService>();
+        // one cache for the process; its expiry is read once at startup, unlike the options above
+        services.AddPermissionClaimsCache(options => options.Expiration = TimeSpan.FromSeconds(
+            Configuration.GetSection("ClaimsTransformation").Get<ClaimsTransformationOptions>()?.CacheExpirationSeconds ?? 0));
 
         services.AddCors(options => options.UseConfiguredCors(Configuration.GetSection("CorsPolicy")));
 
