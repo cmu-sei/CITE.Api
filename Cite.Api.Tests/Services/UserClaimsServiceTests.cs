@@ -4,7 +4,9 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Crucible.Common.Authentication.Claims;
+using Crucible.Common.EntityEvents.Events;
 using Cite.Api.Data.Models;
+using Cite.Api.Infrastructure.EventHandlers;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Authorization;
@@ -235,6 +237,39 @@ public class UserClaimsServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
         }
 
         Assert.Equal(1, cache.Loads);
+    }
+
+    /// <summary>
+    /// A membership saved after the claims were cached reaches the user's next request, through the entity event
+    /// <see cref="PermissionClaimsCacheHandler"/> handles, without waiting for the entry to expire.
+    /// </summary>
+    [Fact]
+    public async Task A_new_team_membership_takes_effect_on_the_next_request()
+    {
+        var user = TestData.User();
+        var scoringModel = TestData.ScoringModel();
+        var evaluation = TestData.Evaluation(scoringModel.Id);
+        var teamType = TestData.TeamType();
+        var team = TestData.Team(evaluation.Id, teamType.Id);
+        var teamRole = TestData.TeamRole(TeamPermission.EditTeamScore);
+        await Seed(user, scoringModel, evaluation, teamType, team, teamRole);
+        var cache = new CountingCache();
+        await using (var first = NewContext())
+        {
+            var before = await new UserClaimsService(first, cache, IdPOptions()).AddUserClaims(Token(user.Id, "token-1"), true);
+            Assert.DoesNotContain(before.Claims, x => x.Type == AuthorizationConstants.TeamPermissionClaimType);
+        }
+
+        var membership = TestData.TeamMembership(team.Id, user.Id, teamRole.Id);
+        await Seed(membership);
+        await new PermissionClaimsCacheHandler(cache).Handle(new EntityCreated<TeamMembershipEntity>(membership), Ct);
+
+        await using var context = NewContext();
+        var after = await new UserClaimsService(context, cache, IdPOptions()).AddUserClaims(Token(user.Id, "token-1"), true);
+
+        var claim = TeamPermissionClaim.FromString(Assert.Single(after.Claims, x => x.Type == AuthorizationConstants.TeamPermissionClaimType).Value);
+        Assert.Equal(team.Id, claim.TeamId);
+        Assert.Contains(TeamPermission.EditTeamScore, claim.Permissions);
     }
 
     /// <summary>
