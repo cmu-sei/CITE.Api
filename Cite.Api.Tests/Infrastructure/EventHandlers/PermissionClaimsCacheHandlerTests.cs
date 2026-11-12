@@ -33,12 +33,18 @@ public class PermissionClaimsCacheHandlerTests
         Assert.False(_cache.InvalidatedAll);
     }
 
+    /// <summary>
+    /// Users are saved with <c>Update()</c>, which marks every property modified, so a rename cannot be told from a
+    /// role change; any update evicts.
+    /// </summary>
     [Fact]
-    public async Task Renaming_a_user_leaves_the_cache_alone()
+    public async Task Any_update_to_a_user_evicts_that_user()
     {
-        await Handler.Handle(new EntityUpdated<UserEntity>(TestData.User(), [nameof(UserEntity.Name)]), Ct);
+        var user = TestData.User();
 
-        Assert.Empty(_cache.Invalidated);
+        await Handler.Handle(new EntityUpdated<UserEntity>(user, [nameof(UserEntity.Name)]), Ct);
+
+        Assert.Equal([user.Id], _cache.Invalidated);
         Assert.False(_cache.InvalidatedAll);
     }
 

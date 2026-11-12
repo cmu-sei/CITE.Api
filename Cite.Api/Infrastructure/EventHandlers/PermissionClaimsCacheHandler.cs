@@ -50,16 +50,10 @@ namespace Cite.Api.Infrastructure.EventHandlers
     {
         // ---- users: the system role, and a deleted user's row (recreated on their next load)
 
-        public Task Handle(EntityUpdated<UserEntity> notification, CancellationToken cancellationToken)
-        {
-            // a rename is written by the load itself, and nothing else on the row feeds the claims
-            if (notification.ModifiedProperties.Contains(nameof(UserEntity.RoleId)))
-            {
-                cache.Invalidate(notification.Entity.Id);
-            }
-
-            return Task.CompletedTask;
-        }
+        // every update evicts: services save users with Update(), which marks every property modified, so the
+        // modified properties cannot tell a system role change from a rename
+        public Task Handle(EntityUpdated<UserEntity> notification, CancellationToken cancellationToken) =>
+            Invalidate(notification.Entity.Id);
 
         public Task Handle(EntityDeleted<UserEntity> notification, CancellationToken cancellationToken) =>
             Invalidate(notification.Entity.Id);
