@@ -7,7 +7,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Crucible.Common.Authentication.Claims;
 using Cite.Api.Data;
 using Cite.Api.Data.Enumerations;
 using Cite.Api.Data.Models;
@@ -34,59 +34,62 @@ namespace Cite.Api.Services
     {
         private readonly CiteContext _context;
         private readonly ClaimsTransformationOptions _options;
-        private IMemoryCache _cache;
+        private readonly IPermissionClaimsCache _cache;
         private ClaimsPrincipal _currentClaimsPrincipal;
 
-        public UserClaimsService(CiteContext context, IMemoryCache cache, ClaimsTransformationOptions options)
+        public UserClaimsService(CiteContext context, IPermissionClaimsCache cache, ClaimsTransformationOptions options)
         {
             _context = context;
             _options = options;
             _cache = cache;
         }
 
+        /// <summary>
+        /// Adds the user's permission claims from the database to the principal. They are cached per user and per
+        /// fingerprint of what the load reads from the token: the realm roles and groups (each only while it is used
+        /// from the identity provider) and the name. A new token with the same roles, groups and name, as every silent
+        /// renew and every other tab has, reuses the entry; the token id plays no part.
+        /// </summary>
+        /// <remarks>
+        /// The user row is created or renamed inside the cached load, so it costs nothing on a hit. That is enough
+        /// because a user with no row is never cached (the next request loads again and creates it), and the name is
+        /// in the fingerprint, so a token carrying a new name misses and writes it.
+        /// </remarks>
         public async Task<ClaimsPrincipal> AddUserClaims(ClaimsPrincipal principal, bool update)
         {
-            List<Claim> claims;
             var identity = (ClaimsIdentity)principal.Identity;
             var userId = principal.GetId();
+            var name = principal.FindFirst("name")?.Value;
 
-            // Don't use cached claims if given a new token and we are using roles or groups from the token
-            if (_cache.TryGetValue(userId, out claims) && (_options.UseGroupsFromIdP || _options.UseRolesFromIdP))
-            {
-                var cachedTokenId = claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
-                var newTokenId = identity.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            var tokenRoleNames = _options.UseRolesFromIdP ?
+                this.GetClaimsFromToken(principal, _options.RolesClaimPath).Select(x => x.ToLower()).ToArray() :
+                [];
 
-                if (newTokenId != cachedTokenId)
-                {
-                    claims = null;
-                }
-            }
+            var tokenGroupNames = _options.UseGroupsFromIdP ?
+                this.GetClaimsFromToken(principal, _options.GroupsClaimPath).Select(x => x.ToLower()).ToArray() :
+                [];
 
-            if (claims == null)
-            {
-                claims = [];
-                var user = await ValidateUser(userId, principal.FindFirst("name")?.Value, update);
+            Task<PermissionClaimsLoadResult> load() => LoadClaims(userId, name, update, tokenRoleNames, tokenGroupNames);
 
-                if (user != null)
-                {
-                    var jtiClaim = identity.Claims.Where(x => x.Type == JwtRegisteredClaimNames.Jti).FirstOrDefault();
-
-                    if (jtiClaim is not null)
-                    {
-                        claims.Add(new Claim(jtiClaim.Type, jtiClaim.Value));
-                    }
-
-                    claims.AddRange(await GetPermissionClaims(userId, principal));
-
-                    if (_options.EnableCaching)
-                    {
-                        _cache.Set(userId, claims, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(_options.CacheExpirationSeconds)));
-                    }
-                }
-            }
+            var claims = _options.EnableCaching ?
+                await _cache.GetOrLoadAsync(userId, PermissionClaimsFingerprint.Create(ignoreCase: false, tokenRoleNames, tokenGroupNames, [name ?? string.Empty]), load) :
+                (await load()).Claims;
 
             addNewClaims(identity, claims);
             return principal;
+        }
+
+        private async Task<PermissionClaimsLoadResult> LoadClaims(Guid userId, string name, bool update, string[] tokenRoleNames, string[] tokenGroupNames)
+        {
+            var user = await ValidateUser(userId, name, update);
+
+            // no row (and update off): nothing to grant, and nothing to keep, so the next request with update creates it
+            if (user == null)
+            {
+                return new PermissionClaimsLoadResult([], Cacheable: false);
+            }
+
+            return new PermissionClaimsLoadResult((await GetPermissionClaims(userId, tokenRoleNames, tokenGroupNames)).ToList());
         }
 
         public async Task<ClaimsPrincipal> GetClaimsPrincipal(Guid userId, bool setAsCurrent)
@@ -107,7 +110,7 @@ namespace Cite.Api.Services
 
         public async Task<ClaimsPrincipal> RefreshClaims(Guid userId)
         {
-            _cache.Remove(userId);
+            _cache.Invalidate(userId);
             return await GetClaimsPrincipal(userId, false);
         }
 
@@ -118,7 +121,7 @@ namespace Cite.Api.Services
         /// </summary>
         public async Task<ClaimsPrincipal> RefreshClaims(ClaimsPrincipal principal)
         {
-            _cache.Remove(principal.GetId());
+            _cache.Invalidate(principal.GetId());
             var identity = (ClaimsIdentity)principal.Identity;
             var tokenClaims = identity.Claims.Where(x => !PermissionClaimTypes.Contains(x.Type));
             var refreshed = new ClaimsPrincipal(new ClaimsIdentity(tokenClaims, identity.AuthenticationType, identity.NameClaimType, identity.RoleClaimType));
@@ -149,8 +152,6 @@ namespace Cite.Api.Services
             var user = await _context.Users
                 .Where(u => u.Id == subClaim)
                 .SingleOrDefaultAsync();
-
-            var anyUsers = await _context.Users.AnyAsync();
 
             if (update)
             {
@@ -184,13 +185,12 @@ namespace Cite.Api.Services
             return user;
         }
 
-        private async Task<IEnumerable<Claim>> GetPermissionClaims(Guid userId, ClaimsPrincipal principal)
+        /// <param name="userId">The user whose memberships and system role are read.</param>
+        /// <param name="tokenRoleNames">The token's realm roles, lower case; empty unless roles come from the identity provider.</param>
+        /// <param name="tokenGroupNames">The token's groups, lower case; empty unless groups come from the identity provider.</param>
+        private async Task<IEnumerable<Claim>> GetPermissionClaims(Guid userId, string[] tokenRoleNames, string[] tokenGroupNames)
         {
             List<Claim> claims = new();
-
-            var tokenRoleNames = _options.UseRolesFromIdP ?
-                this.GetClaimsFromToken(principal, _options.RolesClaimPath).Select(x => x.ToLower()) :
-                [];
 
             var roles = await _context.SystemRoles
                 .Where(x => tokenRoleNames.Contains(x.Name.ToLower()))
@@ -232,12 +232,8 @@ namespace Cite.Api.Services
                 }
             }
 
-            var groupNames = _options.UseGroupsFromIdP ?
-                this.GetClaimsFromToken(principal, _options.GroupsClaimPath).Select(x => x.ToLower()) :
-                [];
-
             var groupIds = await _context.Groups
-                .Where(x => x.Memberships.Any(y => y.UserId == userId) || groupNames.Contains(x.Name.ToLower()))
+                .Where(x => x.Memberships.Any(y => y.UserId == userId) || tokenGroupNames.Contains(x.Name.ToLower()))
                 .Select(x => x.Id)
                 .ToListAsync();
 
@@ -399,16 +395,16 @@ namespace Cite.Api.Services
             return values.ToArray();
         }
 
-        private void addNewClaims(ClaimsIdentity identity, List<Claim> claims)
+        private void addNewClaims(ClaimsIdentity identity, IReadOnlyList<Claim> claims)
         {
             var newClaims = new List<Claim>();
-            claims.ForEach(delegate (Claim claim)
+            foreach (var claim in claims)
             {
                 if (!identity.Claims.Any(identityClaim => identityClaim.Type == claim.Type))
                 {
                     newClaims.Add(claim);
                 }
-            });
+            }
             identity.AddClaims(newClaims);
         }
     }
