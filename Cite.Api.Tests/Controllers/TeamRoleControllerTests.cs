@@ -20,13 +20,13 @@ public class TeamRoleControllerTests(DatabaseFixture fixture, CiteAppFactory fac
 
     /// <summary>No permission is checked: a caller holding no permission at all reads every team role.</summary>
     [Fact]
-    public async Task GetAll_lists_the_four_seeded_roles_for_any_authenticated_caller()
+    public async Task GetAll_lists_the_five_seeded_roles_for_any_authenticated_caller()
     {
         var actor = await Actor().SeedAsync();
 
         var roles = await ReadAsync<List<TeamRole>>(await Client(actor).GetAsync("api/team-roles", Ct));
 
-        Assert.Equal(["Contributor", "Member", "Owner", "Submitter"], roles.Select(x => x.Name).Order());
+        Assert.Equal(["Contributor", "Member", "Official Scorer", "Owner", "Submitter"], roles.Select(x => x.Name).Order());
     }
 
     /// <summary>No permission is checked: a caller holding no permission at all reads a team role.</summary>
@@ -42,12 +42,37 @@ public class TeamRoleControllerTests(DatabaseFixture fixture, CiteAppFactory fac
 
     /// <summary>Every seeded role reads past moves' official scores, so the scoresheet keeps showing them.</summary>
     [Fact]
-    public async Task GetAll_grants_ViewPastOfficialScore_and_no_current_official_score_permission_on_every_seeded_role()
+    public async Task GetAll_grants_ViewPastOfficialScore_on_every_seeded_role()
     {
         var roles = await ReadAsync<List<TeamRole>>(await RootClient.GetAsync("api/team-roles", Ct));
 
         Assert.All(roles, x => Assert.Contains(TeamPermission.ViewPastOfficialScore, x.Permissions));
-        Assert.All(roles, x => Assert.DoesNotContain(TeamPermission.ViewCurrentOfficialScore, x.Permissions));
+    }
+
+    /// <summary>The current official score is the evaluation's ground truth, so no participant role reads or scores it.</summary>
+    [Fact]
+    public async Task GetAll_grants_no_current_official_score_permission_on_the_participant_roles()
+    {
+        var roles = await ReadAsync<List<TeamRole>>(await RootClient.GetAsync("api/team-roles", Ct));
+
+        var participantRoles = roles.Where(x => x.Id != TestData.TeamRoles.OfficialScorer).ToList();
+        Assert.Equal(4, participantRoles.Count);
+        Assert.All(participantRoles, x => Assert.DoesNotContain(TeamPermission.ViewCurrentOfficialScore, x.Permissions));
+        Assert.All(participantRoles, x => Assert.DoesNotContain(TeamPermission.EditOfficialScore, x.Permissions));
+    }
+
+    /// <summary>The seeded Official Scorer role is the one that can read and score every official submission a team can reach.</summary>
+    [Fact]
+    public async Task Get_returns_the_official_scorer_role_with_every_official_score_permission()
+    {
+        var actor = await Actor().SeedAsync();
+
+        var role = await ReadAsync<TeamRole>(await Client(actor).GetAsync($"api/team-roles/{TestData.TeamRoles.OfficialScorer}", Ct));
+
+        Assert.Equal("Official Scorer", role.Name);
+        Assert.Equal(
+            new[] { TeamPermission.ViewTeam, TeamPermission.ViewPastOfficialScore, TeamPermission.ViewCurrentOfficialScore, TeamPermission.EditOfficialScore }.Order(),
+            role.Permissions.Order());
     }
 
     [Fact]

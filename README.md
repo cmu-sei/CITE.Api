@@ -38,6 +38,8 @@ Resource permissions apply to a single evaluation, scoring model or team and are
     * Scoring model: ViewScoringModel, EditScoringModel, ManageScoringModel
     * Team: ViewTeam, EditTeamScore, SubmitTeamScore, ManageTeam, ViewPastOfficialScore, ViewCurrentOfficialScore, EditOfficialScore
 
+The default Team Roles are Owner, Submitter, Contributor and Member, which run a team's own scoresheet and read past moves' official scores, and Official Scorer, which reads and scores the official score of the current move. Official score permissions on any of a user's teams in an evaluation apply to that evaluation's official score, so a facilitator is usually given the Official Scorer role on a team of their own (for example a white cell team). ManageTeam lets a team's Owner manage its memberships, but only an evaluation manager can give, change or remove a role that reads or scores the current move's official score.
+
 Roles can also be taken from the identity provider's token (`ClaimsTransformation` settings in `appsettings.json`).
 
 A user's permissions are read from the database on their first request and cached (`ClaimsTransformation:EnableCaching`) for `ClaimsTransformation:CacheExpirationSeconds`, per user and per set of roles, groups and name in the token, so a renewed token or another browser tab reuses them. Concurrent requests that miss share one read. Changing a membership, role, group or user's system role drops the affected cached permissions at once on the instance that saved it; with several API instances, the others pick the change up when their entry expires.

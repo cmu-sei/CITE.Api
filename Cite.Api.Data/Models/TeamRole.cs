@@ -27,6 +27,7 @@ public static class TeamRoleDefaults
     public static Guid TeamSubmitterRoleId = new("1cfce79f-f344-4cb1-b33a-55de8dc1ccb3");
     public static Guid TeamContributorRoleId = new("c442cf49-e26e-45c5-be7c-00e710d2e055");
     public static Guid TeamMemberRoleId = new("b52ef031-65ee-4597-b768-b73480e6de67");
+    public static Guid TeamOfficialScorerRoleId = new("1a88f86f-8e34-4bc2-b5b3-7777f70059f1");
 }
 
 public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
@@ -79,6 +80,20 @@ public class TeamRoleConfiguration : IEntityTypeConfiguration<TeamRoleEntity>
                     TeamPermission.ViewPastOfficialScore
                 ],
                 Description = "Has read only access to the Team"
+            },
+            // the official score is the evaluation's ground truth, so its permissions sit on their own role
+            // rather than on a participant role such as Owner
+            new TeamRoleEntity
+            {
+                Id = TeamRoleDefaults.TeamOfficialScorerRoleId,
+                Name = "Official Scorer",
+                Permissions = [
+                    TeamPermission.ViewTeam,
+                    TeamPermission.ViewPastOfficialScore,
+                    TeamPermission.ViewCurrentOfficialScore,
+                    TeamPermission.EditOfficialScore
+                ],
+                Description = "Can view the Team and score and submit the Official score for the Evaluation"
             }
         );
     }

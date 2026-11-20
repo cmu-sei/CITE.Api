@@ -15,7 +15,8 @@ namespace Cite.Api.Tests.Controllers;
 
 /// <summary>
 /// <c>TeamMembershipsController</c>: memberships are read with ViewTeam (or view or observe on the team's
-/// evaluation) and managed with ManageTeam (or ManageEvaluation on the team's evaluation).
+/// evaluation) and managed with ManageTeam (or ManageEvaluation on the team's evaluation). A membership whose
+/// role reads or scores the current move's official score is given, changed or removed only with ManageEvaluation.
 /// </summary>
 public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFactory factory) : ApiTestBase(fixture, factory)
 {
@@ -583,6 +584,127 @@ public class TeamMembershipControllerTests(DatabaseFixture fixture, CiteAppFacto
 
         await using var context = NewContext();
         Assert.True(await context.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct));
+    }
+
+    private const string OfficialScoreRoleMessage =
+        "Only an evaluation manager can give, change or remove a team role with current official score permissions.";
+
+    /// <summary>
+    /// Official Scorer reads and scores the evaluation's official score, so ManageTeam alone, which every team's
+    /// Owner holds, cannot hand it out.
+    /// </summary>
+    [Fact]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_only_ManageTeam_to_grant_the_Official_Scorer_role()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships",
+            new { teamId = graph.Team.Id, userId = user.Id, roleId = TestData.TeamRoles.OfficialScorer }, Ct);
+
+        Assert.Equal(OfficialScoreRoleMessage, (await AssertApiError(HttpStatusCode.Forbidden, response)).Title);
+        Assert.False(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.UserId == user.Id, Ct)));
+    }
+
+    /// <summary>The check follows the role's permissions, so a role an administrator gave them is refused too.</summary>
+    [Theory]
+    [InlineData(TeamPermission.ViewCurrentOfficialScore)]
+    [InlineData(TeamPermission.EditOfficialScore)]
+    public async Task CreateMembership_is_forbidden_for_a_caller_holding_only_ManageTeam_to_grant_a_role_with_a_current_official_score_permission(TeamPermission permission)
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        var role = TestData.TeamRole(TeamPermission.ViewTeam, permission);
+        await Seed(user, role);
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships",
+            new { teamId = graph.Team.Id, userId = user.Id, roleId = role.Id }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        Assert.False(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.UserId == user.Id, Ct)));
+    }
+
+    [Fact]
+    public async Task CreateMembership_grants_the_Official_Scorer_role_for_a_caller_holding_ManageEvaluation_on_the_teams_evaluation()
+    {
+        var graph = await Seed();
+        var user = TestData.User();
+        await Seed(user);
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        var response = await Client(actor).PostAsJsonAsync($"api/teams/{graph.Team.Id}/memberships",
+            new { teamId = graph.Team.Id, userId = user.Id, roleId = TestData.TeamRoles.OfficialScorer }, Ct);
+
+        await AssertStatus(HttpStatusCode.Created, response);
+        Assert.Equal(TestData.TeamRoles.OfficialScorer, await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == user.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    /// <summary>A team's Owner cannot make themselves the official scorer.</summary>
+    [Fact]
+    public async Task Update_is_forbidden_for_a_team_Owner_to_give_their_own_membership_the_Official_Scorer_role()
+    {
+        var graph = await Seed();
+        var owner = await Actor().OnTeam(graph.Team.Id, roleId: TestData.TeamRoles.Owner).SeedAsync();
+        var membershipId = await ReadBack(db => db.TeamMemberships.Where(x => x.UserId == owner.Id).Select(x => x.Id).SingleAsync(Ct));
+
+        var response = await Client(owner).PutAsJsonAsync($"api/teams/memberships/{membershipId}",
+            new { id = membershipId, teamId = graph.Team.Id, userId = owner.Id, roleId = TestData.TeamRoles.OfficialScorer }, Ct);
+
+        Assert.Equal(OfficialScoreRoleMessage, (await AssertApiError(HttpStatusCode.Forbidden, response)).Title);
+        Assert.Equal(TestData.TeamRoles.Owner, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membershipId).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task Update_is_forbidden_for_a_caller_holding_only_ManageTeam_to_take_the_Official_Scorer_role_away()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.OfficialScorer), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        var response = await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = TestData.TeamRoles.Member }, Ct);
+
+        await AssertApiError(HttpStatusCode.Forbidden, response);
+        Assert.Equal(TestData.TeamRoles.OfficialScorer, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task Update_grants_the_Official_Scorer_role_for_a_caller_holding_ManageEvaluation_on_the_teams_evaluation()
+    {
+        var (graph, membership) = await SeedWithMember();
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.OK, await Client(actor).PutAsJsonAsync($"api/teams/memberships/{membership.Id}",
+            new { id = membership.Id, teamId = graph.Team.Id, userId = membership.UserId, roleId = TestData.TeamRoles.OfficialScorer }, Ct));
+
+        Assert.Equal(TestData.TeamRoles.OfficialScorer, await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).Select(x => x.RoleId).SingleAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_is_forbidden_for_a_caller_holding_only_ManageTeam_to_remove_an_Official_Scorer()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.OfficialScorer), Ct));
+        var actor = await Actor().OnTeam(graph.Team.Id, permissions: [TeamPermission.ManageTeam]).SeedAsync();
+
+        await AssertApiError(HttpStatusCode.Forbidden, await Client(actor).DeleteAsync($"api/teams/memberships/{membership.Id}", Ct));
+
+        Assert.True(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct)));
+    }
+
+    [Fact]
+    public async Task DeleteMembership_removes_an_Official_Scorer_for_a_caller_holding_ManageEvaluation_on_the_teams_evaluation()
+    {
+        var (graph, membership) = await SeedWithMember();
+        await ReadBack(db => db.TeamMemberships.Where(x => x.Id == membership.Id).ExecuteUpdateAsync(x => x.SetProperty(m => m.RoleId, TestData.TeamRoles.OfficialScorer), Ct));
+        var actor = await Actor().OnEvaluation(graph.Evaluation.Id, permissions: [EvaluationPermission.ManageEvaluation]).SeedAsync();
+
+        await AssertStatus(HttpStatusCode.NoContent, await Client(actor).DeleteAsync($"api/teams/memberships/{membership.Id}", Ct));
+
+        Assert.False(await ReadBack(db => db.TeamMemberships.AnyAsync(x => x.Id == membership.Id, Ct)));
     }
 
     private Task<EvaluationGraph> Seed() => TestScenario.SeedEvaluationAsync(Db, Ct);

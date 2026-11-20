@@ -9,6 +9,7 @@ using System.Threading;
 using STT = System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Cite.Api.Data;
+using Cite.Api.Data.Enumerations;
 using Cite.Api.Infrastructure.Exceptions;
 using SAVM = Cite.Api.ViewModels;
 using Cite.Api.ViewModels;
@@ -25,6 +26,7 @@ namespace Cite.Api.Services
         STT.Task<TeamMembership> CreateAsync(TeamMembership teamMembership, CancellationToken ct);
         STT.Task<TeamMembership> UpdateAsync(Guid id, TeamMembership teamMembership, CancellationToken ct);
         STT.Task DeleteAsync(Guid id, CancellationToken ct);
+        STT.Task<bool> RoleGrantsCurrentOfficialScoreAsync(Guid roleId, CancellationToken ct);
     }
 
     public class TeamMembershipService : ITeamMembershipService
@@ -92,6 +94,24 @@ namespace Cite.Api.Services
             await _context.SaveChangesAsync(ct);
 
             return;
+        }
+
+        /// <summary>
+        /// Whether the team role reads or scores the current move's official score. An empty role id is the
+        /// Member role, which the membership is given when no role is named.
+        /// </summary>
+        public async STT.Task<bool> RoleGrantsCurrentOfficialScoreAsync(Guid roleId, CancellationToken ct)
+        {
+            if (roleId == Guid.Empty)
+                roleId = TeamRoleDefaults.TeamMemberRoleId;
+
+            var permissions = await _context.TeamRoles
+                .Where(r => r.Id == roleId)
+                .Select(r => r.Permissions)
+                .SingleOrDefaultAsync(ct);
+
+            return permissions != null &&
+                (permissions.Contains(TeamPermission.ViewCurrentOfficialScore) || permissions.Contains(TeamPermission.EditOfficialScore));
         }
 
     }
