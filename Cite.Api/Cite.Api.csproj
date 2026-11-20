@@ -18,7 +18,7 @@
   <ItemGroup>
     <!-- A source generator: the mappings are generated at build time, so nothing ships at runtime. -->
     <PackageReference Include="Riok.Mapperly" Version="4.3.1" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
