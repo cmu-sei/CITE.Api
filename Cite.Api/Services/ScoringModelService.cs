@@ -203,6 +203,14 @@ namespace Cite.Api.Services
             newScoringModel.Description = scoringModelEntity.Description + descriptionSuffix;
             // a copy is a template; a caller that needs it on an evaluation attaches it afterwards
             newScoringModel.EvaluationId = null;
+            // the copy is written straight to the database, and its source, a stored model or an uploaded file,
+            // may hold an embedded URL the API models would refuse: the copy is made without it
+            if (!EmbeddedUrlRules.IsValid(newScoringModel.RightSideEmbeddedUrl))
+            {
+                newScoringModel.RightSideEmbeddedUrl = null;
+                _logger.LogWarning("Dropped the embedded URL of scoring model {ScoringModelId} from its copy {CopyId}: {Reason}",
+                    scoringModelEntity.Id, newScoringModelId, EmbeddedUrlRules.Problem);
+            }
             newScoringModel.ScoringCategories = new List<ScoringCategoryEntity>();
 
             foreach (var originalCategory in originalCategories)

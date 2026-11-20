@@ -240,6 +240,13 @@ namespace Cite.Api.Services
             newSm.CreatedBy = currentUserId;
             newSm.Description = oldSm.Description + " - " + username;
             newSm.EvaluationId = null; // set after evaluation insert
+            // written straight to the database, like the scoring model service's copies, so it drops the same URLs
+            if (!EmbeddedUrlRules.IsValid(newSm.RightSideEmbeddedUrl))
+            {
+                newSm.RightSideEmbeddedUrl = null;
+                _logger.LogWarning("Dropped the embedded URL of scoring model {ScoringModelId} from its copy {CopyId}: {Reason}",
+                    oldSm.Id, newScoringModelId, EmbeddedUrlRules.Problem);
+            }
             newSm.ScoringCategories = (oldSm.ScoringCategories ?? Enumerable.Empty<ScoringCategoryEntity>()).Select(oldCat =>
             {
                 var newCat = oldCat.ToCopy();

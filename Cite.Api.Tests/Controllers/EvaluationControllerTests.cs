@@ -269,6 +269,77 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(("Calm", "#FFFFFF", "Quiet"), (level.Name, level.Color, level.Description));
     }
 
+    /// <summary>A template saved before the embedded URL was checked is copied onto the new evaluation without it.</summary>
+    [Fact]
+    public async Task Create_drops_a_templates_javascript_embedded_url_from_the_evaluations_copy()
+    {
+        var template = TestData.ScoringModel("Template");
+        template.RightSideEmbeddedUrl = "javascript:alert(document.domain)";
+        template.RightSideDisplay = RightSideDisplay.EmbeddedUrl;
+        var category = TestData.ScoringCategory(template.Id);
+        await Seed(template, category, TestData.ScoringOption(category.Id));
+        var id = Guid.NewGuid();
+
+        await AssertStatus(HttpStatusCode.Created, await RootClient.PostAsJsonAsync("api/evaluations", NewEvaluation(id, template.Id), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.ScoringModel).ThenInclude(x => x.ScoringCategories).ThenInclude(x => x.ScoringOptions)
+            .SingleAsync(x => x.Id == id, Ct);
+        Assert.NotEqual(template.Id, stored.ScoringModelId);
+        Assert.Null(stored.ScoringModel.RightSideEmbeddedUrl);
+        Assert.Equal((RightSideDisplay.EmbeddedUrl, "{sum}"), (stored.ScoringModel.RightSideDisplay, stored.ScoringModel.CalculationEquation));
+        Assert.Single(Assert.Single(stored.ScoringModel.ScoringCategories).ScoringOptions);
+        Assert.Equal("javascript:alert(document.domain)", (await context.ScoringModels.SingleAsync(x => x.Id == template.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    /// <summary>A create body may nest a whole scoring model, which is stored as sent, so its URL is checked too.</summary>
+    [Fact]
+    public async Task Create_refuses_a_nested_scoring_model_with_a_javascript_embedded_url()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        var response = await RootClient.PostAsJsonAsync("api/evaluations", new
+        {
+            id,
+            description = "New Evaluation",
+            status = "Active",
+            scoringModelId = template.Id,
+            situationTime = TestData.DefaultDateCreated,
+            scoringModel = new { id = Guid.NewGuid(), description = "Nested", status = "Active", rightSideEmbeddedUrl = "javascript:alert(document.domain)" },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == id, Ct));
+        Assert.Equal([template.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Copy_drops_a_javascript_embedded_url_from_the_copied_scoring_model()
+    {
+        var graph = await Seed("Source");
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == graph.ScoringModel.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RightSideEmbeddedUrl, "javascript:alert(document.domain)"), Ct);
+        }
+
+        var copy = await ReadAsync<Evaluation>(await RootClient.PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.Teams).Include(x => x.Moves)
+            .Include(x => x.ScoringModel).ThenInclude(x => x.ScoringCategories).ThenInclude(x => x.ScoringOptions)
+            .SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.NotEqual(graph.ScoringModel.Id, stored.ScoringModelId);
+        Assert.Null(stored.ScoringModel.RightSideEmbeddedUrl);
+        Assert.Single(Assert.Single(stored.ScoringModel.ScoringCategories).ScoringOptions);
+        Assert.Single(stored.Teams);
+        Assert.Single(stored.Moves);
+        Assert.Equal("javascript:alert(document.domain)", (await context.ScoringModels.SingleAsync(x => x.Id == graph.ScoringModel.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
     [Fact]
     public async Task Create_broadcasts_the_new_evaluation_to_its_group()
     {
@@ -830,6 +901,71 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal([graph.Evaluation.Id], await context.Evaluations.Select(x => x.Id).ToListAsync(Ct));
         Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == Guid.Parse(newModelId), Ct));
     }
+
+    /// <summary>A file's new scoring model is copied without an embedded URL a save would refuse.</summary>
+    [Fact]
+    public async Task UploadJson_drops_a_javascript_embedded_url_from_a_new_scoring_model()
+    {
+        var graph = await Seed("Bad Url");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newModelId = Guid.NewGuid().ToString();
+        json["ScoringModelId"] = newModelId;
+        var scoringModel = json["ScoringModel"]!.AsObject();
+        scoringModel["Id"] = newModelId;
+        scoringModel["RightSideEmbeddedUrl"] = "javascript:alert(document.domain)";
+
+        var imported = await ReadAsync<Evaluation>(await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.Teams)
+            .Include(x => x.ScoringModel).ThenInclude(x => x.ScoringCategories).ThenInclude(x => x.ScoringOptions)
+            .SingleAsync(x => x.Id == imported.Id, Ct);
+        Assert.Null(stored.ScoringModel.RightSideEmbeddedUrl);
+        Assert.Single(Assert.Single(stored.ScoringModel.ScoringCategories).ScoringOptions);
+        Assert.Single(stored.Teams);
+        Assert.DoesNotContain(await context.ScoringModels.Select(x => x.RightSideEmbeddedUrl).ToListAsync(Ct), url => url != null && url.StartsWith("javascript:"));
+    }
+
+    /// <summary>
+    /// The file names a stored scoring model saved before the URL was checked, and a team type that doesn't exist:
+    /// the team type is created and the evaluation imported, with the copy of the scoring model dropping the URL.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_drops_a_stored_scoring_models_javascript_embedded_url_and_imports_the_rest()
+    {
+        var graph = await Seed("Bad Url");
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == graph.ScoringModel.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RightSideEmbeddedUrl, "javascript:alert(document.domain)"), Ct);
+        }
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newTeamTypeId = Guid.NewGuid();
+        var team = ValuesOf(json["Teams"])[0]!.AsObject();
+        team["TeamTypeId"] = newTeamTypeId.ToString();
+        team["TeamType"]!["Id"] = newTeamTypeId.ToString();
+        team["TeamType"]!["Name"] = "Imported Type";
+
+        var imported = await ReadAsync<Evaluation>(await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        await using var context = NewContext();
+        var stored = await context.Evaluations.Include(x => x.Teams)
+            .Include(x => x.ScoringModel).ThenInclude(x => x.ScoringCategories)
+            .SingleAsync(x => x.Id == imported.Id, Ct);
+        Assert.NotEqual(graph.ScoringModel.Id, stored.ScoringModelId);
+        Assert.Null(stored.ScoringModel.RightSideEmbeddedUrl);
+        Assert.Single(stored.ScoringModel.ScoringCategories);
+        Assert.Equal(newTeamTypeId, Assert.Single(stored.Teams).TeamTypeId);
+        Assert.True(await context.TeamTypes.AnyAsync(x => x.Id == newTeamTypeId, Ct));
+    }
+
+    // a list in an exported file, a plain array or the $values of a preserved reference
+    private static System.Text.Json.Nodes.JsonArray ValuesOf(System.Text.Json.Nodes.JsonNode list)
+        => list is System.Text.Json.Nodes.JsonArray array ? array : list!["$values"]!.AsArray();
 
     [Fact]
     public async Task UploadJson_is_forbidden_for_a_caller_holding_only_EditEvaluations()

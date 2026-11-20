@@ -39,6 +39,8 @@ namespace Cite.Api.ViewModels
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (!EmbeddedUrlRules.IsValid(RightSideEmbeddedUrl))
+                yield return new ValidationResult(EmbeddedUrlRules.Problem, [nameof(RightSideEmbeddedUrl)]);
             if (SeverityLevels == null)
                 yield break;
             foreach (var problem in SeverityLevelRules.SharedMinimumScoreProblems(SeverityLevels.Select(l => l.MinimumScore)))

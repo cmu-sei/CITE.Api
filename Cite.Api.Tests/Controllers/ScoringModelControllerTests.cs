@@ -951,6 +951,154 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
     }
 
+    // the UI frames the embedded URL, so anything but an absolute http(s) URL is refused
+    public static TheoryData<string> RefusedEmbeddedUrls =>
+    [
+        "javascript:alert(document.domain)",
+        "JavaScript:alert(1)",
+        " javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "vbscript:msgbox(1)",
+        "file:///etc/passwd",
+        "ftp://files.example.com/",
+        "about:blank",
+        "/api/scoringModels",
+        "//evil.example.com/",
+        "example.com/dashboard",
+        " ",
+    ];
+
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task Create_refuses_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var id = Guid.NewGuid();
+
+        var response = await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Refused Model",
+            status = "Active",
+            rightSideDisplay = "EmbeddedUrl",
+            rightSideEmbeddedUrl = url,
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Theory]
+    [InlineData("https://dashboard.example.com/d/1?kiosk=true#panel")]
+    [InlineData("http://localhost:3000/")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Create_stores_an_absolute_http_or_https_or_empty_embedded_url(string url)
+    {
+        var created = await ReadAsync<ScoringModel>(await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            description = "Embedding Model",
+            status = "Active",
+            rightSideDisplay = "EmbeddedUrl",
+            rightSideEmbeddedUrl = url,
+        }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(url, (await context.ScoringModels.SingleAsync(x => x.Id == created.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    /// <summary>The URL is checked whatever the right side display, since the author can switch to EmbeddedUrl later.</summary>
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task Update_refuses_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://example.com/");
+
+        var response = await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}", new
+        {
+            id = model.Id,
+            description = "Renamed",
+            status = "Active",
+            rightSideDisplay = "ScoreSummary",
+            rightSideEmbeddedUrl = url,
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct);
+        Assert.Equal(("Template", "https://example.com/"), (stored.Description, stored.RightSideEmbeddedUrl));
+    }
+
+    [Fact]
+    public async Task Update_with_an_empty_embedded_url_clears_it()
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://example.com/");
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}",
+            new { id = model.Id, description = "Template", status = "Active", rightSideEmbeddedUrl = "" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    /// <summary>A model saved before the URL was checked is copied without its URL, and with everything else.</summary>
+    [Fact]
+    public async Task Copy_drops_a_stored_javascript_embedded_url_and_copies_the_rest()
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels(), embeddedUrl: "javascript:alert(document.domain)");
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == model.Id).ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.RightSideDisplay, RightSideDisplay.EmbeddedUrl)
+                .SetProperty(x => x.RightSideHtmlBlock, "<p>Briefing</p>"), Ct);
+        }
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Null(copy.RightSideEmbeddedUrl);
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.Include(x => x.ScoringCategories).ThenInclude(x => x.ScoringOptions).SingleAsync(x => x.Id == copy.Id, Ct);
+        Assert.Null(stored.RightSideEmbeddedUrl);
+        Assert.Equal((RightSideDisplay.EmbeddedUrl, "<p>Briefing</p>", "{sum}"), (stored.RightSideDisplay, stored.RightSideHtmlBlock, stored.CalculationEquation));
+        Assert.Equal(["Low", "High"], stored.SeverityLevels.Select(x => x.Name));
+        Assert.Single(Assert.Single(stored.ScoringCategories).ScoringOptions);
+        // the source is left as it was
+        Assert.Equal("javascript:alert(document.domain)", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    [Fact]
+    public async Task Copy_keeps_an_https_embedded_url()
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://dashboard.example.com/d/1");
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Equal("https://dashboard.example.com/d/1", copy.RightSideEmbeddedUrl);
+    }
+
+    /// <summary>Upload reads the file straight into a copy, so it drops the URL a copy drops and imports the rest.</summary>
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task UploadJson_drops_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var (model, _) = await SeedTemplate(SeverityLevels());
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        json["Id"] = Guid.NewGuid().ToString();
+        json["RightSideEmbeddedUrl"] = url;
+        var actor = await Actor().WithName("Importer").WithSystemPermissions(SystemPermission.CreateScoringModels).SeedAsync();
+
+        var imported = await ReadAsync<ScoringModel>(await Client(actor).PostAsync("api/scoringModels/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Null(imported.RightSideEmbeddedUrl);
+        Assert.Equal("Template *copy by Importer*", imported.Description);
+        Assert.Equal(["Low", "High"], imported.SeverityLevels.Select(x => x.Name));
+        Assert.Single(Assert.Single(imported.ScoringCategories).ScoringOptions);
+        await using var context = NewContext();
+        Assert.Null((await context.ScoringModels.SingleAsync(x => x.Id == imported.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
     // the levels in an exported file, a plain array or the $values of a preserved reference
     private static System.Text.Json.Nodes.JsonArray LevelArray(System.Text.Json.Nodes.JsonObject scoringModel)
         => scoringModel["SeverityLevels"] is System.Text.Json.Nodes.JsonArray array
@@ -986,10 +1134,11 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         new() { Name = "High", MinimumScore = 50, Color = "#FF0000", Description = "Not fine" },
     ];
 
-    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate(List<SeverityLevelEntity> severityLevels = null)
+    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate(List<SeverityLevelEntity> severityLevels = null, string embeddedUrl = null)
     {
         var model = TestData.ScoringModel("Template");
         model.SeverityLevels = severityLevels ?? [];
+        model.RightSideEmbeddedUrl = embeddedUrl;
         var category = TestData.ScoringCategory(model.Id);
         await Seed(model, category, TestData.ScoringOption(category.Id));
 
