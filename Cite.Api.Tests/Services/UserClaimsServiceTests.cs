@@ -398,7 +398,7 @@ public class UserClaimsServiceTests(DatabaseFixture fixture) : DatabaseTestBase(
     private static ClaimsTransformationOptions IdPOptions() => new()
     {
         EnableCaching = true,
-        CacheExpirationSeconds = 300,
+        CacheExpirationSeconds = 60,
         UseRolesFromIdP = true,
         RolesClaimPath = "realm_access.roles",
         UseGroupsFromIdP = true,

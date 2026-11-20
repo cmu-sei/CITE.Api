@@ -11,9 +11,8 @@ using Cite.Api.Tests.Support;
 namespace Cite.Api.Tests.Infrastructure.EventHandlers;
 
 /// <summary>
-/// Which saved changes drop whose cached permission claims. A change to one user's row or membership evicts that
-/// user; a change that reaches users nobody can list (a group-held membership, a group's name, a role) evicts
-/// everyone; anything else leaves the cache alone.
+/// Which saved changes drop whose cached permission claims. A change to one user's row evicts that user; every
+/// membership, group and role change evicts everyone; anything else leaves the cache alone.
 /// </summary>
 public class PermissionClaimsCacheHandlerTests
 {
@@ -59,74 +58,50 @@ public class PermissionClaimsCacheHandlerTests
     }
 
     [Fact]
-    public async Task Adding_changing_and_removing_a_team_membership_evict_its_user()
+    public async Task Any_membership_change_evicts_everyone()
     {
-        var membership = TestData.TeamMembership(Guid.NewGuid(), Guid.NewGuid());
+        var team = TestData.TeamMembership(Guid.NewGuid(), Guid.NewGuid());
+        var group = TestData.GroupMembership(Guid.NewGuid(), Guid.NewGuid());
+        var evaluation = TestData.EvaluationMembership(Guid.NewGuid(), Guid.NewGuid(), TestData.EvaluationRoles.Member);
+        var heldByGroup = TestData.EvaluationMembership(Guid.NewGuid(), null, TestData.EvaluationRoles.Member, Guid.NewGuid());
+        var scoringModel = TestData.ScoringModelMembership(Guid.NewGuid(), Guid.NewGuid(), TestData.ScoringModelRoles.Editor);
 
-        await Handler.Handle(new EntityCreated<TeamMembershipEntity>(membership), Ct);
-        await Handler.Handle(new EntityUpdated<TeamMembershipEntity>(membership, [nameof(TeamMembershipEntity.RoleId)]), Ct);
-        await Handler.Handle(new EntityDeleted<TeamMembershipEntity>(membership), Ct);
+        Func<Task>[] changes =
+        [
+            () => Handler.Handle(new EntityCreated<TeamMembershipEntity>(team), Ct),
+            () => Handler.Handle(new EntityUpdated<TeamMembershipEntity>(team, [nameof(TeamMembershipEntity.RoleId)]), Ct),
+            () => Handler.Handle(new EntityDeleted<TeamMembershipEntity>(team), Ct),
+            () => Handler.Handle(new EntityCreated<GroupMembershipEntity>(group), Ct),
+            () => Handler.Handle(new EntityUpdated<GroupMembershipEntity>(group, [nameof(GroupMembershipEntity.UserId)]), Ct),
+            () => Handler.Handle(new EntityDeleted<GroupMembershipEntity>(group), Ct),
+            () => Handler.Handle(new EntityCreated<EvaluationMembershipEntity>(evaluation), Ct),
+            () => Handler.Handle(new EntityUpdated<EvaluationMembershipEntity>(evaluation, [nameof(EvaluationMembershipEntity.RoleId)]), Ct),
+            () => Handler.Handle(new EntityDeleted<EvaluationMembershipEntity>(heldByGroup), Ct),
+            () => Handler.Handle(new EntityCreated<ScoringModelMembershipEntity>(scoringModel), Ct),
+            () => Handler.Handle(new EntityUpdated<ScoringModelMembershipEntity>(scoringModel, [nameof(ScoringModelMembershipEntity.UserId)]), Ct),
+            () => Handler.Handle(new EntityDeleted<ScoringModelMembershipEntity>(scoringModel), Ct),
+        ];
 
-        Assert.Equal([membership.UserId, membership.UserId, membership.UserId], _cache.Invalidated);
-        Assert.False(_cache.InvalidatedAll);
+        foreach (var change in changes)
+        {
+            _cache.InvalidatedAll = false;
+            await change();
+            Assert.True(_cache.InvalidatedAll);
+        }
+
+        Assert.Empty(_cache.Invalidated);
     }
 
     [Fact]
-    public async Task A_group_membership_evicts_its_user()
-    {
-        var membership = TestData.GroupMembership(Guid.NewGuid(), Guid.NewGuid());
-
-        await Handler.Handle(new EntityCreated<GroupMembershipEntity>(membership), Ct);
-
-        Assert.Equal([membership.UserId], _cache.Invalidated);
-    }
-
-    [Fact]
-    public async Task An_evaluation_membership_held_by_a_user_evicts_that_user()
-    {
-        var membership = TestData.EvaluationMembership(Guid.NewGuid(), Guid.NewGuid(), TestData.EvaluationRoles.Member);
-
-        await Handler.Handle(new EntityCreated<EvaluationMembershipEntity>(membership), Ct);
-
-        Assert.Equal([membership.UserId!.Value], _cache.Invalidated);
-        Assert.False(_cache.InvalidatedAll);
-    }
-
-    /// <summary>A group's members include whoever the identity provider puts in a group of that name.</summary>
-    [Fact]
-    public async Task A_membership_held_by_a_group_evicts_everyone()
-    {
-        var evaluation = TestData.EvaluationMembership(Guid.NewGuid(), null, TestData.EvaluationRoles.Member, Guid.NewGuid());
-        var scoringModel = TestData.ScoringModelMembership(Guid.NewGuid(), null, TestData.ScoringModelRoles.Editor, Guid.NewGuid());
-
-        await Handler.Handle(new EntityDeleted<EvaluationMembershipEntity>(evaluation), Ct);
-        Assert.True(_cache.InvalidatedAll);
-
-        _cache.InvalidatedAll = false;
-        await Handler.Handle(new EntityCreated<ScoringModelMembershipEntity>(scoringModel), Ct);
-        Assert.True(_cache.InvalidatedAll);
-    }
-
-    /// <summary>The event carries only the new holder, so the old one cannot be singled out.</summary>
-    [Fact]
-    public async Task A_membership_moved_to_another_user_evicts_everyone()
-    {
-        var membership = TestData.ScoringModelMembership(Guid.NewGuid(), Guid.NewGuid(), TestData.ScoringModelRoles.Editor);
-
-        await Handler.Handle(new EntityUpdated<ScoringModelMembershipEntity>(membership, [nameof(ScoringModelMembershipEntity.UserId)]), Ct);
-
-        Assert.True(_cache.InvalidatedAll);
-    }
-
-    [Fact]
-    public async Task Renaming_a_group_evicts_everyone_and_redescribing_it_nobody()
+    public async Task Any_group_update_or_delete_evicts_everyone()
     {
         var group = TestData.Group();
 
         await Handler.Handle(new EntityUpdated<GroupEntity>(group, [nameof(GroupEntity.Description)]), Ct);
-        Assert.False(_cache.InvalidatedAll);
+        Assert.True(_cache.InvalidatedAll);
 
-        await Handler.Handle(new EntityUpdated<GroupEntity>(group, [nameof(GroupEntity.Name)]), Ct);
+        _cache.InvalidatedAll = false;
+        await Handler.Handle(new EntityDeleted<GroupEntity>(group), Ct);
         Assert.True(_cache.InvalidatedAll);
     }
 

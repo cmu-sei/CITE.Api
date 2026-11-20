@@ -17,9 +17,8 @@ namespace Cite.Api.Infrastructure.EventHandlers
     /// wait out <c>ClaimsTransformation:CacheExpirationSeconds</c>.
     /// </summary>
     /// <remarks>
-    /// A change to one user's row or membership evicts that user. A change that reaches users who cannot be listed
-    /// evicts everyone: a membership held by a group (whose members include whoever the identity provider puts in a
-    /// group of that name), a group's name, and a role's permissions.
+    /// A change to a user's row evicts that user; <c>ValidateUser</c> saves that row from inside the claims load, so
+    /// evicting everyone from there would be noisy. Every membership, group and role change evicts everyone.
     /// </remarks>
     public class PermissionClaimsCacheHandler(IPermissionClaimsCache cache) :
         INotificationHandler<EntityUpdated<UserEntity>>,
@@ -58,50 +57,35 @@ namespace Cite.Api.Infrastructure.EventHandlers
         public Task Handle(EntityDeleted<UserEntity> notification, CancellationToken cancellationToken) =>
             Invalidate(notification.Entity.Id);
 
-        // ---- memberships held by one user
+        // ---- memberships, groups and roles: permission changes are rare during an exercise, so each one drops
+        // every cached entry rather than working out who holds it. A group's members include whoever the identity
+        // provider puts in a group of that name, so the holder cannot always be listed anyway.
 
-        public Task Handle(EntityCreated<TeamMembershipEntity> notification, CancellationToken cancellationToken) =>
-            Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityCreated<TeamMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityUpdated<TeamMembershipEntity> notification, CancellationToken cancellationToken) =>
-            MovedBetweenUsers(notification.ModifiedProperties) ? InvalidateAll() : Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityUpdated<TeamMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityDeleted<TeamMembershipEntity> notification, CancellationToken cancellationToken) =>
-            Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityDeleted<TeamMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityCreated<GroupMembershipEntity> notification, CancellationToken cancellationToken) =>
-            Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityCreated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityUpdated<GroupMembershipEntity> notification, CancellationToken cancellationToken) =>
-            MovedBetweenUsers(notification.ModifiedProperties) ? InvalidateAll() : Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityUpdated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityDeleted<GroupMembershipEntity> notification, CancellationToken cancellationToken) =>
-            Invalidate(notification.Entity.UserId);
+        public Task Handle(EntityDeleted<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        // ---- memberships held by a user or by a group
+        public Task Handle(EntityCreated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityCreated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) =>
-            InvalidateHolder(notification.Entity.UserId);
+        public Task Handle(EntityUpdated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityUpdated<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) =>
-            MovedBetweenUsers(notification.ModifiedProperties) ? InvalidateAll() : InvalidateHolder(notification.Entity.UserId);
+        public Task Handle(EntityDeleted<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityDeleted<EvaluationMembershipEntity> notification, CancellationToken cancellationToken) =>
-            InvalidateHolder(notification.Entity.UserId);
+        public Task Handle(EntityCreated<GroupMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityCreated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) =>
-            InvalidateHolder(notification.Entity.UserId);
+        public Task Handle(EntityUpdated<GroupMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityUpdated<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) =>
-            MovedBetweenUsers(notification.ModifiedProperties) ? InvalidateAll() : InvalidateHolder(notification.Entity.UserId);
+        public Task Handle(EntityDeleted<GroupMembershipEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
-        public Task Handle(EntityDeleted<ScoringModelMembershipEntity> notification, CancellationToken cancellationToken) =>
-            InvalidateHolder(notification.Entity.UserId);
-
-        // ---- groups: matched to the token's groups by name
-
-        public Task Handle(EntityUpdated<GroupEntity> notification, CancellationToken cancellationToken) =>
-            notification.ModifiedProperties.Contains(nameof(GroupEntity.Name)) ? InvalidateAll() : Task.CompletedTask;
+        public Task Handle(EntityUpdated<GroupEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
         public Task Handle(EntityDeleted<GroupEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
@@ -125,12 +109,6 @@ namespace Cite.Api.Infrastructure.EventHandlers
         public Task Handle(EntityUpdated<TeamRoleEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
 
         public Task Handle(EntityDeleted<TeamRoleEntity> notification, CancellationToken cancellationToken) => InvalidateAll();
-
-        // the event carries only the new holder, so a membership moved to another user or group evicts everyone
-        private static bool MovedBetweenUsers(string[] modifiedProperties) =>
-            modifiedProperties.Contains("UserId") || modifiedProperties.Contains("GroupId");
-
-        private Task InvalidateHolder(System.Guid? userId) => userId.HasValue ? Invalidate(userId.Value) : InvalidateAll();
 
         private Task Invalidate(System.Guid userId)
         {

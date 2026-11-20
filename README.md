@@ -42,7 +42,7 @@ The default Team Roles are Owner, Submitter, Contributor and Member, which run a
 
 Roles can also be taken from the identity provider's token (`ClaimsTransformation` settings in `appsettings.json`).
 
-A user's permissions are read from the database on their first request and cached (`ClaimsTransformation:EnableCaching`) for `ClaimsTransformation:CacheExpirationSeconds`, per user and per set of roles, groups and name in the token, so a renewed token or another browser tab reuses them. Concurrent requests that miss share one read. Changing a membership, role, group or user's system role drops the affected cached permissions at once on the instance that saved it; with several API instances, the others pick the change up when their entry expires.
+A user's permissions are read from the database on their first request and cached (`ClaimsTransformation:EnableCaching`) for `ClaimsTransformation:CacheExpirationSeconds`, per user and per set of roles, groups and name in the token, so a renewed token or another browser tab reuses them. Concurrent requests that miss share one read. Changing a membership, role, group or user's system role drops cached permissions at once (everyone's for a membership, role or group change; the user's own for a system role change) on the instance that saved it; with several API instances, the others pick the change up when their entry expires.
 
 # Testing
 
