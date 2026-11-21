@@ -951,6 +951,142 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
     }
 
+    // the UI frames the embedded URL, so anything but an absolute http(s) URL is refused
+    public static TheoryData<string> RefusedEmbeddedUrls =>
+    [
+        "javascript:alert(document.domain)",
+        "JavaScript:alert(1)",
+        " javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "vbscript:msgbox(1)",
+        "file:///etc/passwd",
+        "ftp://files.example.com/",
+        "about:blank",
+        "/api/scoringModels",
+        "//evil.example.com/",
+        "example.com/dashboard",
+        " ",
+    ];
+
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task Create_refuses_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var id = Guid.NewGuid();
+
+        var response = await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            id,
+            description = "Refused Model",
+            status = "Active",
+            rightSideDisplay = "EmbeddedUrl",
+            rightSideEmbeddedUrl = url,
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == id, Ct));
+    }
+
+    [Theory]
+    [InlineData("https://dashboard.example.com/d/1?kiosk=true#panel")]
+    [InlineData("http://localhost:3000/")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Create_stores_an_absolute_http_or_https_or_empty_embedded_url(string url)
+    {
+        var created = await ReadAsync<ScoringModel>(await RootClient.PostAsJsonAsync("api/scoringModels", new
+        {
+            description = "Embedding Model",
+            status = "Active",
+            rightSideDisplay = "EmbeddedUrl",
+            rightSideEmbeddedUrl = url,
+        }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal(url, (await context.ScoringModels.SingleAsync(x => x.Id == created.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    /// <summary>The URL is checked whatever the right side display, since the author can switch to EmbeddedUrl later.</summary>
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task Update_refuses_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://example.com/");
+
+        var response = await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}", new
+        {
+            id = model.Id,
+            description = "Renamed",
+            status = "Active",
+            rightSideDisplay = "ScoreSummary",
+            rightSideEmbeddedUrl = url,
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        var stored = await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct);
+        Assert.Equal(("Template", "https://example.com/"), (stored.Description, stored.RightSideEmbeddedUrl));
+    }
+
+    [Fact]
+    public async Task Update_with_an_empty_embedded_url_clears_it()
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://example.com/");
+
+        await AssertStatus(HttpStatusCode.OK, await RootClient.PutAsJsonAsync($"api/scoringModels/{model.Id}",
+            new { id = model.Id, description = "Template", status = "Active", rightSideEmbeddedUrl = "" }, Ct));
+
+        await using var context = NewContext();
+        Assert.Equal("", (await context.ScoringModels.SingleAsync(x => x.Id == model.Id, Ct)).RightSideEmbeddedUrl);
+    }
+
+    /// <summary>A model saved before the URL was checked is not copied; the 400 names it and says what to do.</summary>
+    [Fact]
+    public async Task Copy_refuses_a_stored_model_with_a_javascript_embedded_url_and_stores_nothing()
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "javascript:alert(document.domain)");
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Equal($"The scoring model \"Template\" ({model.Id}) can't be copied: {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.EditTheScoringModel}", error.Title);
+        Assert.DoesNotContain("javascript", error.Title);
+        await using var context = NewContext();
+        Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+        Assert.Equal(1, await context.ScoringCategories.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Copy_keeps_an_https_embedded_url()
+    {
+        var (model, _) = await SeedTemplate(embeddedUrl: "https://dashboard.example.com/d/1");
+
+        var copy = await ReadAsync<ScoringModel>(await RootClient.PostAsync($"api/scoringModels/{model.Id}/copy", null, Ct));
+
+        Assert.Equal("https://dashboard.example.com/d/1", copy.RightSideEmbeddedUrl);
+    }
+
+    /// <summary>A hand-edited file is checked the way a save is, since upload reads it straight into the database model.</summary>
+    [Theory]
+    [MemberData(nameof(RefusedEmbeddedUrls))]
+    public async Task UploadJson_refuses_a_file_with_an_embedded_url_that_is_not_absolute_http_or_https(string url)
+    {
+        var (model, _) = await SeedTemplate();
+        var exported = await (await RootClient.GetAsync($"api/scoringModels/{model.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var fileId = Guid.NewGuid();
+        json["Id"] = fileId.ToString();
+        json["RightSideEmbeddedUrl"] = url;
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/scoringModels/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Equal($"The scoring model \"Template\" ({fileId}) in the file can't be imported: {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.FixTheFile}", error.Title);
+        await using var context = NewContext();
+        Assert.Equal([model.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+        Assert.Equal(1, await context.ScoringCategories.CountAsync(Ct));
+    }
+
     // the levels in an exported file, a plain array or the $values of a preserved reference
     private static System.Text.Json.Nodes.JsonArray LevelArray(System.Text.Json.Nodes.JsonObject scoringModel)
         => scoringModel["SeverityLevels"] is System.Text.Json.Nodes.JsonArray array
@@ -986,10 +1122,11 @@ public class ScoringModelControllerTests(DatabaseFixture fixture, CiteAppFactory
         new() { Name = "High", MinimumScore = 50, Color = "#FF0000", Description = "Not fine" },
     ];
 
-    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate(List<SeverityLevelEntity> severityLevels = null)
+    private async Task<(ScoringModelEntity Model, ScoringCategoryEntity Category)> SeedTemplate(List<SeverityLevelEntity> severityLevels = null, string embeddedUrl = null)
     {
         var model = TestData.ScoringModel("Template");
         model.SeverityLevels = severityLevels ?? [];
+        model.RightSideEmbeddedUrl = embeddedUrl;
         var category = TestData.ScoringCategory(model.Id);
         await Seed(model, category, TestData.ScoringOption(category.Id));
 

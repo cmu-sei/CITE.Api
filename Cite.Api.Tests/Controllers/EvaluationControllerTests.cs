@@ -269,6 +269,63 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal(("Calm", "#FFFFFF", "Quiet"), (level.Name, level.Color, level.Description));
     }
 
+    /// <summary>A template saved before the embedded URL was checked is not copied onto a new evaluation.</summary>
+    [Fact]
+    public async Task Create_refuses_a_template_with_a_javascript_embedded_url_and_stores_nothing()
+    {
+        var template = TestData.ScoringModel("Template");
+        template.RightSideEmbeddedUrl = "javascript:alert(document.domain)";
+        var category = TestData.ScoringCategory(template.Id);
+        await Seed(template, category, TestData.ScoringOption(category.Id));
+        var before = await RowCounts();
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsJsonAsync("api/evaluations", NewEvaluation(Guid.NewGuid(), template.Id), Ct));
+
+        Assert.Equal($"The evaluation \"New Evaluation\" can't be created from the scoring model \"Template\" ({template.Id}): {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.EditTheScoringModel}", error.Title);
+        Assert.Equal(before, await RowCounts());
+    }
+
+    /// <summary>A create body may nest a whole scoring model, which is stored as sent, so its URL is checked too.</summary>
+    [Fact]
+    public async Task Create_refuses_a_nested_scoring_model_with_a_javascript_embedded_url()
+    {
+        var template = TestData.ScoringModel("Template");
+        await Seed(template);
+        var id = Guid.NewGuid();
+
+        var response = await RootClient.PostAsJsonAsync("api/evaluations", new
+        {
+            id,
+            description = "New Evaluation",
+            status = "Active",
+            scoringModelId = template.Id,
+            situationTime = TestData.DefaultDateCreated,
+            scoringModel = new { id = Guid.NewGuid(), description = "Nested", status = "Active", rightSideEmbeddedUrl = "javascript:alert(document.domain)" },
+        }, Ct);
+
+        await AssertStatus(HttpStatusCode.BadRequest, response);
+        await using var context = NewContext();
+        Assert.False(await context.Evaluations.AnyAsync(x => x.Id == id, Ct));
+        Assert.Equal([template.Id], await context.ScoringModels.Select(x => x.Id).ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Copy_refuses_an_evaluation_whose_scoring_model_has_a_javascript_embedded_url_and_stores_nothing()
+    {
+        var graph = await Seed("Source");
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == graph.ScoringModel.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RightSideEmbeddedUrl, "javascript:alert(document.domain)"), Ct);
+        }
+        var before = await RowCounts();
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync($"api/evaluations/{graph.Evaluation.Id}/copy", null, Ct));
+
+        Assert.Equal($"The evaluation \"Source\" ({graph.Evaluation.Id}) can't be copied with its scoring model \"{graph.ScoringModel.Description}\" ({graph.ScoringModel.Id}): {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.EditTheScoringModel}", error.Title);
+        Assert.Equal(before, await RowCounts());
+    }
+
     [Fact]
     public async Task Create_broadcasts_the_new_evaluation_to_its_group()
     {
@@ -830,6 +887,79 @@ public class EvaluationControllerTests(DatabaseFixture fixture, CiteAppFactory f
         Assert.Equal([graph.Evaluation.Id], await context.Evaluations.Select(x => x.Id).ToListAsync(Ct));
         Assert.False(await context.ScoringModels.AnyAsync(x => x.Id == Guid.Parse(newModelId), Ct));
     }
+
+    /// <summary>A file's new scoring model is refused the embedded URL a save would be.</summary>
+    [Fact]
+    public async Task UploadJson_refuses_a_new_scoring_model_with_a_javascript_embedded_url_and_stores_nothing()
+    {
+        var graph = await Seed("Bad Url");
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newModelId = Guid.NewGuid();
+        json["ScoringModelId"] = newModelId.ToString();
+        var scoringModel = json["ScoringModel"]!.AsObject();
+        scoringModel["Id"] = newModelId.ToString();
+        scoringModel["RightSideEmbeddedUrl"] = "javascript:alert(document.domain)";
+        NewTeamType(json);
+        var before = await RowCounts();
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Equal($"The evaluation \"Bad Url\" in the file can't be imported with its scoring model \"{graph.ScoringModel.Description}\" ({newModelId}): {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.FixTheFile}", error.Title);
+        Assert.Equal(before, await RowCounts());
+    }
+
+    /// <summary>
+    /// The file names a stored scoring model saved before the URL was checked, and a team type that doesn't exist:
+    /// the refusal comes before the team type would be created, so nothing is written.
+    /// </summary>
+    [Fact]
+    public async Task UploadJson_refuses_a_stored_scoring_model_with_a_javascript_embedded_url_before_creating_team_types()
+    {
+        var graph = await Seed("Bad Url");
+        await using (var arrange = NewContext())
+        {
+            await arrange.ScoringModels.Where(x => x.Id == graph.ScoringModel.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RightSideEmbeddedUrl, "javascript:alert(document.domain)"), Ct);
+        }
+        var exported = await (await RootClient.GetAsync($"api/evaluations/{graph.Evaluation.Id}/json", Ct)).Content.ReadAsStringAsync(Ct);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(exported)!.AsObject();
+        var newTeamTypeId = NewTeamType(json);
+        var before = await RowCounts();
+
+        var error = await AssertApiError(HttpStatusCode.BadRequest, await RootClient.PostAsync("api/evaluations/json",
+            Upload(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString())), Ct));
+
+        Assert.Equal($"The evaluation \"Bad Url\" in the file can't be imported with the scoring model \"{graph.ScoringModel.Description}\" ({graph.ScoringModel.Id}): {EmbeddedUrlRules.Problem}. {EmbeddedUrlRules.EditTheScoringModel}", error.Title);
+        Assert.Equal(before, await RowCounts());
+        await using var context = NewContext();
+        Assert.False(await context.TeamTypes.AnyAsync(x => x.Id == newTeamTypeId, Ct));
+    }
+
+    // points the file's first team at a team type that doesn't exist yet, which upload would create
+    private static Guid NewTeamType(System.Text.Json.Nodes.JsonObject evaluation)
+    {
+        var id = Guid.NewGuid();
+        var team = ValuesOf(evaluation["Teams"])[0]!.AsObject();
+        team["TeamTypeId"] = id.ToString();
+        team["TeamType"]!["Id"] = id.ToString();
+        team["TeamType"]!["Name"] = "Imported Type";
+        return id;
+    }
+
+    // the rows a refused create, copy or upload must leave as they were
+    private async Task<(int Evaluations, int ScoringModels, int Categories, int Options, int Teams, int TeamTypes, int Moves, int Memberships)> RowCounts()
+    {
+        await using var context = NewContext();
+        return (await context.Evaluations.CountAsync(Ct), await context.ScoringModels.CountAsync(Ct), await context.ScoringCategories.CountAsync(Ct),
+            await context.ScoringOptions.CountAsync(Ct), await context.Teams.CountAsync(Ct), await context.TeamTypes.CountAsync(Ct),
+            await context.Moves.CountAsync(Ct), await context.EvaluationMemberships.CountAsync(Ct));
+    }
+
+    // a list in an exported file, a plain array or the $values of a preserved reference
+    private static System.Text.Json.Nodes.JsonArray ValuesOf(System.Text.Json.Nodes.JsonNode list)
+        => list is System.Text.Json.Nodes.JsonArray array ? array : list!["$values"]!.AsArray();
 
     [Fact]
     public async Task UploadJson_is_forbidden_for_a_caller_holding_only_EditEvaluations()

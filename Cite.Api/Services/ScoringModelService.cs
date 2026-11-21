@@ -188,6 +188,11 @@ namespace Cite.Api.Services
 
         public async Task<ScoringModelEntity> InternalScoringModelEntityCopyAsync(ScoringModelEntity scoringModelEntity, CancellationToken ct, string descriptionSuffix = null)
         {
+            // the copy is written straight to the database, so the API models' URL check hasn't run on its source,
+            // a stored model or a file: it is refused here, before anything is written; uploads check first, with
+            // their own reason
+            EmbeddedUrlRules.ThrowIfInvalid(scoringModelEntity.RightSideEmbeddedUrl,
+                $"The {EmbeddedUrlRules.Name(scoringModelEntity)} can't be copied", EmbeddedUrlRules.EditTheScoringModel);
             var currentUserId = _user.GetId();
             var username = (await _context.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == _user.GetId(), ct))?.Name ?? "Unknown";
             descriptionSuffix ??= " *copy by " + username + "*";
@@ -299,6 +304,8 @@ namespace Cite.Api.Services
             }
             // the file is read straight into the database model, so the API model's checks haven't run
             SeverityLevelRules.ThrowIfInvalid(scoringModelEntity.SeverityLevels);
+            EmbeddedUrlRules.ThrowIfInvalid(scoringModelEntity.RightSideEmbeddedUrl,
+                $"The {EmbeddedUrlRules.Name(scoringModelEntity)} in the file can't be imported", EmbeddedUrlRules.FixTheFile);
             // make a copy and add it to the database, keeping the file's description unless it is already in use
             var descriptionInUse = await _context.ScoringModels.AnyAsync(m => m.Description == scoringModelEntity.Description, ct);
             scoringModelEntity = await InternalScoringModelEntityCopyAsync(scoringModelEntity, ct, descriptionInUse ? null : "");
