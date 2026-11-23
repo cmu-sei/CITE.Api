@@ -160,9 +160,16 @@ namespace Cite.Api.Services
         {
             evaluation.Id = evaluation.Id != Guid.Empty ? evaluation.Id : Guid.NewGuid();
             evaluation.CreatedBy = _user.GetId();
-            if (!await _context.ScoringModels.AnyAsync(m => m.Id == evaluation.ScoringModelId, ct))
+            var template = await _context.ScoringModels.AsNoTracking()
+                .Where(m => m.Id == evaluation.ScoringModelId)
+                .Select(m => new ScoringModelEntity { Id = m.Id, Description = m.Description, RightSideEmbeddedUrl = m.RightSideEmbeddedUrl })
+                .SingleOrDefaultAsync(ct);
+            if (template == null)
                 throw new EntityNotFoundException<ScoringModel>("ScoringModel not found with ID=" + evaluation.ScoringModelId.ToString());
             await AuthorizeScoringModelCopyAsync(evaluation.ScoringModelId, ct);
+            // the evaluation gets a copy of the template, which is not copied with a URL saved before it was checked
+            EmbeddedUrlRules.ThrowIfInvalid(template.RightSideEmbeddedUrl,
+                $"The evaluation \"{evaluation.Description}\" can't be created from the {EmbeddedUrlRules.Name(template)}", EmbeddedUrlRules.EditTheScoringModel);
 
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // create a scoring model copy
@@ -225,6 +232,10 @@ namespace Cite.Api.Services
             {
                 throw new InvalidOperationException("Cannot copy evaluation: ScoringModel is null");
             }
+            // the scoring model copy is written straight to the database, like the scoring model service's copies,
+            // so it is refused here, before anything is written; an upload checks first, with its own reason
+            EmbeddedUrlRules.ThrowIfInvalid(oldEval.ScoringModel.RightSideEmbeddedUrl,
+                $"The evaluation \"{oldEval.Description}\" ({oldEval.Id}) can't be copied with its {EmbeddedUrlRules.Name(oldEval.ScoringModel)}", EmbeddedUrlRules.EditTheScoringModel);
 
             var currentUserId = _user.GetId();
             var username = (await _context.Users.AsNoTracking()
@@ -381,6 +392,8 @@ namespace Cite.Api.Services
 
                 // the file is read straight into the database model, so the API model's checks haven't run
                 SeverityLevelRules.ThrowIfInvalid(evaluationEntity.ScoringModel.SeverityLevels);
+                EmbeddedUrlRules.ThrowIfInvalid(evaluationEntity.ScoringModel.RightSideEmbeddedUrl,
+                    $"The evaluation \"{evaluationEntity.Description}\" in the file can't be imported with its {EmbeddedUrlRules.Name(evaluationEntity.ScoringModel)}", EmbeddedUrlRules.FixTheFile);
                 var newScoringModel = await _scoringModelService.InternalScoringModelEntityCopyAsync(evaluationEntity.ScoringModel, ct);
                 evaluationEntity.ScoringModelId = newScoringModel.Id;
             }
@@ -403,6 +416,11 @@ namespace Cite.Api.Services
                 throw new InvalidOperationException($"ScoringModel with ID {evaluationEntity.ScoringModelId} could not be found or created.");
             }
             // else: use the scoring model from the uploaded JSON
+
+            // the evaluation gets a copy of the stored model, which is refused here, before the team types are written,
+            // when it holds a URL saved before the URL was checked
+            EmbeddedUrlRules.ThrowIfInvalid(evaluationEntity.ScoringModel.RightSideEmbeddedUrl,
+                $"The evaluation \"{evaluationEntity.Description}\" in the file can't be imported with the {EmbeddedUrlRules.Name(evaluationEntity.ScoringModel)}", EmbeddedUrlRules.EditTheScoringModel);
 
             // if TeamTypes don't exist, then create them
             foreach (var team in evaluationEntity.Teams)
